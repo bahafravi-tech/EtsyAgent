@@ -1,0 +1,6 @@
+config.php
+.env
+.env.local
+uploads/*
+!uploads/.htaccess
+*.log

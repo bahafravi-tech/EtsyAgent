@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beguchee Content Agent — پنل تصمیم</title>
+<style>
+  :root{
+    --bg:#0f1115; --surface:#171a21; --surface2:#1e222b; --surface3:#252a35;
+    --border:#2c313d; --text:#f1f3f6; --text2:#a7b0c0; --text3:#6b7280;
+    --orange:#ea580c; --orange-light:#3a2415;
+    --green:#22c55e; --green-light:#12261a;
+    --red:#ef4444; --red-light:#2a1518;
+    --purple:#a78bfa; --purple-light:#221a35;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:Vazirmatn,Tahoma,sans-serif;min-height:100vh}
+  .wrap{max-width:920px;margin:0 auto;padding:24px 16px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--text2);font-size:13px;margin-bottom:22px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px}
+  .input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:inherit;font-size:13px}
+  textarea.input{resize:vertical;min-height:90px;line-height:1.8}
+  .btn{border:none;border-radius:8px;padding:8px 14px;font-family:inherit;font-size:13px;cursor:pointer;font-weight:700}
+  .btn-primary{background:var(--orange);color:#fff}
+  .btn-secondary{background:var(--surface3);color:var(--text)}
+  .btn-green{background:var(--green);color:#06240f}
+  .btn-red{background:var(--red);color:#fff}
+  .btn-sm{padding:5px 10px;font-size:12px}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+  .tab{padding:7px 14px;border-radius:20px;background:var(--surface2);color:var(--text2);font-size:12.5px;cursor:pointer;border:1px solid var(--border)}
+  .tab.active{background:var(--orange);color:#fff;border-color:var(--orange)}
+  .item-title{font-size:15px;font-weight:800;margin-bottom:6px}
+  .item-meta{font-size:11.5px;color:var(--text3);margin-bottom:10px}
+  .field-label{font-size:11px;font-weight:700;color:var(--text2);margin:10px 0 5px;display:flex;justify-content:space-between;align-items:center}
+  .hero-img{width:100%;max-width:280px;border-radius:10px;border:1px solid var(--border);display:block;margin-bottom:8px}
+  .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700}
+  .badge-pending{background:#3a2f10;color:#eab308}
+  .badge-published{background:var(--green-light);color:var(--green)}
+  .badge-failed{background:var(--red-light);color:var(--red)}
+  .platform-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .status-pill{display:inline-block;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700;margin-bottom:8px}
+  .research-box{background:var(--surface3);border-radius:8px;padding:10px;font-size:12px;color:var(--text2);margin-bottom:10px}
+  #loginBox{max-width:340px;margin:80px auto}
+  .empty{text-align:center;padding:60px 20px;color:var(--text2)}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="loginBox">
+  <div class="card">
+    <h1>🤖 Beguchee Content Agent</h1>
+    <div class="sub">ورود به پنل تصمیم</div>
+    <input type="password" class="input" id="loginPassword" placeholder="رمز عبور" style="margin-bottom:10px">
+    <button class="btn btn-primary" style="width:100%" onclick="doLogin()">ورود</button>
+    <div id="loginError" style="color:var(--red);font-size:12px;margin-top:8px"></div>
+  </div>
+</div>
+
+<div class="wrap hidden" id="mainBox">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+    <h1>🤖 Beguchee Content Agent</h1>
+    <button class="btn btn-secondary btn-sm" onclick="doLogout()">خروج</button>
+  </div>
+  <div class="sub">بررسی و تأیید محتوای معرفی محصول قبل از انتشار خودکار</div>
+
+  <div class="card">
+    <div class="field-label" style="margin-top:0">فروشگاه</div>
+    <select class="input" id="shopFilter" onchange="onShopFilterChange()" style="margin-bottom:4px"></select>
+    <div style="font-size:11px;color:var(--text3)">فقط محتوای همین فروشگاه نشون داده می‌شه</div>
+  </div>
+  <div class="card">
+    <div class="field-label" style="margin-top:0">دسته</div>
+    <select class="input" id="categoryFilter" onchange="onCategoryFilterChange()"></select>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-primary btn-sm" onclick="toggleAddForm()">+ افزودن موضوع جدید</button>
+      <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+        📤 آپلود CSV (چند موضوع با هم)
+        <input type="file" accept=".csv" id="csvFile" style="display:none" onchange="uploadCsv()">
+      </label>
+      <span style="font-size:11px;color:var(--text3)">ستون‌ها: title, source_content, tag, language — ردیف اول هدر</span>
+    </div>
+    <div id="addFormBox" class="hidden" style="margin-top:12px">
+      <input class="input" id="addShop" placeholder="اسم فروشگاه (مثلاً Beguchee یا Eternate)" style="margin-bottom:8px">
+      <input class="input" id="addTitle" placeholder="عنوان موضوع" style="margin-bottom:8px">
+      <textarea class="input" id="addContent" placeholder="توضیحات/محتوای منبع" rows="3" style="margin-bottom:8px"></textarea>
+      <input class="input" id="addTag" placeholder="دسته/تگ (اختیاری)" style="margin-bottom:8px">
+      <div class="field-label" style="margin-top:0">زبان محتوای تولیدشده</div>
+      <input class="input" id="addLanguage" list="addLanguageOptions" placeholder="English" style="margin-bottom:8px">
+      <datalist id="addLanguageOptions">
+        <option value="English"><option value="Persian (Farsi)"><option value="Arabic">
+        <option value="Spanish"><option value="French"><option value="German">
+        <option value="Turkish"><option value="Italian"><option value="Portuguese"><option value="Russian">
+      </datalist>
+      <button class="btn btn-green btn-sm" onclick="submitAddForm()">ثبت و تولید خودکار کپشن+عکس</button>
+    </div>
+    <div id="draftBulkActions" class="hidden" style="margin-top:12px;font-size:12px;color:var(--text2)">
+      <span id="draftCountText"></span>
+      <button class="btn btn-secondary btn-sm" onclick="generateAllDrafts()">🪄 تولید کپشن+عکس برای همه‌ی پیش‌نویس‌ها</button>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <div class="tab active" data-status="" onclick="setTab('',this)">همه</div>
+    <div class="tab" data-status="draft" onclick="setTab('draft',this)">📝 پیش‌نویس</div>
+    <div class="tab" data-status="review" onclick="setTab('review',this)">⏳ آماده‌ی بررسی</div>
+    <div class="tab" data-status="approved" onclick="setTab('approved',this)">✅ تأییدشده</div>
+    <div class="tab" data-status="published" onclick="setTab('published',this)">📤 منتشرشده</div>
+    <div class="tab" data-status="failed" onclick="setTab('failed',this)">❌ ناموفق</div>
+    <div class="tab" data-status="rejected" onclick="setTab('rejected',this)">🗑 ردشده</div>
+  </div>
+
+  <div id="list"></div>
+</div>
+
+<script>
+const API = '/api/';
+let currentStatus = '';
+let currentShop = '';
+let currentCategory = '';
+
+async function apiCall(path, opts={}){
+  const res = await fetch(API+path, {
+    ...opts,
+    headers: { 'Content-Type':'application/json', ...(opts.headers||{}) },
+  });
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error || ('خطای '+res.status));
+  return data;
+}
+
+function buildQuery(){
+  const parts = [];
+  if(currentStatus) parts.push('status='+encodeURIComponent(currentStatus));
+  if(currentShop) parts.push('shop='+encodeURIComponent(currentShop));
+  if(currentCategory) parts.push('category='+encodeURIComponent(currentCategory));
+  return parts.length ? ('?'+parts.join('&')) : '';
+}
+
+function populateShopFilter(shops){
+  const sel = document.getElementById('shopFilter');
+  const prev = currentShop;
+  sel.innerHTML = '<option value="">همه‌ی فروشگاه‌ها</option>' + (shops||[]).map(s=>`<option value="${escHtml(s)}">${escHtml(s)}</option>`).join('');
+  if(prev && shops.includes(prev)) sel.value = prev;
+}
+function onShopFilterChange(){
+  currentShop = document.getElementById('shopFilter').value;
+  loadList();
+}
+function populateCategoryFilter(categories){
+  const sel = document.getElementById('categoryFilter');
+  const prev = currentCategory;
+  sel.innerHTML = '<option value="">همه دسته‌ها</option>' + (categories||[]).map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
+  if(prev && categories.includes(prev)) sel.value = prev;
+}
+function onCategoryFilterChange(){
+  currentCategory = document.getElementById('categoryFilter').value;
+  loadList();
+}
+
+async function doLogin(){
+  const password = document.getElementById('loginPassword').value;
+  try{
+    await apiCall('login.php', { method:'POST', body: JSON.stringify({password}) });
+    document.getElementById('loginBox').classList.add('hidden');
+    document.getElementById('mainBox').classList.remove('hidden');
+    loadList();
+  }catch(e){
+    document.getElementById('loginError').textContent = e.message;
+  }
+}
+async function doLogout(){
+  await apiCall('logout.php', { method:'POST', body:'{}' });
+  location.reload();
+}
+
+function toggleAddForm(){
+  document.getElementById('addFormBox').classList.toggle('hidden');
+  if(currentShop) document.getElementById('addShop').value = currentShop;
+}
+async function submitAddForm(){
+  const shop = document.getElementById('addShop').value.trim();
+  const title = document.getElementById('addTitle').value.trim();
+  const source_content = document.getElementById('addContent').value.trim();
+  const tag = document.getElementById('addTag').value.trim();
+  const language = document.getElementById('addLanguage').value.trim() || 'English';
+  if(!title){ alert('عنوان لازم است'); return; }
+  try{
+    await apiCall('add_content.php', { method:'POST', body: JSON.stringify({title, source_content, tag, shop, language}) });
+    document.getElementById('addTitle').value='';
+    document.getElementById('addContent').value='';
+    document.getElementById('addTag').value='';
+    document.getElementById('addFormBox').classList.add('hidden');
+    loadList();
+  }catch(e){ alert('خطا: '+e.message); }
+}
+
+async function uploadCsv(){
+  const fileInput = document.getElementById('csvFile');
+  const file = fileInput.files[0];
+  if(!file) return;
+  const shop = currentShop || prompt('این موضوعات برای کدوم فروشگاهن؟ (اختیاری، خالی بذار اگه مهم نیست)', '') || '';
+  const language = prompt('زبان محتوای این فایل چیه؟ (مثلاً English، Persian (Farsi)، Spanish...)', 'English') || 'English';
+  const form = new FormData();
+  form.append('csv', file);
+  form.append('shop', shop);
+  form.append('language', language);
+  try{
+    const res = await fetch(API+'add_topics_bulk.php', { method:'POST', body: form });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'خطا');
+    alert(`✅ ${data.added} موضوع اضافه شد${data.skipped ? ` (${data.skipped} ردیف بدون عنوان رد شد)` : ''}`);
+    fileInput.value = '';
+    setTab('draft', document.querySelector('.tab[data-status="draft"]') || document.querySelector('.tab'));
+    checkDraftCount();
+  }catch(e){ alert('خطا: '+e.message); fileInput.value=''; }
+}
+
+async function checkDraftCount(){
+  try{
+    const data = await apiCall('list_content.php?status=draft'+(currentShop?('&shop='+encodeURIComponent(currentShop)):''));
+    const box = document.getElementById('draftBulkActions');
+    if(data.items && data.items.length){
+      box.classList.remove('hidden');
+      document.getElementById('draftCountText').textContent = `${data.items.length} موضوع پیش‌نویس (بدون کپشن/عکس) — `;
+    }else{
+      box.classList.add('hidden');
+    }
+  }catch(e){}
+}
+
+async function generateAllDrafts(){
+  const data = await apiCall('list_content.php?status=draft'+(currentShop?('&shop='+encodeURIComponent(currentShop)):''));
+  const items = data.items || [];
+  if(!items.length){ alert('پیش‌نویسی نمونده'); return; }
+  for(let i=0;i<items.length;i++){
+    try{
+      await apiCall('generate_caption.php', { method:'POST', body: JSON.stringify({id:items[i].id}) });
+      await apiCall('generate_image.php', { method:'POST', body: JSON.stringify({id:items[i].id}) });
+    }catch(e){ console.error('خطا برای آیتم', items[i].id, e.message); }
+  }
+  alert('✅ تمام شد');
+  checkDraftCount();
+  loadList();
+}
+
+function setTab(status, el){
+  currentStatus = status;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  loadList();
+}
+
+async function loadList(){
+  const listEl = document.getElementById('list');
+  listEl.innerHTML = '<div class="empty">در حال بارگذاری...</div>';
+  try{
+    const data = await apiCall('list_content.php'+buildQuery());
+    populateShopFilter(data.shops || []);
+    populateCategoryFilter(data.categories || []);
+    renderList(data.items || []);
+  }catch(e){
+    listEl.innerHTML = '<div class="empty">خطا: '+escHtml(e.message)+'</div>';
+  }
+  checkDraftCount();
+}
+
+function escHtml(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+const statusLabel = {
+  draft:'📝 پیش‌نویس', generated:'✍️ کپشن آماده', review:'⏳ آماده‌ی بررسی',
+  approved:'✅ تأییدشده — منتظر انتشار', published:'📤 منتشرشده', rejected:'🗑 ردشده', failed:'❌ ناموفق'
+};
+const statusColor = {
+  draft:'background:#333;color:#ccc', generated:'background:#22314d;color:#93c5fd', review:'background:#3a2f10;color:#eab308',
+  approved:'background:#12261a;color:#22c55e', published:'background:#12261a;color:#22c55e',
+  rejected:'background:#2a1518;color:#ef4444', failed:'background:#2a1518;color:#ef4444'
+};
+const platformLabel = { telegram:'تلگرام', instagram:'اینستاگرام', pinterest:'پینترست' };
+const platformStatusClass = { pending:'badge-pending', published:'badge-published', failed:'badge-failed' };
+const platformStatusText = { pending:'⏳ در صف', published:'✅ منتشرشد', failed:'❌ خطا' };
+
+function renderList(items){
+  const listEl = document.getElementById('list');
+  if(!items.length){ listEl.innerHTML = '<div class="empty">چیزی توی این دسته نیست</div>'; return; }
+  listEl.innerHTML = items.map(item => renderItem(item)).join('');
+}
+
+function renderItem(item){
+  const r = item.research;
+  return `<div class="card" data-id="${item.id}">
+    <span class="status-pill" style="${statusColor[item.status]||''}">${statusLabel[item.status]||item.status}</span>
+    <div class="item-title">${escHtml(item.title)}</div>
+    <div class="item-meta">#${item.id} · ${item.shop?('🏪 '+escHtml(item.shop)+' · '):''}🌐 ${escHtml(item.language||'English')} · ${item.keyword?('کلیدواژه: '+escHtml(item.keyword)+' · '):''}${new Date(item.created_at).toLocaleString('fa-IR')}</div>
+    ${r?`<div class="research-box">📊 ${r.listingCount??'?'} رقیب فعال · میانگین قیمت ${r.avgPrice!=null?'$'+r.avgPrice:'?'} · محبوب‌ترین رقیب ${r.topFavorers??'?'} علاقه‌مندی${r.topListings?.length?'<br>'+r.topListings.map(l=>`<a href="${l.url}" target="_blank" rel="noopener" style="color:var(--orange);text-decoration:none;display:inline-block;margin-top:4px">🔗 ${escHtml(l.title.slice(0,50))}</a>`).join('<br>'):''}</div>`:''}
+    ${item.hero_image_path?`<img class="hero-img" src="/${escHtml(item.hero_image_path)}" alt="">`:'<div style="font-size:12px;color:var(--text3);margin-bottom:8px">🖼 عکسی هنوز ساخته نشده</div>'}
+    <div class="field-label"><span>کپشن</span></div>
+    <textarea class="input" id="caption-${item.id}">${escHtml(item.caption||'')}</textarea>
+    <div class="field-label"><span>هشتگ‌ها (با کاما جدا کن)</span></div>
+    <input class="input" id="hashtags-${item.id}" value="${escHtml(item.hashtags||'')}">
+    ${item.platforms && item.platforms.length ? `<div class="platform-row">${item.platforms.map(p=>`
+      <span class="badge ${platformStatusClass[p.status]}">${platformLabel[p.platform]||p.platform}: ${platformStatusText[p.status]}</span>
+      ${p.status==='failed' ? `<button class="btn btn-secondary btn-sm" onclick="retryPlatform(${item.id},'${p.platform}')">🔁 تلاش مجدد</button>` : ''}
+    `).join('')}</div>` : ''}
+    ${item.platforms && item.platforms.some(p=>p.status==='failed') ? `<div style="font-size:11px;color:var(--red);margin-top:6px">${item.platforms.filter(p=>p.status==='failed').map(p=>escHtml(p.error_text||'')).join(' · ')}</div>` : ''}
+    <div class="actions">
+      <button class="btn btn-secondary btn-sm" onclick="saveFields(${item.id})">💾 ذخیره متن</button>
+      <button class="btn btn-secondary btn-sm" onclick="regenCaption(${item.id}, this)">✍️ کپشن جدید</button>
+      <button class="btn btn-secondary btn-sm" onclick="regenImage(${item.id}, this)">🖼 عکس جدید</button>
+      ${item.status!=='approved' && item.status!=='published' ? `<button class="btn btn-green btn-sm" onclick="setStatus(${item.id},'approved')">✅ تأیید و صف انتشار</button>` : ''}
+      ${item.status!=='rejected' ? `<button class="btn btn-red btn-sm" onclick="setStatus(${item.id},'rejected')">🗑 رد کن</button>` : ''}
+    </div>
+  </div>`;
+}
+
+async function saveFields(id){
+  const caption = document.getElementById('caption-'+id).value;
+  const hashtags = document.getElementById('hashtags-'+id).value;
+  try{
+    await apiCall('update_content.php', { method:'POST', body: JSON.stringify({id, caption, hashtags}) });
+    alert('✅ ذخیره شد');
+  }catch(e){ alert('خطا: '+e.message); }
+}
+
+async function setStatus(id, status){
+  try{
+    await apiCall('update_content.php', { method:'POST', body: JSON.stringify({id, status}) });
+    loadList();
+  }catch(e){ alert('خطا: '+e.message); }
+}
+
+async function regenCaption(id, btn){
+  btn.disabled = true; const t = btn.textContent; btn.textContent = '⏳...';
+  try{
+    await apiCall('generate_caption.php', { method:'POST', body: JSON.stringify({id}) });
+    loadList();
+  }catch(e){ alert('خطا: '+e.message); btn.disabled=false; btn.textContent=t; }
+}
+async function regenImage(id, btn){
+  btn.disabled = true; const t = btn.textContent; btn.textContent = '⏳...';
+  try{
+    await apiCall('generate_image.php', { method:'POST', body: JSON.stringify({id}) });
+    loadList();
+  }catch(e){ alert('خطا: '+e.message); btn.disabled=false; btn.textContent=t; }
+}
+async function retryPlatform(id, platform){
+  try{
+    await apiCall('retry_platform.php', { method:'POST', body: JSON.stringify({id, platform}) });
+    loadList();
+  }catch(e){ alert('خطا: '+e.message); }
+}
+
+// اگه نشست از قبل معتبره، مستقیم برو تو
+(async function init(){
+  try{
+    await apiCall('list_content.php');
+    document.getElementById('loginBox').classList.add('hidden');
+    document.getElementById('mainBox').classList.remove('hidden');
+    loadList();
+  }catch(e){ /* نیاز به لاگین داره، همون صفحه‌ی لاگین بمونه */ }
+})();
+</script>
+</body>
+</html>

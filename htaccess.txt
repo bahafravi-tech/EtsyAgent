@@ -1,0 +1,3 @@
+<FilesMatch "^(config|config\.example|db|lib_generate|cron_publish|cron_lib|schema)\.(php|sql)$">
+  Require all denied
+</FilesMatch>
