@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.1.2 -->
+<!-- APP_VERSION: 1.1.3 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v82</div>
+        <div class="logo-badge">v83</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · رفع نیامدن تصاویر (endpoint درست /listings با includes)</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · افزودن توکن OAuth لازم برای endpoint جدید تصاویر</div>
     </div>
   </div>
   <div class="header-actions">
@@ -5240,9 +5240,14 @@ async function loadFromEtsy(){
   log('📦 بارگذاری محصولات از اتسی...','info');
   try{
     const shopId = await resolveEtsyShopId();
+    if(!S.etsyOAuthToken){
+      alert('برای بارگذاری با تصاویر، اول توی تنظیمات «اتصال به Etsy» (OAuth) رو انجام بده');
+      nav('settings');
+      return;
+    }
     // نکته: endpoint /listings/active اصلاً includes رو پشتیبانی نمی‌کنه (بی‌صدا نادیده می‌گیره).
-    // برای گرفتن تصاویر باید از /listings (با state=active) استفاده کرد.
-    const d = await etsyApiGet(`https://openapi.etsy.com/v3/application/shops/${shopId}/listings?state=active&limit=100&includes=Images`);
+    // برای گرفتن تصاویر باید از /listings (با state=active) استفاده کرد — که به OAuth (scope: listings_r) نیاز داره.
+    const d = await etsyApiGet(`https://openapi.etsy.com/v3/application/shops/${shopId}/listings?state=active&limit=100&includes=Images`, {'Authorization':`Bearer ${S.etsyOAuthToken}`});
     const listings=d.results||[];
     // Convert Etsy format to our CSV format
     const newProducts=listings.map(l=>{
