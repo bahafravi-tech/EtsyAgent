@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.0.1 -->
+<!-- APP_VERSION: 1.0.2 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -5562,7 +5562,13 @@ async function checkOAuthCallback(){
         code_verifier:verifier
       })
     });
-    const d=await res.json();
+    const rawText=await res.text();
+    let d;
+    try{ d=JSON.parse(rawText); }
+    catch{
+      setOAuthStatus(`❌ پاسخ نامعتبر از سرور (status ${res.status}): ${rawText.slice(0,200)||'(خالی)'}`,'err');
+      return;
+    }
     if(d.access_token){
       S.etsyOAuthToken=d.access_token;
       localStorage.setItem('etsy_oauth_token',d.access_token);
