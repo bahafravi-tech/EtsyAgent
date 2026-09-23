@@ -1,3 +1,4 @@
+<!-- APP_VERSION: 1.0.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -5549,11 +5550,12 @@ async function checkOAuthCallback(){
   const redirectUri=sessionStorage.getItem('etsy_redirect_uri');
   const key=S.etsyApiKey;
   try{
-    const res=await fetch('https://api.etsy.com/v3/public/oauth/token',{
+    // نکته: api.etsy.com/v3/public/oauth/token هدر CORS برای فراخوانی مستقیم از
+    // مرورگر نمی‌فرسته، پس این تبادل از طریق etsy_oauth_token.php (سمت سرور، همون دامنه) انجام می‌شه.
+    const res=await fetch('etsy_oauth_token.php',{
       method:'POST',
-      headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body:new URLSearchParams({
-        grant_type:'authorization_code',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
         client_id:key,
         redirect_uri:redirectUri,
         code:code,
