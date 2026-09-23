@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.0.6 -->
+<!-- APP_VERSION: 1.0.7 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v76</div>
+        <div class="logo-badge">v77</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · عبور اتصال OAuth اتسی از رله (دور زدن بلاک تحریم)</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · حذف راهنمای منسوخ Netlify از تنظیمات/راهنما</div>
     </div>
   </div>
   <div class="header-actions">
@@ -1468,16 +1468,6 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
         </div>
       </div>
       <div class="card">
-        <div class="card-title" style="margin-bottom:14px">🌐 تنظیم Netlify برای CORS</div>
-        <div class="alert alert-info">💡 برای حل مشکل CORS، فایل را روی Netlify آپلود کنید</div>
-        <div style="font-size:13px;color:var(--text2);line-height:2">
-          1. برو به <a href="https://netlify.com/drop" target="_blank" style="color:var(--orange)">netlify.com/drop</a><br>
-          2. فایل HTML را drag & drop کن<br>
-          3. لینک دریافتی را باز کن<br>
-          4. API Key را در تنظیمات وارد کن
-        </div>
-      </div>
-      <div class="card">
         <div class="card-title" style="margin-bottom:14px">🔔 تنظیمات اعلان</div>
         <div class="toggle-row"><div class="toggle on" onclick="this.classList.toggle('on')"></div><div><div class="toggle-text">اعلان محصول جدید</div><div class="toggle-sub">هنگام آماده شدن محصول اطلاع‌رسانی شود</div></div></div>
         <div class="toggle-row"><div class="toggle on" onclick="this.classList.toggle('on')"></div><div><div class="toggle-text">اعلان بهینه‌سازی</div><div class="toggle-sub">بعد از هر بهینه‌سازی اطلاع‌رسانی شود</div></div></div>
@@ -1687,10 +1677,10 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
 <div class="page" id="page-help">
   <div class="page-header"><div><div class="page-title">❓ <span>راهنما</span></div></div></div>
   <div class="g2">
-    <div class="card"><div class="card-title" style="margin-bottom:12px">🚀 شروع سریع</div><div style="font-size:13px;color:var(--text2);line-height:2.2">1. فایل etsy-agent.html را روی Netlify آپلود کنید<br>2. API Key را در تنظیمات وارد و تست کنید<br>3. CSV فروشگاه را آپلود کنید<br>4. دکمه "اجرای Agent امروز" را بزنید<br>5. محصولات جدید را تأیید کنید</div></div>
+    <div class="card"><div class="card-title" style="margin-bottom:12px">🚀 شروع سریع</div><div style="font-size:13px;color:var(--text2);line-height:2.2">1. API Key را در تنظیمات وارد و تست کنید<br>2. CSV فروشگاه را آپلود کنید<br>3. دکمه "اجرای Agent امروز" را بزنید<br>4. محصولات جدید را تأیید کنید</div></div>
     <div class="card"><div class="card-title" style="margin-bottom:12px">💡 نکات مهم</div><div style="font-size:13px;color:var(--text2);line-height:2.2">• تگ‌های اتسی نباید underscore داشته باشند<br>• عنوان باید بین ۸۰ تا ۱۴۰ کاراکتر باشد<br>• دقیقاً ۱۳ تگ برای هر محصول<br>• کلمه کلیدی اصلی در اول عنوان<br>• هر ۲ هفته یک‌بار CSV جدید دانلود کنید</div></div>
     <div class="card"><div class="card-title" style="margin-bottom:12px">💰 هزینه API</div><div style="font-size:13px;color:var(--text2);line-height:2.2">• آنالیز ۹۸ محصول: ~$0.10<br>• بهینه‌سازی همه: ~$0.40<br>• ۲ محصول روزانه: ~$0.05/روز<br>• $5 اعتبار ≈ ۲-۳ ماه استفاده<br>• ثبت‌نام: console.anthropic.com</div></div>
-    <div class="card"><div class="card-title" style="margin-bottom:12px">🔧 رفع مشکل</div><div style="font-size:13px;color:var(--text2);line-height:2.2">• خطای CORS: فایل را روی Netlify بذارید<br>• API ندارد: کلید را دوباره وارد کنید<br>• CSV نمی‌خونه: فرمت اتسی باید باشد<br>• محصول تولید نمیشه: offline mode است</div></div>
+    <div class="card"><div class="card-title" style="margin-bottom:12px">🔧 رفع مشکل</div><div style="font-size:13px;color:var(--text2);line-height:2.2">• خطای CORS/فیلترینگ: آدرس و رمز رله رو توی «تنظیمات → رله برای دور زدن فیلترینگ» پر کن<br>• API ندارد: کلید را دوباره وارد کنید<br>• CSV نمی‌خونه: فرمت اتسی باید باشد<br>• محصول تولید نمیشه: offline mode است</div></div>
   </div>
 </div>
 
@@ -2588,7 +2578,7 @@ function etsyApiKeyHeader(){ return S.etsySharedSecret ? `${S.etsyApiKey}:${S.et
 
 // callClaudeWithSearch — همه providerها مستقیم
 async function callClaudeWithSearch(prompt, maxTokens=2000) {
-  // همه providerها از callClaude معمولی استفاده می‌کنند (web_search فقط در Netlify)
+  // همه providerها از callClaude معمولی استفاده می‌کنند
   return callClaude(prompt, maxTokens);
 }
 
@@ -5066,7 +5056,7 @@ async function loadCustomers(){
     generateCustomerInsights(S_customers);
     log(`✓ ${S_customers.length} مشتری بارگذاری شد`,'ok');
   }catch(e){
-    document.getElementById('custList').innerHTML=`<div class="alert alert-warn">❌ خطا: ${e.message}<br>مطمئن شو اپ روی Netlify هست و OAuth Token معتبر است</div>`;
+    document.getElementById('custList').innerHTML=`<div class="alert alert-warn">❌ خطا: ${e.message}<br>مطمئن شو OAuth Token معتبره و اگه لازمه تنظیمات رله رو پر کردی</div>`;
     log('✗ خطا در بارگذاری مشتریان: '+e.message,'err');
   }
 }
@@ -5691,7 +5681,7 @@ async function testPinterest(){
     const d=await res.json();
     if(d.username){showPinterestStatus(`✅ متصل: @${d.username}`,true);log(`✓ Pinterest: @${d.username}`,'ok');}
     else{showPinterestStatus('❌ Token نامعتبر است',false);}
-  }catch{showPinterestStatus('❌ خطای اتصال — مطمئن شو روی Netlify هستی',false);}
+  }catch{showPinterestStatus('❌ خطای اتصال — Token رو چک کن',false);}
 }
 async function postToPinterest(title,description,imageUrl,link){
   if(!S.pinterestToken){alert('ابتدا Pinterest Token را در تنظیمات وارد کن');nav('settings');return;}
