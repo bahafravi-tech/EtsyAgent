@@ -1,10 +1,15 @@
 <?php
-// APP_VERSION: 1.0.5
+// APP_VERSION: 1.0.6
 // etsy_oauth_token.php — تبادل سمت‌سرور کد OAuth با access token
 //
-// دلیل وجودش: endpoint توکن اتسی (api.etsy.com/v3/public/oauth/token) هدر CORS
-// لازم برای فراخوانی مستقیم از جاوااسکریپت مرورگر رو نمی‌فرسته، پس این تبادل
-// باید سمت سرور انجام بشه. این فایل رو کنار index.html روی همین دامنه آپلود کن.
+// دلیل وجودش: ۱) endpoint توکن اتسی (api.etsy.com/v3/public/oauth/token) هدر CORS
+// لازم برای فراخوانی مستقیم از جاوااسکریپت مرورگر رو نمی‌فرسته. ۲) خودِ اتسی
+// درخواست‌های سمت‌سرور از IP هاست‌های ایرانی رو به‌خاطر تحریم بلاک می‌کنه (صفحه‌ی
+// captcha-delivery با referer به سیاست تحریم اتسی) — پس این درخواست باید از طریق
+// رله‌ی Cloudflare Worker (همون relay-worker.js) عبور کنه، نه مستقیم.
+//
+// پیش‌نیاز: فایل etsy_oauth_config.php رو کنار همین فایل بساز (از روی
+// etsy_oauth_config.example.php) و RELAY_URL/RELAY_SECRET واقعی رو توش بذار.
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -35,7 +40,15 @@ foreach ($required as $field) {
     }
 }
 
-$body = http_build_query([
+$configFile = __DIR__ . '/etsy_oauth_config.php';
+if (!file_exists($configFile)) {
+    http_response_code(500);
+    echo json_encode(['error' => 'missing_relay_config', 'detail' => 'etsy_oauth_config.php را از روی etsy_oauth_config.example.php بساز']);
+    exit;
+}
+require $configFile;
+
+$etsyBody = http_build_query([
     'grant_type'    => 'authorization_code',
     'client_id'     => $input['client_id'],
     'redirect_uri'  => $input['redirect_uri'],
@@ -43,21 +56,24 @@ $body = http_build_query([
     'code_verifier' => $input['code_verifier'],
 ]);
 
-$ch = curl_init('https://api.etsy.com/v3/public/oauth/token');
+// به‌جای تماس مستقیم (که اتسی به‌خاطر تحریم IP هاست رو بلاک می‌کنه)، از رله عبور می‌کنیم
+$relayPayload = json_encode([
+    'url'     => 'https://api.etsy.com/v3/public/oauth/token',
+    'method'  => 'POST',
+    'headers' => ['Content-Type' => 'application/x-www-form-urlencoded'],
+    'body'    => $etsyBody,
+]);
+
+$ch = curl_init(RELAY_URL);
 curl_setopt_array($ch, [
     CURLOPT_POST           => true,
-    CURLOPT_POSTFIELDS     => $body,
+    CURLOPT_POSTFIELDS     => $relayPayload,
     CURLOPT_HTTPHEADER     => [
-        'Content-Type: application/x-www-form-urlencoded',
-        'Accept: application/json',
-        'Accept-Language: en-US,en;q=0.9',
-        'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        'Content-Type: application/json',
+        'X-Relay-Secret: ' . RELAY_SECRET,
     ],
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT        => 30,
-    CURLOPT_FOLLOWLOCATION => true,
-    CURLOPT_POSTREDIR      => 3, // keep POST method/body across 301/302/303 redirects
-    CURLOPT_MAXREDIRS      => 5,
 ]);
 $response = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -67,8 +83,8 @@ curl_close($ch);
 if ($response === false || $response === '') {
     http_response_code(502);
     echo json_encode([
-        'error'  => 'upstream_empty_response',
-        'detail' => $curlErr ?: 'Etsy returned an empty body',
+        'error'     => 'relay_empty_response',
+        'detail'    => $curlErr ?: 'رله جواب خالی برگردوند',
         'http_code' => $httpCode,
     ]);
     exit;

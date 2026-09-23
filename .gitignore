@@ -1,4 +1,5 @@
 config.php
+etsy_oauth_config.php
 .env
 .env.local
 uploads/*
