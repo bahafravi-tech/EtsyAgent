@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.0.9 -->
+<!-- APP_VERSION: 1.1.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v79</div>
+        <div class="logo-badge">v80</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · تست دیپلوی خودکار Webhook</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · رفع خطای Shop ID (اسم فروشگاه هم قبول می‌شه)</div>
     </div>
   </div>
   <div class="header-actions">
@@ -2575,6 +2575,21 @@ function getNiche(){ return document.getElementById('shopNiche')?.value?.trim() 
 function contentLangLine(){ const l=S.contentLanguage||'English'; return `به زبان ${l} (طبیعی و بومی، نه ترجمه‌ی کلمه‌به‌کلمه)`; }
 // از ۹ فوریه‌ی ۲۰۲۶، اتسی هدر x-api-key رو به‌فرمت keystring:shared_secret می‌خواد، نه فقط keystring تنها
 function etsyApiKeyHeader(){ return S.etsySharedSecret ? `${S.etsyApiKey}:${S.etsySharedSecret}` : S.etsyApiKey; }
+
+// اتسی v3 توی مسیر URL فقط shop_id عددی قبول می‌کنه، نه اسم فروشگاه —
+// اگه کاربر توی تنظیمات اسم فروشگاه رو وارد کرده باشه، اینجا به عدد واقعی تبدیلش می‌کنیم
+async function resolveEtsyShopId(){
+  const raw=(S.etsyShopId||'').trim();
+  if(!raw) throw new Error('Shop ID وارد نشده');
+  if(/^\d+$/.test(raw)) return raw;
+  const d=await etsyApiGet(`https://openapi.etsy.com/v3/application/shops?shop_name=${encodeURIComponent(raw)}&limit=1`);
+  const shop=(d.results||[])[0];
+  if(!shop) throw new Error(`فروشگاهی با نام "${raw}" پیدا نشد`);
+  S.etsyShopId=String(shop.shop_id);
+  saveCurrentShop();
+  log(`✓ Shop ID از روی نام فروشگاه پیدا شد: ${S.etsyShopId}`,'ok');
+  return S.etsyShopId;
+}
 
 // callClaudeWithSearch — همه providerها مستقیم
 async function callClaudeWithSearch(prompt, maxTokens=2000) {
@@ -5224,7 +5239,8 @@ async function loadFromEtsy(){
   if(!S.etsyApiKey||!S.etsyShopId){alert('Etsy API Key و Shop ID لازم است');nav('settings');return;}
   log('📦 بارگذاری محصولات از اتسی...','info');
   try{
-    const d = await etsyApiGet(`https://openapi.etsy.com/v3/application/shops/${S.etsyShopId}/listings/active?limit=100&includes[]=Images`);
+    const shopId = await resolveEtsyShopId();
+    const d = await etsyApiGet(`https://openapi.etsy.com/v3/application/shops/${shopId}/listings/active?limit=100&includes[]=Images`);
     const listings=d.results||[];
     // Convert Etsy format to our CSV format
     const newProducts=listings.map(l=>{
@@ -5621,10 +5637,8 @@ async function etsyFetchStats(){
   if(!S.etsyApiKey||!S.etsyShopId){alert('ابتدا Etsy API را در تنظیمات وارد کن');nav('settings');return;}
   log('📊 در حال دریافت آمار از اتسی...','info');
   try{
-    const res=await fetch(`https://openapi.etsy.com/v3/application/shops/${S.etsyShopId}`,{
-      headers:{'x-api-key':etsyApiKeyHeader(),'Content-Type':'application/json'}
-    });
-    const d=await res.json();
+    const shopId = await resolveEtsyShopId();
+    const d = await etsyApiGet(`https://openapi.etsy.com/v3/application/shops/${shopId}`);
     if(d.error){log('✗ خطای Etsy API: '+d.error,'err');return;}
     log(`✓ فروشگاه: ${d.shop_name} | محصولات: ${d.listing_active_count} | فروش: ${d.transaction_sold_count}`,'ok');
   }catch(e){log('✗ خطا در اتصال به Etsy: '+e.message,'err');}
@@ -5645,7 +5659,8 @@ async function etsyUploadListing(product){
       who_made:'i_did',what_is_it:'finished_product',when_made:'made_to_order',
       is_digital:true,type:'download'
     };
-    const res=await fetch(`https://openapi.etsy.com/v3/application/shops/${S.etsyShopId}/listings`,{
+    const shopId = await resolveEtsyShopId();
+    const res=await fetch(`https://openapi.etsy.com/v3/application/shops/${shopId}/listings`,{
       method:'POST',
       headers:{'x-api-key':etsyApiKeyHeader(),'Authorization':`Bearer ${S.etsyOAuthToken}`,'Content-Type':'application/json'},
       body:JSON.stringify(body)
