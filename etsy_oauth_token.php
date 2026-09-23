@@ -1,5 +1,5 @@
 <?php
-// APP_VERSION: 1.0.2
+// APP_VERSION: 1.0.3
 // etsy_oauth_token.php — تبادل سمت‌سرور کد OAuth با access token
 //
 // دلیل وجودش: endpoint توکن اتسی (api.etsy.com/v3/public/oauth/token) هدر CORS
