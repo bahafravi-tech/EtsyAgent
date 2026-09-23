@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.1.0 -->
+<!-- APP_VERSION: 1.1.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v80</div>
+        <div class="logo-badge">v81</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · رفع خطای Shop ID (اسم فروشگاه هم قبول می‌شه)</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · رفع نیامدن تصاویر محصول موقع بارگذاری از Etsy</div>
     </div>
   </div>
   <div class="header-actions">
@@ -5240,7 +5240,7 @@ async function loadFromEtsy(){
   log('📦 بارگذاری محصولات از اتسی...','info');
   try{
     const shopId = await resolveEtsyShopId();
-    const d = await etsyApiGet(`https://openapi.etsy.com/v3/application/shops/${shopId}/listings/active?limit=100&includes[]=Images`);
+    const d = await etsyApiGet(`https://openapi.etsy.com/v3/application/shops/${shopId}/listings/active?limit=100&includes=Images`);
     const listings=d.results||[];
     // Convert Etsy format to our CSV format
     const newProducts=listings.map(l=>{
