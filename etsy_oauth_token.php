@@ -1,5 +1,5 @@
 <?php
-// APP_VERSION: 1.0.3
+// APP_VERSION: 1.0.4
 // etsy_oauth_token.php — تبادل سمت‌سرور کد OAuth با access token
 //
 // دلیل وجودش: endpoint توکن اتسی (api.etsy.com/v3/public/oauth/token) هدر CORS
@@ -50,6 +50,9 @@ curl_setopt_array($ch, [
     CURLOPT_HTTPHEADER     => ['Content-Type: application/x-www-form-urlencoded'],
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT        => 30,
+    CURLOPT_FOLLOWLOCATION => true,
+    CURLOPT_POSTREDIR      => 3, // keep POST method/body across 301/302/303 redirects
+    CURLOPT_MAXREDIRS      => 5,
 ]);
 $response = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
