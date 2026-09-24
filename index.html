@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.2.7 -->
+<!-- APP_VERSION: 1.2.8 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v91</div>
+        <div class="logo-badge">v92</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · تمدید خودکار توکن Etsy (رفع نیاز به اتصال مجدد هر ساعت)</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · هماهنگی امتیازدهی بهینه‌سازی گروهی با تکی</div>
     </div>
   </div>
   <div class="header-actions">
@@ -4283,7 +4283,7 @@ ${fullDesc}
 
 Return ONLY JSON (no markdown, no explanation):
 {"new_title":"MUST BE 120-140 CHARS — write it fully expanded here","new_tags":["phrase one","phrase two","phrase three","phrase four","phrase five","phrase six","phrase seven","phrase eight","phrase nine","phrase ten","phrase eleven","phrase twelve","phrase thirteen"],"new_description":"preserve original structure+emoji+sections, only optimize first 160 chars for keywords"}`;
-    const text=await callClaude(prompt,1200);
+    const text=await callClaude(prompt,1500);
     let r;
     try{ r=parseJSON(text); } catch(e){ const m=text.match(/\{[\s\S]*\}/); if(m) r=JSON.parse(m[0]); else throw e; }
     if(r.new_title) S.products[idx].TITLE=r.new_title;
@@ -4331,18 +4331,18 @@ Return ONLY JSON (no markdown, no explanation):
 }
 
 // محاسبه امتیاز محلی بدون API
+// این‌جا عمداً هم‌راستا با فرمول applyOpt (بهینه‌سازی تکی) نگه داشته می‌شه —
+// وگرنه یه محصول با محتوای یکسان بسته به این‌که از کدوم مسیر بهینه شده، امتیاز متفاوت می‌گیره
 function calcLocalScore(p){
   let score=100;
   const title=p.TITLE||'';
   const tags=(p.TAGS||'').split(',').filter(Boolean);
-  const desc=p.DESCRIPTION||'';
-  if(title.length<40) score-=20;
-  else if(title.length<80) score-=10;
-  if(title.length>140) score-=15;
-  if(tags.length<13) score-=Math.min(30,(13-tags.length)*3);
-  tags.forEach(t=>{ if(t.includes('_')) score-=2; });
-  if(desc.length<100) score-=15;
-  else if(desc.length<300) score-=5;
+  if(title.length<80) score-=15;
+  else if(title.length>140) score-=20;
+  if(tags.length<13) score-=25;
+  tags.forEach(t=>{ if(t.includes('_')) score-=10; });
+  if(tags.some(t=>t.trim().length>20)) score-=15;
+  if(tags.some((t,i,a)=>a.indexOf(t)!==i)) score-=10;
   return Math.max(10,Math.min(100,score));
 }
 
