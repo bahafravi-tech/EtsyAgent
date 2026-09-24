@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.2.6 -->
+<!-- APP_VERSION: 1.2.7 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v90</div>
+        <div class="logo-badge">v91</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · رفع آدرس اشتباه PATCH (نیاز به shop_id طبق مستندات Etsy)</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · تمدید خودکار توکن Etsy (رفع نیاز به اتصال مجدد هر ساعت)</div>
     </div>
   </div>
   <div class="header-actions">
@@ -1872,6 +1872,7 @@ function loadShopToState(shopId){
   S.apiRelayUrl=shop.apiRelayUrl||'';
   S.apiRelaySecret=shop.apiRelaySecret||'';
   S.etsyOAuthToken=shop.etsyOAuthToken||'';
+  S.etsyRefreshToken=shop.etsyRefreshToken||'';
   S.products=shop.products||[];
   S.analyzed=shop.analyzed||{};
   S.optimized=shop.optimized||{};
@@ -1906,6 +1907,7 @@ function saveCurrentShop(){
   shop.apiRelayUrl=S.apiRelayUrl;
   shop.apiRelaySecret=S.apiRelaySecret;
   shop.etsyOAuthToken=S.etsyOAuthToken;
+  shop.etsyRefreshToken=S.etsyRefreshToken;
   shop.products=S.products;
   shop.analyzed=S.analyzed;
   shop.optimized=S.optimized;
@@ -4385,7 +4387,7 @@ async function autoOptimizeAndUpload(){
   if(errors>0) log(`⚠️ ${errors} محصول آپلود نشد`,'warn');
 }
 
-async function etsyUpdateListing(product){
+async function etsyUpdateListing(product, _isRetry){
   // نکته: آدرس درست PATCH طبق مستندات رسمی Etsy شامل shop_id هم می‌شه —
   // /listings/{id} بدون shop_id همیشه 404 (Resource not found) می‌ده
   const shopId=await resolveEtsyShopId();
@@ -4413,6 +4415,12 @@ async function etsyUpdateListing(product){
       d=await res.json();
     }
     if(d.listing_id) return true;
+    // توکن منقضی شده — یه‌بار با توکن تازه (از refresh_token) دوباره امتحان کن
+    if(!_isRetry && (d.error==='invalid_token'||d.error_description==='invalid_token')){
+      log('🔄 توکن منقضی شده — در حال تمدید خودکار...','warn');
+      const refreshed=await refreshEtsyOAuthToken();
+      if(refreshed) return await etsyUpdateListing(product, true);
+    }
     log('✗ خطای Etsy: '+(d.error||d.error_description||JSON.stringify(d)).slice(0,300),'err');
     return false;
   }catch(e){log('✗ خطای آپلود: '+e.message,'err');return false;}
@@ -5659,8 +5667,8 @@ async function checkOAuthCallback(){
     }
     if(d.access_token){
       S.etsyOAuthToken=d.access_token;
-      localStorage.setItem('etsy_oauth_token',d.access_token);
-      if(d.refresh_token) localStorage.setItem('etsy_refresh_token',d.refresh_token);
+      if(d.refresh_token) S.etsyRefreshToken=d.refresh_token;
+      saveCurrentShop();
       setOAuthStatus('✅ اتصال موفق! آپلود خودکار فعال شد 🎉','ok');
       document.getElementById('btnCheckOAuth').style.display='none';
       document.getElementById('btnEtsyOAuth').textContent='🔄 اتصال مجدد';
@@ -5674,6 +5682,27 @@ async function checkOAuthCallback(){
   }catch(e){
     setOAuthStatus('❌ خطا: '+e.message,'err');
   }
+}
+
+// توکن دسترسی Etsy فقط ~۱ ساعت اعتباره — این تابع با refresh_token ذخیره‌شده
+// یه توکن تازه می‌گیره، بدون نیاز به اتصال مجدد دستی
+async function refreshEtsyOAuthToken(){
+  if(!S.etsyRefreshToken||!S.etsyApiKey) return false;
+  try{
+    const res=await fetch('etsy_oauth_token.php',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({grant_type:'refresh_token',client_id:S.etsyApiKey,refresh_token:S.etsyRefreshToken})
+    });
+    const rawText=await res.text();
+    let d; try{ d=JSON.parse(rawText); }catch{ return false; }
+    if(!d.access_token) return false;
+    S.etsyOAuthToken=d.access_token;
+    if(d.refresh_token) S.etsyRefreshToken=d.refresh_token;
+    saveCurrentShop();
+    log('🔄 توکن Etsy خودکار تمدید شد','ok');
+    return true;
+  }catch(e){ return false; }
 }
 
 function setOAuthStatus(msg,type){

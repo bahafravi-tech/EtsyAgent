@@ -1,5 +1,5 @@
 <?php
-// APP_VERSION: 1.0.6
+// APP_VERSION: 1.2.7
 // etsy_oauth_token.php — تبادل سمت‌سرور کد OAuth با access token
 //
 // دلیل وجودش: ۱) endpoint توکن اتسی (api.etsy.com/v3/public/oauth/token) هدر CORS
@@ -31,7 +31,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $input = json_decode(file_get_contents('php://input'), true) ?: [];
 
-$required = ['client_id', 'redirect_uri', 'code', 'code_verifier'];
+$grantType = $input['grant_type'] ?? 'authorization_code';
+$required = $grantType === 'refresh_token'
+    ? ['client_id', 'refresh_token']
+    : ['client_id', 'redirect_uri', 'code', 'code_verifier'];
 foreach ($required as $field) {
     if (empty($input[$field])) {
         http_response_code(400);
@@ -48,13 +51,19 @@ if (!file_exists($configFile)) {
 }
 require $configFile;
 
-$etsyBody = http_build_query([
-    'grant_type'    => 'authorization_code',
-    'client_id'     => $input['client_id'],
-    'redirect_uri'  => $input['redirect_uri'],
-    'code'          => $input['code'],
-    'code_verifier' => $input['code_verifier'],
-]);
+$etsyBody = $grantType === 'refresh_token'
+    ? http_build_query([
+        'grant_type'    => 'refresh_token',
+        'client_id'     => $input['client_id'],
+        'refresh_token' => $input['refresh_token'],
+      ])
+    : http_build_query([
+        'grant_type'    => 'authorization_code',
+        'client_id'     => $input['client_id'],
+        'redirect_uri'  => $input['redirect_uri'],
+        'code'          => $input['code'],
+        'code_verifier' => $input['code_verifier'],
+      ]);
 
 // به‌جای تماس مستقیم (که اتسی به‌خاطر تحریم IP هاست رو بلاک می‌کنه)، از رله عبور می‌کنیم
 $relayPayload = json_encode([
