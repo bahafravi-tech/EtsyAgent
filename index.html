@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.1.3 -->
+<!-- APP_VERSION: 1.2.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v83</div>
+        <div class="logo-badge">v84</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · افزودن توکن OAuth لازم برای endpoint جدید تصاویر</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · بهینه‌سازی تکی هم روی Etsy واقعی اعمال می‌شه</div>
     </div>
   </div>
   <div class="header-actions">
@@ -4386,7 +4386,7 @@ async function etsyUpdateListing(product){
   }catch(e){log('✗ خطای آپلود: '+e.message,'err');return false;}
 }
 
-function applyOpt(){
+async function applyOpt(){
   if(S.currentOpt===null||!S.pendingOpt)return;
   const idx=S.currentOpt;
   const oldScore=S.analyzed[idx]?.score||0;
@@ -4431,6 +4431,17 @@ function applyOpt(){
   updateOptimizedCount();
   closeModal('optModal');renderSEOList();renderOptimizeList();saveCurrentShop();
   log(`✅ بهینه شد — امتیاز: ${oldScore}→${finalScore} | عنوان: ${np.TITLE.length} کاراکتر`,'ok');
+  // این محصول از Etsy لود شده (listing_id واقعی داره) — پس جایگزینی رو مستقیم روی Etsy هم اعمال کن
+  if(np._listing_id){
+    if(!S.etsyOAuthToken){
+      log('⚠️ تغییرات فقط محلی اعمال شد — برای جایگزینی روی Etsy، اول OAuth رو توی تنظیمات وصل کن','warn');
+      return;
+    }
+    log(`📤 در حال جایگزینی لیستینگ واقعی روی Etsy (ID: ${np._listing_id})...`,'info');
+    const ok=await etsyUpdateListing(np);
+    if(ok) log(`✅ لیستینگ روی Etsy جایگزین شد`,'ok');
+    else log(`✗ جایگزینی روی Etsy ناموفق بود — تغییرات فقط محلی مونده`,'err');
+  }
 }
 
 // ══ Competitor ══
