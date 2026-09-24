@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.2.0 -->
+<!-- APP_VERSION: 1.2.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v84</div>
+        <div class="logo-badge">v85</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · بهینه‌سازی تکی هم روی Etsy واقعی اعمال می‌شه</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · دکمه‌ی جدا برای ارسال تکی/گروهی به Etsy</div>
     </div>
   </div>
   <div class="header-actions">
@@ -1029,6 +1029,7 @@ margin:0;background:var(--paper);color:var(--ink);
       <button class="btn btn-secondary btn-sm" id="seoFilter" onclick="toggleSEOFilter()" data-tip="فیلتر: نمایش همه یا فقط محصولات ضعیف">نمایش: همه</button>
       <button class="btn btn-secondary btn-sm" onclick="toggleSelectMode()" id="btnSelectMode" data-tip="انتخاب محصولات برای آنالیز یا بهینه‌سازی">☑ انتخاب</button>
       <button class="btn btn-primary" onclick="runSEOAnalysis()" id="btnRunSEO" data-tip="آنالیز SEO با AI — اعتبار API مصرف می‌شود">▶ شروع آنالیز</button>
+      <button class="btn btn-green btn-sm" onclick="sendAllOptimizedToEtsy()" data-tip="همه‌ی محصولات بهینه‌شده که هنوز روی Etsy جایگزین نشدن رو یکجا بفرست">📤 ارسال گروهی به Etsy</button>
     </div>
   </div>
   <div id="selectModeBar" style="display:none;background:var(--orange-light);border:1px solid var(--orange-mid);border-radius:12px;padding:12px 16px;margin-bottom:14px;align-items:center;gap:12px">
@@ -1873,6 +1874,7 @@ function loadShopToState(shopId){
   S.products=shop.products||[];
   S.analyzed=shop.analyzed||{};
   S.optimized=shop.optimized||{};
+  S.pushedToEtsy=shop.pushedToEtsy||{};
   S.analyzedHash=shop.analyzedHash||'';
   S.competitors=shop.competitors||[];
   S.dailyArchive=shop.dailyArchive||[];
@@ -1907,6 +1909,7 @@ function saveCurrentShop(){
   shop.analyzed=S.analyzed;
   shop.optimized=S.optimized;
   shop.optimizedCount=Object.values(S.optimized).filter(Boolean).length;
+  shop.pushedToEtsy=S.pushedToEtsy||{};
   shop.analyzedHash=S.analyzedHash;
   shop.competitors=S.competitors;
   shop.dailyArchive=S.dailyArchive;
@@ -3923,7 +3926,10 @@ function renderSEOList(){
             : `<div style="color:var(--text3);font-size:12px">—</div>`
         }
         <button class="btn btn-secondary btn-sm" onclick="startOptimize(${i})">✨</button>
-        ${S.etsyApiKey?`<button class="btn btn-green btn-sm" onclick="etsyUploadListing(S.products[${i}])" title="آپلود به اتسی">📤</button>`:''}
+        ${S.optimized[i]&&p._listing_id?(S.pushedToEtsy&&S.pushedToEtsy[i]
+          ?`<button class="btn btn-secondary btn-sm" disabled title="قبلاً روی Etsy جایگزین شد">✅</button>`
+          :`<button class="btn btn-green btn-sm" onclick="sendOptimizedToEtsy(${i})" title="جایگزینی این لیستینگ روی Etsy">🔁</button>`
+        ):(S.etsyApiKey&&!p._listing_id?`<button class="btn btn-green btn-sm" onclick="etsyUploadListing(S.products[${i}])" title="آپلود به اتسی (لیستینگ جدید)">📤</button>`:'')}
       </div></div>`;
     // اضافه کردن click برای dropdown
     (function(itemIdx, itemEl){
@@ -4430,18 +4436,44 @@ async function applyOpt(){
   }
   updateOptimizedCount();
   closeModal('optModal');renderSEOList();renderOptimizeList();saveCurrentShop();
-  log(`✅ بهینه شد — امتیاز: ${oldScore}→${finalScore} | عنوان: ${np.TITLE.length} کاراکتر`,'ok');
-  // این محصول از Etsy لود شده (listing_id واقعی داره) — پس جایگزینی رو مستقیم روی Etsy هم اعمال کن
-  if(np._listing_id){
-    if(!S.etsyOAuthToken){
-      log('⚠️ تغییرات فقط محلی اعمال شد — برای جایگزینی روی Etsy، اول OAuth رو توی تنظیمات وصل کن','warn');
-      return;
-    }
-    log(`📤 در حال جایگزینی لیستینگ واقعی روی Etsy (ID: ${np._listing_id})...`,'info');
-    const ok=await etsyUpdateListing(np);
-    if(ok) log(`✅ لیستینگ روی Etsy جایگزین شد`,'ok');
-    else log(`✗ جایگزینی روی Etsy ناموفق بود — تغییرات فقط محلی مونده`,'err');
+  log(`✅ بهینه شد (محلی) — امتیاز: ${oldScore}→${finalScore} | عنوان: ${np.TITLE.length} کاراکتر`,'ok');
+}
+
+// ══ ارسال دستی به Etsy (بعد از بهینه‌سازی محلی) ══
+async function sendOptimizedToEtsy(idx){
+  const p=S.products[idx];
+  if(!p._listing_id){alert('این محصول از Etsy بارگذاری نشده — listing_id نداره');return;}
+  if(!S.etsyOAuthToken){alert('اول توی تنظیمات «اتصال به Etsy» (OAuth) رو انجام بده');nav('settings');return;}
+  log(`📤 در حال ارسال «${p.TITLE.slice(0,40)}» به Etsy (جایگزینی لیستینگ ${p._listing_id})...`,'info');
+  const ok=await etsyUpdateListing(p);
+  if(ok){
+    S.pushedToEtsy=S.pushedToEtsy||{};
+    S.pushedToEtsy[idx]=true;
+    saveCurrentShop();
+    renderSEOList();
+    log(`✅ روی Etsy جایگزین شد`,'ok');
+  } else {
+    log(`✗ ارسال به Etsy ناموفق بود`,'err');
   }
+}
+
+async function sendAllOptimizedToEtsy(){
+  if(!S.etsyOAuthToken){alert('اول توی تنظیمات «اتصال به Etsy» (OAuth) رو انجام بده');nav('settings');return;}
+  const toSend=S.products
+    .map((p,i)=>({p,i}))
+    .filter(({p,i})=>S.optimized[i]&&p._listing_id&&!(S.pushedToEtsy&&S.pushedToEtsy[i]));
+  if(!toSend.length){alert('محصول بهینه‌شده‌ی ارسال‌نشده‌ای پیدا نشد');return;}
+  if(!confirm(`${toSend.length} محصول بهینه‌شده روی Etsy جایگزین بشه؟`))return;
+  let done=0,errors=0;
+  for(const {p,i} of toSend){
+    log(`📤 (${done+1}/${toSend.length}) ارسال «${p.TITLE.slice(0,40)}»...`,'info');
+    const ok=await etsyUpdateListing(p);
+    if(ok){ S.pushedToEtsy=S.pushedToEtsy||{}; S.pushedToEtsy[i]=true; } else errors++;
+    done++;
+    await new Promise(r=>setTimeout(r,1500));
+  }
+  saveCurrentShop();renderSEOList();
+  log(`✅ ارسال گروهی تمام شد — ${done-errors} موفق، ${errors} خطا`,'ok');
 }
 
 // ══ Competitor ══
