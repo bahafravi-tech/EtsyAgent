@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.2.1 -->
+<!-- APP_VERSION: 1.2.2 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v85</div>
+        <div class="logo-badge">v86</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · دکمه‌ی جدا برای ارسال تکی/گروهی به Etsy</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · دکمه‌ی ارسال به Etsy توی صفحه‌ی «بهینه‌سازی» هم اضافه شد</div>
     </div>
   </div>
   <div class="header-actions">
@@ -1067,6 +1067,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <button class="btn btn-sm" id="optFilterWeak" onclick="setOptFilter('weak',this)" style="background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:4px 12px;font-size:12px;cursor:pointer">ضعیف (زیر 70)</button>
     <button class="btn btn-sm" id="optFilterNotOpt" onclick="setOptFilter('notopt',this)" style="background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:4px 12px;font-size:12px;cursor:pointer">بهینه نشده</button>
     <button class="btn btn-sm" id="optFilterOpt" onclick="setOptFilter('opt',this)" style="background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:4px 12px;font-size:12px;cursor:pointer">بهینه‌شده</button>
+    <button class="btn btn-green btn-sm" onclick="sendAllOptimizedToEtsy()" data-tip="همه‌ی محصولات بهینه‌شده که هنوز روی Etsy جایگزین نشدن رو یکجا بفرست">📤 ارسال گروهی به Etsy</button>
     <span id="optFilterCount" style="font-size:11px;color:var(--text2);margin-right:auto"></span>
   </div>
 
@@ -4160,6 +4161,10 @@ function renderOptimizeList(){
             : ''
         }
         <button class="btn btn-primary btn-sm" onclick="startOptimize(${idx})" style="white-space:nowrap">✨ بهینه</button>
+        ${S.optimized[idx]&&p._listing_id?(S.pushedToEtsy&&S.pushedToEtsy[idx]
+          ?`<button class="btn btn-secondary btn-sm" disabled title="قبلاً روی Etsy جایگزین شد">✅</button>`
+          :`<button class="btn btn-green btn-sm" onclick="sendOptimizedToEtsy(${idx})" title="جایگزینی این لیستینگ روی Etsy">🔁</button>`
+        ):''}
       </div>
     </div>`;
     el.appendChild(d);
