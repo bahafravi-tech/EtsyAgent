@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.2.4 -->
+<!-- APP_VERSION: 1.2.5 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v88</div>
+        <div class="logo-badge">v89</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · عبور PATCH لیستینگ از رله (رفع خطای CORS در ارسال به Etsy)</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · نمایش پیام خطای واقعی Etsy موقع شکست ارسال</div>
     </div>
   </div>
   <div class="header-actions">
@@ -4409,7 +4409,9 @@ async function etsyUpdateListing(product){
       const res=await fetch(url,{method:'PATCH', headers, body:JSON.stringify(body)});
       d=await res.json();
     }
-    return !!d.listing_id;
+    if(d.listing_id) return true;
+    log('✗ خطای Etsy: '+(d.error||d.error_description||JSON.stringify(d)).slice(0,300),'err');
+    return false;
   }catch(e){log('✗ خطای آپلود: '+e.message,'err');return false;}
 }
 
