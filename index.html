@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.2.9 -->
+<!-- APP_VERSION: 1.3.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v93</div>
+        <div class="logo-badge">v94</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · جلوگیری از خطای «حروف بزرگ متوالی» Etsy در عنوان</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · قوانین ۲۰۲۶ Etsy (کاراکتر ممنوع، ساختار عنوان، تگ متنوع)</div>
     </div>
   </div>
   <div class="header-actions">
@@ -4195,9 +4195,14 @@ Description: ${(p.DESCRIPTION||'').slice(0,300)}
 
 TITLE REQUIREMENT: ${titleNote}
 The new title MUST be between 120-140 characters. Count carefully before responding.
-Put the PRIMARY keyword in the FIRST 40 characters.
+Put the PRIMARY keyword in the FIRST 40 characters (most visible on mobile search results).
+Structure: [Primary Keyword] | [Secondary Keyword + modifier] | [Occasion/Recipient] — separate phrases with ", " (comma + space), not just a bare space, so Etsy's parser reads them as distinct phrases.
 Add: materials, occasions (gift, birthday, wedding), target users (Cricut, Silhouette), file formats.
-⚠️ ETSY REJECTS titles with more than 3 words that start with 2+ consecutive capital letters (acronyms like SVG, DXF, PDF, AI, CDR, DIY, CNC, EPS, WMF — mixed-case brand names like Cricut/Silhouette don't count). Count every such all-caps-start word in the title BEFORE responding — use AT MOST 3 total; drop or lowercase the rest.
+⚠️ ETSY VALIDATION RULES (violating these gets the listing REJECTED, not just a lower score):
+- More than 3 words that start with 2+ consecutive capital letters (acronyms like SVG, DXF, PDF, AI, CDR, DIY, CNC, EPS, WMF — mixed-case brand names like Cricut/Silhouette don't count) is REJECTED. Count every such word before responding — use AT MOST 3 total; drop or lowercase the rest.
+- Must start with a letter or number, never a quote mark or symbol.
+- Never use these characters anywhere in the title: $ ^ \` . ° (no dollar sign, caret, backtick, period, or degree sign).
+- The characters % : & may each appear AT MOST ONCE in the whole title.
 
 ETSY TAG RULES (strictly enforced):
 BANNED IN TITLE: premium, beautiful, amazing, best, gorgeous, luxury, stunning, perfect — use in description instead.
@@ -4205,6 +4210,7 @@ BANNED IN TITLE: premium, beautiful, amazing, best, gorgeous, luxury, stunning, 
 - Each tag: 1-20 characters MAX (count spaces)
 - No underscores (use spaces), no duplicates, no single words
 - Each tag targets DIFFERENT search intent (variety > repetition)
+- Don't just repeat the exact title phrases as tags — tags should EXPAND reach with different phrasing buyers might search, not duplicate what's already in the title
 - Examples OK: "gift box svg"(12✅) "laser cut files"(15✅) "cricut templates"(16✅)
 - Examples FAIL: "laser cutting templates"(23❌) "svg files"+"svg templates"(same intent❌)
 
@@ -4223,6 +4229,7 @@ Return JSON:
       else throw new Error('پاسخ JSON نبود: '+text.slice(0,100));
     }
     if(!result.new_title||!result.new_tags) throw new Error('فرمت پاسخ اشتباه');
+    result.new_title=sanitizeEtsyTitle(result.new_title);
     S.pendingOpt=result;
     const oldTags=(p.TAGS||'').split(',').filter(Boolean);
     document.getElementById('optContent').innerHTML=`
@@ -4266,14 +4273,16 @@ CURRENT TITLE (${tLen} chars): ${p.TITLE}
 ${tWarn}
 
 RULES:
-1. TITLE: MUST be 120-140 characters (count every character). Primary keyword in first 40 chars. Add: file formats, machine compatibility (Cricut/Silhouette/laser), occasions (gift/birthday/wedding), sizes, digital download.
-⚠️ ETSY REJECTS titles with more than 3 words that start with 2+ consecutive capital letters (acronyms like SVG, DXF, PDF, AI, CDR, DIY, CNC, EPS, WMF — mixed-case brand names like Cricut/Silhouette don't count). Count every such all-caps-start word in the title BEFORE responding — use AT MOST 3 total; drop or lowercase the rest.
-ETSY TAG RULES (strictly enforced):
+1. TITLE: MUST be 120-140 characters (count every character). Structure: [Primary Keyword] | [Secondary Keyword+modifier] | [Occasion/Recipient], separated by ", " (comma+space, not bare space). Primary keyword in first 40 chars. Add: file formats, machine compatibility (Cricut/Silhouette/laser), occasions (gift/birthday/wedding), sizes, digital download.
+⚠️ ETSY VALIDATION (violating these gets the listing REJECTED, not just a lower score):
+- More than 3 words starting with 2+ consecutive capital letters (SVG, DXF, PDF, AI, CDR, DIY, CNC, EPS, WMF — Cricut/Silhouette don't count) is REJECTED. Use AT MOST 3 total; drop or lowercase the rest.
+- Must start with a letter/number, never a quote or symbol. Never use: $ ^ ` . ° anywhere. Characters % : & may each appear AT MOST ONCE.
+2. TAGS (strictly enforced):
 BANNED IN TITLE: premium, beautiful, amazing, best, gorgeous, luxury, stunning, perfect — use in description instead.
 - Write 16 candidate tags (code keeps best 13 automatically)
 - Each tag: 1-20 characters MAX (count spaces)
 - No underscores (use spaces), no duplicates, no single words
-- Each tag targets DIFFERENT search intent (variety > repetition)
+- Each tag targets DIFFERENT search intent (variety > repetition) — don't just repeat exact title phrases, expand reach with different buyer phrasing
 - Examples OK: "gift box svg"(12✅) "laser cut files"(15✅) "cricut templates"(16✅)
 - Examples FAIL: "laser cutting templates"(23❌) "svg files"+"svg templates"(same intent❌)
  Include US/UK/seasonal terms.
@@ -4288,7 +4297,7 @@ Return ONLY JSON (no markdown, no explanation):
     const text=await callClaude(prompt,1500);
     let r;
     try{ r=parseJSON(text); } catch(e){ const m=text.match(/\{[\s\S]*\}/); if(m) r=JSON.parse(m[0]); else throw e; }
-    if(r.new_title) S.products[idx].TITLE=r.new_title;
+    if(r.new_title) S.products[idx].TITLE=sanitizeEtsyTitle(r.new_title);
     if(r.new_tags&&r.new_tags.length){
       // اعمال کامل قوانین Etsy
       const cleanTags=r.new_tags
@@ -4330,6 +4339,32 @@ Return ONLY JSON (no markdown, no explanation):
   }finally{
     delete S.optimizing[idx];
   }
+}
+
+// لایه‌ی محافظ سمت کد — صرف‌نظر از این‌که AI دستورات پرامپت رو رعایت کرده یا نه،
+// این تابع تضمین می‌کنه عنوان نهایی قوانین سخت‌گیرانه‌ی اعتبارسنجی Etsy رو نقض نکنه
+function sanitizeEtsyTitle(title){
+  let t=String(title||'').replace(/[$^`.°]/g,'').trim();
+  t=t.replace(/^[^a-zA-Z0-9]+/,''); // باید با حرف یا عدد شروع بشه
+  ['%',':','&'].forEach(ch=>{
+    let seen=false;
+    t=t.split('').filter(c=>{
+      if(c!==ch) return true;
+      if(seen) return false;
+      seen=true; return true;
+    }).join('');
+  });
+  // حداکثر ۳ کلمه با ۲+ حرف بزرگ متوالی در ابتدای کلمه
+  const words=t.split(/\s+/);
+  let capCount=0;
+  const fixedWords=words.map(w=>{
+    if(/^[A-Z]{2,}/.test(w)){
+      capCount++;
+      if(capCount>3) return w.charAt(0)+w.slice(1).toLowerCase();
+    }
+    return w;
+  });
+  return fixedWords.join(' ').trim();
 }
 
 // محاسبه امتیاز محلی بدون API
