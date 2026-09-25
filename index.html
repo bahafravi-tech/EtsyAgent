@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.3.0 -->
+<!-- APP_VERSION: 1.3.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v94</div>
+        <div class="logo-badge">v95</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · قوانین ۲۰۲۶ Etsy (کاراکتر ممنوع، ساختار عنوان، تگ متنوع)</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · رفع فوری خطای Syntax که کل منو رو خراب کرده بود</div>
     </div>
   </div>
   <div class="header-actions">
@@ -4276,7 +4276,7 @@ RULES:
 1. TITLE: MUST be 120-140 characters (count every character). Structure: [Primary Keyword] | [Secondary Keyword+modifier] | [Occasion/Recipient], separated by ", " (comma+space, not bare space). Primary keyword in first 40 chars. Add: file formats, machine compatibility (Cricut/Silhouette/laser), occasions (gift/birthday/wedding), sizes, digital download.
 ⚠️ ETSY VALIDATION (violating these gets the listing REJECTED, not just a lower score):
 - More than 3 words starting with 2+ consecutive capital letters (SVG, DXF, PDF, AI, CDR, DIY, CNC, EPS, WMF — Cricut/Silhouette don't count) is REJECTED. Use AT MOST 3 total; drop or lowercase the rest.
-- Must start with a letter/number, never a quote or symbol. Never use: $ ^ ` . ° anywhere. Characters % : & may each appear AT MOST ONCE.
+- Must start with a letter/number, never a quote or symbol. Never use: $ ^ \` . ° anywhere. Characters % : & may each appear AT MOST ONCE.
 2. TAGS (strictly enforced):
 BANNED IN TITLE: premium, beautiful, amazing, best, gorgeous, luxury, stunning, perfect — use in description instead.
 - Write 16 candidate tags (code keeps best 13 automatically)
