@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.3.2 -->
+<!-- APP_VERSION: 1.3.3 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v96</div>
+        <div class="logo-badge">v97</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · پاکسازی عنوان موقع ارسال + رفع قطع‌شدن JSON آنالیز گروهی</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · فیلتر «بهینه‌نشده» دیگه محصولات امتیاز ۱۰۰ رو نشون نمی‌ده</div>
     </div>
   </div>
   <div class="header-actions">
@@ -4051,7 +4051,9 @@ function toggleOptSelectMode(){
 function optSelectAll(){
   let items=S.products.map((p,i)=>({i,a:S.analyzed[i]}));
   if(optCurrentFilter==='weak') items=items.filter(({i,a})=>a&&a.score<70&&!S.optimized[i]);
-  else if(optCurrentFilter==='notopt') items=items.filter(({i})=>!S.optimized[i]);
+  // «بهینه‌نشده» یعنی واقعاً نیاز به بهینه‌سازی داره: یا هنوز آنالیز نشده، یا امتیازش زیر ۷۰ است —
+  // محصولی که از قبل امتیاز خوب داره نباید این‌جا بیفته فقط چون دکمه‌ی بهینه‌سازی روش زده نشده
+  else if(optCurrentFilter==='notopt') items=items.filter(({i,a})=>!S.optimized[i]&&(!a||a.score<70));
   else if(optCurrentFilter==='opt') items=items.filter(({i})=>S.optimized[i]);
   // فیلتر 'all' یعنی همه‌ی محصولات، بدون هیچ محدودیتی
   optSelected=new Set(items.map(({i})=>parseInt(i)));
@@ -4120,7 +4122,7 @@ function renderOptimizeList(){
   // ساخت لیست بر اساس فیلتر
   let items=S.products.map((p,i)=>({i,p,a:S.analyzed[i]}));
   if(optCurrentFilter==='weak') items=items.filter(({i,a})=>a&&a.score<70&&!S.optimized[i]);
-  else if(optCurrentFilter==='notopt') items=items.filter(({i})=>!S.optimized[i]);
+  else if(optCurrentFilter==='notopt') items=items.filter(({i,a})=>!S.optimized[i]&&(!a||a.score<70));
   else if(optCurrentFilter==='opt') items=items.filter(({i})=>S.optimized[i]);
   // sort: بهینه نشده‌ها اول، بعد بر اساس score
   items.sort((a,b)=>{
