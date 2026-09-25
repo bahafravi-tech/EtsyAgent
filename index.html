@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.2.8 -->
+<!-- APP_VERSION: 1.2.9 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v92</div>
+        <div class="logo-badge">v93</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · هماهنگی امتیازدهی بهینه‌سازی گروهی با تکی</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · جلوگیری از خطای «حروف بزرگ متوالی» Etsy در عنوان</div>
     </div>
   </div>
   <div class="header-actions">
@@ -4197,6 +4197,7 @@ TITLE REQUIREMENT: ${titleNote}
 The new title MUST be between 120-140 characters. Count carefully before responding.
 Put the PRIMARY keyword in the FIRST 40 characters.
 Add: materials, occasions (gift, birthday, wedding), target users (Cricut, Silhouette), file formats.
+⚠️ ETSY REJECTS titles with more than 3 words that start with 2+ consecutive capital letters (acronyms like SVG, DXF, PDF, AI, CDR, DIY, CNC, EPS, WMF — mixed-case brand names like Cricut/Silhouette don't count). Count every such all-caps-start word in the title BEFORE responding — use AT MOST 3 total; drop or lowercase the rest.
 
 ETSY TAG RULES (strictly enforced):
 BANNED IN TITLE: premium, beautiful, amazing, best, gorgeous, luxury, stunning, perfect — use in description instead.
@@ -4266,6 +4267,7 @@ ${tWarn}
 
 RULES:
 1. TITLE: MUST be 120-140 characters (count every character). Primary keyword in first 40 chars. Add: file formats, machine compatibility (Cricut/Silhouette/laser), occasions (gift/birthday/wedding), sizes, digital download.
+⚠️ ETSY REJECTS titles with more than 3 words that start with 2+ consecutive capital letters (acronyms like SVG, DXF, PDF, AI, CDR, DIY, CNC, EPS, WMF — mixed-case brand names like Cricut/Silhouette don't count). Count every such all-caps-start word in the title BEFORE responding — use AT MOST 3 total; drop or lowercase the rest.
 ETSY TAG RULES (strictly enforced):
 BANNED IN TITLE: premium, beautiful, amazing, best, gorgeous, luxury, stunning, perfect — use in description instead.
 - Write 16 candidate tags (code keeps best 13 automatically)
@@ -4421,7 +4423,11 @@ async function etsyUpdateListing(product, _isRetry){
       const refreshed=await refreshEtsyOAuthToken();
       if(refreshed) return await etsyUpdateListing(product, true);
     }
-    log('✗ خطای Etsy: '+(d.error||d.error_description||JSON.stringify(d)).slice(0,300),'err');
+    const rawErr=(d.error||d.error_description||JSON.stringify(d));
+    const friendly=/sequential capital letters/i.test(rawErr)
+      ? 'عنوان بیش از ۳ کلمه با حروف بزرگ متوالی داره (مثل SVG, DXF, PDF) — Etsy رد می‌کنه. دوباره بهینه‌سازی کن (پرامپت اصلاح شد) یا دستی عنوان رو ویرایش کن.'
+      : rawErr.slice(0,300);
+    log('✗ خطای Etsy: '+friendly,'err');
     return false;
   }catch(e){log('✗ خطای آپلود: '+e.message,'err');return false;}
 }
