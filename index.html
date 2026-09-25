@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.3.1 -->
+<!-- APP_VERSION: 1.3.2 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v95</div>
+        <div class="logo-badge">v96</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · رفع فوری خطای Syntax که کل منو رو خراب کرده بود</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · پاکسازی عنوان موقع ارسال + رفع قطع‌شدن JSON آنالیز گروهی</div>
     </div>
   </div>
   <div class="header-actions">
@@ -3822,13 +3822,13 @@ RULES (updated 2025-2026):
 5. Mobile-first: Short impactful first sentence (46% buy on mobile app)
 Shop niche: ${niche2} | Shop: ${shopName2}
 
-Analyze these ${batch.length} listings. Return ONLY JSON array, no markdown:
-[{"idx":0,"score":75,"issues":[{"type":"error","text":"کلمه کلیدی اصلی در ابتدای title نیست — ۴۰ کاراکتر اول مهم‌ترین است"},{"type":"warn","text":"تگ‌های تک‌کلمه‌ای — long-tail 2-3 کلمه‌ای استفاده کن"},{"type":"ok","text":"تعداد تگ کامل"}],"tag_count":13}]
+Analyze these ${batch.length} listings. Keep each issue "text" SHORT (under 12 words) so the response doesn't get cut off. Return ONLY JSON array, no markdown:
+[{"idx":0,"score":75,"issues":[{"type":"error","text":"کلمه کلیدی اصلی اول title نیست"},{"type":"warn","text":"تگ تک‌کلمه‌ای"},{"type":"ok","text":"تعداد تگ کامل"}],"tag_count":13}]
 
 Listings to analyze:
 ${batch.map((p,bi)=>`[idx:${idxList[bi]}] Title(${p.TITLE.length}ch): ${p.TITLE}\nTags(${(p.TAGS||'').split(',').filter(Boolean).length}): ${p.TAGS||'none'}\nDesc(${(p.DESCRIPTION||'').length}ch): ${(p.DESCRIPTION||'').slice(0,200)}`).join('\n---\n')}`;
   try{
-    const text=await callClaude(prompt, 2000);
+    const text=await callClaude(prompt, 3500);
     log('📊 پاسخ API دریافت شد: '+text.slice(0,80)+'...','info');
     let results;
     try { results=parseJSON(text); } catch(e) {
@@ -4430,8 +4430,12 @@ async function etsyUpdateListing(product, _isRetry){
   const shopId=await resolveEtsyShopId();
   const url=`https://openapi.etsy.com/v3/application/shops/${shopId}/listings/${product._listing_id}`;
   const headers={'x-api-key':etsyApiKeyHeader(),'Authorization':`Bearer ${S.etsyOAuthToken}`,'Content-Type':'application/json'};
+  // پاکسازی عنوان همین‌جا (نه فقط موقع تولید) — پس حتی محصولاتی که قبل از این رفع
+  // بهینه شده بودن هم بدون نیاز به بهینه‌سازی دوباره، با عنوان معتبر فرستاده می‌شن
+  const safeTitle=sanitizeEtsyTitle(product.TITLE);
+  if(safeTitle!==product.TITLE) product.TITLE=safeTitle;
   const body={
-    title:product.TITLE,
+    title:safeTitle,
     tags:(product.TAGS||'').split(',').filter(Boolean).slice(0,13),
     description:product.DESCRIPTION||undefined
   };
