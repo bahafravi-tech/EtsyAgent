@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.5.2 -->
+<!-- APP_VERSION: 1.6.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v101</div>
+        <div class="logo-badge">v102</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · دریافت آمار Etsy حالا توکن منقضی‌شده رو خودکار تمدید می‌کنه</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · بارگذاری مشتریان الان کل تاریخچه‌ی سفارش‌ها رو می‌گیره، نه فقط ۱۰۰ تای آخر</div>
     </div>
   </div>
   <div class="header-actions">
@@ -3106,19 +3106,22 @@ async function collectMarketingNow(){
   btn.disabled = false; btn.textContent = t;
 }
 
-async function fetchEtsyActiveListingsForMetrics(shopId, _isRetry){
+// تماس OAuth-دار به Etsy با تمدید خودکار توکن منقضی‌شده — برای هر GET که نیاز به Authorization داره
+async function etsyApiGetWithAuth(url, _isRetry){
   try{
-    return await etsyApiGet(`https://openapi.etsy.com/v3/application/shops/${shopId}/listings/active?limit=100`, { 'Authorization': `Bearer ${S.etsyOAuthToken}` });
+    return await etsyApiGet(url, { 'Authorization': `Bearer ${S.etsyOAuthToken}` });
   }catch(e){
-    // توکن منقضی شده — یه‌بار با توکن تازه (از refresh_token) دوباره امتحان کن
     if(!_isRetry && /invalid_token/i.test(e.message)){
       log('🔄 توکن Etsy منقضی شده — در حال تمدید خودکار...','warn');
       const refreshed = await refreshEtsyOAuthToken();
-      if(refreshed) return await fetchEtsyActiveListingsForMetrics(shopId, true);
+      if(refreshed) return await etsyApiGetWithAuth(url, true);
       throw new Error('توکن Etsy منقضی شده و تمدید خودکار هم شکست خورد — از تنظیمات دوباره به Etsy وصل شو');
     }
     throw e;
   }
+}
+async function fetchEtsyActiveListingsForMetrics(shopId){
+  return etsyApiGetWithAuth(`https://openapi.etsy.com/v3/application/shops/${shopId}/listings/active?limit=100`);
 }
 
 async function collectEtsyMetricsFromBrowser(){
@@ -5583,11 +5586,23 @@ async function loadCustomers(){
     alert('برای بارگذاری مشتریان، Etsy API Key و Shop ID را در تنظیمات وارد کن');
     nav('settings');return;
   }
-  document.getElementById('custList').innerHTML=`<div style="text-align:center;padding:30px"><div class="spinner" style="width:32px;height:32px;margin:0 auto 12px"></div><div style="color:var(--text2)">در حال دریافت از اتسی...</div></div>`;
+  document.getElementById('custList').innerHTML=`<div style="text-align:center;padding:30px"><div class="spinner" style="width:32px;height:32px;margin:0 auto 12px"></div><div style="color:var(--text2)" id="custLoadProgress">در حال دریافت از اتسی...</div></div>`;
   log('👥 بارگذاری مشتریان از اتسی...','info');
   try{
-    const d = await etsyApiGet(`https://openapi.etsy.com/v3/application/shops/${S.etsyShopId}/receipts?limit=100`, { 'Authorization': `Bearer ${S.etsyOAuthToken}` });
-    const receipts=d.results||[];
+    // اتسی هر صفحه حداکثر ۱۰۰ سفارش می‌ده — با offset صفحه‌به‌صفحه می‌ریم جلو تا کل تاریخچه بیاد
+    // (سقف ۲۰۰۰ سفارش = ۲۰ تماس، فقط برای جلوگیری از تماس بی‌پایان با فروشگاه‌های خیلی بزرگ)
+    const pageSize=100, maxReceipts=2000;
+    let receipts=[], offset=0, total=Infinity;
+    while(offset<total && receipts.length<maxReceipts){
+      const d = await etsyApiGetWithAuth(`https://openapi.etsy.com/v3/application/shops/${S.etsyShopId}/receipts?limit=${pageSize}&offset=${offset}`);
+      const page = d.results||[];
+      receipts = receipts.concat(page);
+      total = typeof d.count==='number' ? d.count : receipts.length;
+      offset += pageSize;
+      const progEl=document.getElementById('custLoadProgress');
+      if(progEl) progEl.textContent = `در حال دریافت... (${receipts.length}${total!==Infinity?' از '+total:''} سفارش)`;
+      if(page.length < pageSize) break; // صفحه‌ی آخر بود
+    }
     // Group by buyer
     const buyers={};
     receipts.forEach(r=>{

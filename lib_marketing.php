@@ -49,13 +49,9 @@ function collectMetrics(){
     }
   }
 
-  // -- آمار لیستینگ‌های Etsy (بدون OAuth — فقط با App API Key، بازدید + پسندیده) --
-  try{
-    $etsyResult = fetchEtsyListingMetrics();
-    $log[] = "  etsy: {$etsyResult['count']} لیستینگ آمارش گرفته شد (بازدید مجموع: {$etsyResult['total_views']}, پسندیده مجموع: {$etsyResult['total_favorers']})";
-  }catch(Throwable $e){
-    $log[] = '  ⚠️ etsy: خطا — '.$e->getMessage();
-  }
+  // آمار لیستینگ‌های Etsy اینجا جمع نمی‌شه — Etsy مسیر بدون‌OAuth رو از سمت سرور مسدود می‌کنه (۴۰۳ ضدربات)،
+  // پس این آمار با دکمه‌ی جداگانه‌ی «دریافت آمار Etsy» مستقیم از مرورگر (با OAuth) گرفته می‌شه
+  $log[] = '  ℹ️ etsy: از دکمه‌ی «دریافت آمار Etsy (از این مرورگر)» بگیر — این بخش سمت سرور دیگه امتحان نمی‌کنه';
 
   setSetting('marketing_last_collect', date('c'));
   $log[] = '✅ جمع‌آوری آمار تمام شد';
@@ -144,23 +140,8 @@ function fetchAccountMetrics($platform){
   return [];
 }
 
-// آمار لیستینگ‌های Etsy — تلاش با App API Key تنها (بدون OAuth)
-// نکته: Etsy این مسیرِ بدون OAuth رو از پشتِ Cloudflare Worker (رله) مسدود می‌کنه (۴۰۳، سیستم ضدربات) —
-// این تابع فقط به‌عنوان تلاش دومه؛ مسیر اصلی submitEtsyListingMetrics()‌ست که از مرورگر کاربر
-// (با توکن OAuth موجود) صدا زده می‌شه، چون درخواست‌های OAuth‌دار از همین رله مشکلی ندارن.
-function fetchEtsyListingMetrics(){
-  $c = cfg();
-  if(empty($c['ETSY_API_KEY']) || empty($c['ETSY_SHOP_ID'])){
-    throw new Exception('ETSY_API_KEY یا ETSY_SHOP_ID توی config.php تنظیم نشده');
-  }
-  $url = "https://openapi.etsy.com/v3/application/shops/{$c['ETSY_SHOP_ID']}/listings/active?limit=100";
-  $res = relayFetch($url, 'GET', ['x-api-key'=>$c['ETSY_API_KEY']]);
-  $data = json_decode($res['body'] ?? '', true);
-  if(!$res['ok'] || !isset($data['results'])) throw new Exception('پاسخ نامعتبر از Etsy: '.substr($res['body']??'',0,200));
-  return submitEtsyListingMetrics($data['results']);
-}
-
-// آمار لیستینگ‌های Etsy — از مرورگر کاربر می‌رسه (با OAuth، چون مسیر بدون‌OAuth رو Etsy مسدود می‌کنه)
+// آمار لیستینگ‌های Etsy — از مرورگر کاربر می‌رسه (با OAuth، چون Etsy مسیر بدون‌OAuth رو از سمت سرور
+// با ۴۰۳ (سیستم ضدربات) مسدود می‌کنه؛ درخواست‌های OAuth‌دار از همین رله مشکلی ندارن)
 // $listings: آرایه‌ای از {listing_id, views, num_favorers, title} — دقیقاً همون شکل results پاسخ Etsy
 function submitEtsyListingMetrics($listings){
   $count=0; $totalViews=0; $totalFav=0;

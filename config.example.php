@@ -32,12 +32,6 @@ return [
   'TELEGRAM_BOT_TOKEN' => '',
   'TELEGRAM_CHAT_ID' => '',
 
-  // برای سیستم «بازاریابی خودکار» — همون App API Key که توی خودِ Etsy Agent Pro (index.html) استفاده می‌کنی
-  // و شناسه‌ی عددی فروشگاه (نه اسم) — این دو فقط برای خوندن آمار عمومی لیستینگ (بازدید/پسندیده) لازمه،
-  // نیازی به OAuth نداره
-  'ETSY_API_KEY' => '',
-  'ETSY_SHOP_ID' => '',
-
   // رله‌ی Cloudflare Worker برای عبور از فیلترینگ ایران روی facebook/pinterest/gemini/telegram
   // اگه از قبل برای فی‌چاپ ساختی، همون RELAY_URL/RELAY_SECRET رو اینجا هم بذار —
   // فقط باید مطمئن بشی دامنه‌های بالا توی ALLOWED_HOSTS خودِ Worker هست (که هستن، چون فی‌چاپ هم دقیقاً همینا رو لازم داشت).
