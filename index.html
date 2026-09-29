@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.6.0 -->
+<!-- APP_VERSION: 1.7.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v102</div>
+        <div class="logo-badge">v104</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · بارگذاری مشتریان الان کل تاریخچه‌ی سفارش‌ها رو می‌گیره، نه فقط ۱۰۰ تای آخر</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · حذف چندتایی در محتوای معرفی + آرشیو تاریخ‌دار برای کلمات کلیدی و گزارش‌ها</div>
     </div>
   </div>
   <div class="header-actions">
@@ -937,6 +937,13 @@ margin:0;background:var(--paper);color:var(--ink);
     <select class="input" id="crCategoryFilter" onchange="onCrCategoryChange()" style="width:auto;margin-inline-start:auto;font-size:12.5px">
       <option value="">همه دسته‌ها</option>
     </select>
+    <button class="btn btn-secondary btn-sm" id="btnCrSelectMode" onclick="toggleCrSelectMode()">☑ انتخاب</button>
+  </div>
+  <div id="crSelectModeBar" style="display:none;background:var(--orange-light);border:1px solid var(--orange-mid);border-radius:12px;padding:12px 16px;margin-bottom:14px;align-items:center;gap:12px;flex-wrap:wrap">
+    <span style="font-size:13px;font-weight:700;color:var(--orange)"><span id="crSelectedCount">0</span> مورد انتخاب‌شده</span>
+    <button class="btn btn-secondary btn-sm" onclick="crSelectAllVisible()">انتخاب همه‌ی این صفحه</button>
+    <button class="btn btn-secondary btn-sm" onclick="crDeselectAll()">لغو انتخاب‌ها</button>
+    <button class="btn btn-red btn-sm" style="margin-inline-start:auto" onclick="deleteCrSelected()">🗑 حذف انتخاب‌شده‌ها</button>
   </div>
   <div id="crList"></div>
   </div>
@@ -1200,7 +1207,9 @@ margin:0;background:var(--paper);color:var(--ink);
 
 <!-- ── Keywords ── -->
 <div class="page" id="page-keywords">
-  <div class="page-header"><div><div class="page-title">🔑 تحقیق <span>کلمات کلیدی</span></div><div class="page-sub">پیدا کردن کلمات کلیدی پرسرچ با رقابت کم</div></div></div>
+  <div class="page-header"><div><div class="page-title">🔑 تحقیق <span>کلمات کلیدی</span></div><div class="page-sub">پیدا کردن کلمات کلیدی پرسرچ با رقابت کم</div></div>
+    <button class="btn btn-secondary" onclick="openKeywordsHistory()">🗂 تاریخچه (<span id="keywordsHistoryCount">0</span>)</button>
+  </div>
   <div class="card">
     <div class="input-row" style="margin-bottom:0">
       <input type="text" class="input" id="kwInput" placeholder="مثال: gift box svg, tote bag template, packaging design">
@@ -1208,6 +1217,14 @@ margin:0;background:var(--paper);color:var(--ink);
     </div>
   </div>
   <div id="kwResults"></div>
+</div>
+
+<div class="overlay" id="keywordsHistoryModal">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header"><div class="modal-title">🗂 تاریخچه‌ی کلمات کلیدی</div><div class="modal-close" onclick="closeModal('keywordsHistoryModal')">✕</div></div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:12px">هر جستجویی که قبلاً کردی، اینجا با تاریخش می‌مونه — بدون نیاز به جستجوی دوباره.</div>
+    <div id="keywordsHistoryList" style="max-height:60vh;overflow:auto;display:grid;gap:8px"></div>
+  </div>
 </div>
 
 <!-- ── Trends ── -->
@@ -1309,8 +1326,21 @@ margin:0;background:var(--paper);color:var(--ink);
 <!-- ── Social Media ── -->
 <!-- ── Reports ── -->
 <div class="page" id="page-reports">
-  <div class="page-header"><div><div class="page-title">📊 <span>گزارش‌ها</span></div><div class="page-sub">آنالیز و خلاصه وضعیت فروشگاه</div></div><button class="btn btn-primary" onclick="generateReport()">📊 تولید گزارش</button></div>
+  <div class="page-header"><div><div class="page-title">📊 <span>گزارش‌ها</span></div><div class="page-sub">آنالیز و خلاصه وضعیت فروشگاه</div></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-secondary" onclick="openReportsHistory()">🗂 تاریخچه (<span id="reportsHistoryCount">0</span>)</button>
+      <button class="btn btn-primary" onclick="generateReport()">📊 تولید گزارش</button>
+    </div>
+  </div>
   <div id="reportResult"><div style="text-align:center;padding:50px;color:var(--text2)"><div style="font-size:40px;margin-bottom:12px">📊</div><div style="font-weight:600;color:var(--text)">گزارش را تولید کنید</div></div></div>
+</div>
+
+<div class="overlay" id="reportsHistoryModal">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header"><div class="modal-title">🗂 تاریخچه‌ی گزارش‌ها</div><div class="modal-close" onclick="closeModal('reportsHistoryModal')">✕</div></div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:12px">هر گزارشی که قبلاً تولید کردی، اینجا با تاریخش می‌مونه.</div>
+    <div id="reportsHistoryList" style="max-height:60vh;overflow:auto;display:grid;gap:8px"></div>
+  </div>
 </div>
 
 <!-- ── Settings ── -->
@@ -1912,6 +1942,8 @@ let S = {
   apiRelayUrl: '', apiRelaySecret: '',
   trendsArchive: [],
   competitorArchive: [],
+  keywordsArchive: [],
+  reportsArchive: [],
   etsyOAuthToken: '',
   products: [],
   analyzed: {},
@@ -1944,6 +1976,8 @@ function loadShopToState(shopId){
   S.brandBgColor=shop.brandBgColor||'#f4f1e8';
   S.trendsArchive=shop.trendsArchive||[];
   S.competitorArchive=shop.competitorArchive||[];
+  S.keywordsArchive=shop.keywordsArchive||[];
+  S.reportsArchive=shop.reportsArchive||[];
   S.apiRelayUrl=shop.apiRelayUrl||'';
   S.apiRelaySecret=shop.apiRelaySecret||'';
   S.etsyOAuthToken=shop.etsyOAuthToken||'';
@@ -1955,6 +1989,7 @@ function loadShopToState(shopId){
   S.analyzedHash=shop.analyzedHash||'';
   S.competitors=shop.competitors||[];
   S.dailyArchive=shop.dailyArchive||[];
+  S_customers=shop.customers||[];
   GS.currentShopId=shopId;
   DB.save('global_current_shop',shopId);
   return true;
@@ -1979,6 +2014,8 @@ function saveCurrentShop(){
   shop.brandBgColor=S.brandBgColor;
   shop.trendsArchive=S.trendsArchive;
   shop.competitorArchive=S.competitorArchive;
+  shop.keywordsArchive=S.keywordsArchive;
+  shop.reportsArchive=S.reportsArchive;
   shop.apiRelayUrl=S.apiRelayUrl;
   shop.apiRelaySecret=S.apiRelaySecret;
   shop.etsyOAuthToken=S.etsyOAuthToken;
@@ -1991,6 +2028,7 @@ function saveCurrentShop(){
   shop.analyzedHash=S.analyzedHash;
   shop.competitors=S.competitors;
   shop.dailyArchive=S.dailyArchive;
+  shop.customers=S_customers||[];
   shop.updatedAt=new Date().toISOString();
   ShopManager.save(shop);
 }
@@ -2387,6 +2425,7 @@ function nav(name, el) {
   if(name==='settings'){ renderOtherShopsInSettings(); renderShopSwitcher(); }
   if(name==='content-review') loadContentReview();
   if(name==='marketing') loadMarketing();
+  if(name==='customers') renderCustomersFromCache();
   // وقتی صفحه optimize باز می‌شود لیست را render کن
   if(name==='optimize' && Object.keys(S.analyzed).length){
     renderOptimizeList();
@@ -3776,6 +3815,8 @@ const crPlatformClass = { pending:'badge-wait', published:'badge-ok', failed:'ba
 const crPlatformText = { pending:'⏳ در صف', published:'✅ منتشرشد', failed:'❌ خطا' };
 
 let crCurrentItems = [];
+let crSelectMode=false, crSelected=new Set();
+
 function renderContentReviewList(items){
   crCurrentItems = items;
   const listEl = document.getElementById('crList');
@@ -3789,7 +3830,10 @@ function renderContentReviewList(items){
     const platformNames = (item.platforms||[]).map(p=>crPlatformLabel[p.platform]||p.platform).join(' · ');
     const thumbUrl = item.hero_image_path ? crApiUrl('thumb.php')+'?path='+encodeURIComponent(item.hero_image_path) : null;
     const imgCount = (item.images||[]).length;
-    return `<div class="cr-card" style="cursor:pointer;margin-bottom:0;padding:0;overflow:hidden" onclick="openContentDetail(${item.id})">
+    const isSelected = crSelected.has(item.id);
+    const cardClick = crSelectMode ? `toggleCrSelect(${item.id})` : `openContentDetail(${item.id})`;
+    return `<div class="cr-card" style="cursor:pointer;margin-bottom:0;padding:0;overflow:hidden;position:relative;${isSelected?'outline:2px solid var(--orange)':''}" onclick="${cardClick}">
+      ${crSelectMode?`<div style="position:absolute;top:8px;right:8px;z-index:2;width:22px;height:22px;border-radius:6px;border:2px solid ${isSelected?'var(--orange)':'var(--border2)'};background:${isSelected?'var(--orange)':'white'};display:flex;align-items:center;justify-content:center">${isSelected?'<span style="color:white;font-size:12px">✓</span>':''}</div>`:''}
       ${thumbUrl?`<div style="position:relative"><img src="${thumbUrl}" loading="lazy" decoding="async" style="width:100%;aspect-ratio:1/1;object-fit:cover;display:block">${imgCount>1?`<span style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,.6);color:#fff;font-size:10px;padding:2px 7px;border-radius:10px">🎠 ${imgCount}</span>`:''}</div>`:''}
       <div style="padding:12px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
@@ -3809,6 +3853,58 @@ function renderContentReviewList(items){
       </div>
     </div>`;
   }).join('');
+}
+
+function toggleCrSelectMode(){
+  crSelectMode=!crSelectMode;
+  crSelected.clear();
+  document.getElementById('crSelectModeBar').style.display=crSelectMode?'flex':'none';
+  document.getElementById('btnCrSelectMode').textContent=crSelectMode?'✕ لغو انتخاب':'☑ انتخاب';
+  updateCrSelectedCount();
+  renderContentReviewList(crCurrentItems);
+}
+function toggleCrSelect(id){
+  if(crSelected.has(id)) crSelected.delete(id); else crSelected.add(id);
+  updateCrSelectedCount();
+  renderContentReviewList(crCurrentItems);
+}
+function crSelectAllVisible(){
+  crCurrentItems.forEach(it=>crSelected.add(it.id));
+  updateCrSelectedCount();
+  renderContentReviewList(crCurrentItems);
+}
+function crDeselectAll(){
+  crSelected.clear();
+  updateCrSelectedCount();
+  renderContentReviewList(crCurrentItems);
+}
+function updateCrSelectedCount(){
+  const el=document.getElementById('crSelectedCount');
+  if(el) el.textContent=crSelected.size;
+}
+async function deleteCrSelected(){
+  if(!crSelected.size){ alert('چیزی انتخاب نشده'); return; }
+  if(!confirm(`${crSelected.size} مورد برای همیشه حذف بشه؟ این کار برگشت‌ناپذیره (کپشن، عکس‌ها و وضعیت انتشار هم پاک می‌شه).`)) return;
+  try{
+    const res = await fetch(crApiUrl('delete_content.php'), { method:'POST', headers:crHeaders(), body:JSON.stringify({ids:[...crSelected]}) });
+    const d = await res.json();
+    if(!res.ok) throw new Error(d.error||'خطا');
+    log(`🗑 ${d.deleted} مورد حذف شد`,'ok');
+    crSelected.clear();
+    toggleCrSelectMode();
+    loadContentReview();
+  }catch(e){ alert('خطا: '+e.message); }
+}
+async function deleteContentItem(id){
+  if(!confirm('این مورد برای همیشه حذف بشه؟ این کار برگشت‌ناپذیره.')) return;
+  try{
+    const res = await fetch(crApiUrl('delete_content.php'), { method:'POST', headers:crHeaders(), body:JSON.stringify({id}) });
+    const d = await res.json();
+    if(!res.ok) throw new Error(d.error||'خطا');
+    log('🗑 مورد حذف شد','ok');
+    closeModal('crDetailModal');
+    loadContentReview();
+  }catch(e){ alert('خطا: '+e.message); }
 }
 
 function openContentDetail(id){
@@ -3887,6 +3983,7 @@ function buildContentDetailHTML(item){
         </label>
         ${item.status!=='approved'&&item.status!=='published'?`<button class="btn btn-green btn-sm" onclick="setContentStatus(${item.id},'approved')">✅ تأیید و صف انتشار</button>`:''}
         ${item.status!=='rejected'?`<button class="btn btn-red btn-sm" onclick="setContentStatus(${item.id},'rejected')">🗑 رد کن</button>`:''}
+        <button class="btn btn-red btn-sm" onclick="deleteContentItem(${item.id})">🗑 حذف کامل (برگشت‌ناپذیر)</button>
       </div>`;
 }
 
@@ -5363,14 +5460,59 @@ function renderOtherShopsInSettings(){
 }
 
 // ══ Keywords ══
+function renderKeywordsHTML(data){
+  return `<div style="display:grid;gap:6px;margin-top:12px">${data.keywords.map(k=>`<div class="kw-row"><div class="kw-word">${k.kw}</div><span class="kw-pill ${k.volume==='high'?'kw-hi':k.volume==='mid'?'kw-mid':'kw-lo'}">حجم: ${k.volume}</span><span class="kw-pill ${k.competition==='low'?'kw-hi':k.competition==='mid'?'kw-mid':'kw-comp-hi'}">رقابت: ${k.competition}</span><div class="kw-note">${k.note}</div></div>`).join('')}</div>`;
+}
 async function findKeywords(){
   const kw=document.getElementById('kwInput').value.trim();if(!kw)return;
   document.getElementById('kwResults').innerHTML=`<div style="text-align:center;padding:20px"><div class="spinner"></div></div>`;
   const prompt=`کلمات کلیدی اتسی برای "${kw}":\nJSON:{"keywords":[{"kw":"...","volume":"high|mid|low","competition":"low|mid|high","note":"توضیح کوتاه"}×12]}\nفقط JSON.`;
   try{
     const text=await callClaude(prompt);const data=parseJSON(text);
-    document.getElementById('kwResults').innerHTML=`<div style="display:grid;gap:6px;margin-top:12px">${data.keywords.map(k=>`<div class="kw-row"><div class="kw-word">${k.kw}</div><span class="kw-pill ${k.volume==='high'?'kw-hi':k.volume==='mid'?'kw-mid':'kw-lo'}">حجم: ${k.volume}</span><span class="kw-pill ${k.competition==='low'?'kw-hi':k.competition==='mid'?'kw-mid':'kw-comp-hi'}">رقابت: ${k.competition}</span><div class="kw-note">${k.note}</div></div>`).join('')}</div>`;
+    document.getElementById('kwResults').innerHTML=renderKeywordsHTML(data);
+    S.keywordsArchive.unshift({ id:Date.now(), created:new Date().toISOString(), term:kw, ...data });
+    if(S.keywordsArchive.length>100) S.keywordsArchive.length=100;
+    saveCurrentShop();
+    updateKeywordsHistoryCount();
   }catch{document.getElementById('kwResults').innerHTML=`<div class="alert alert-warn">❌ API Key لازم است</div>`;}
+}
+
+function updateKeywordsHistoryCount(){
+  const el=document.getElementById('keywordsHistoryCount');
+  if(el) el.textContent=S.keywordsArchive.length;
+}
+function openKeywordsHistory(){
+  updateKeywordsHistoryCount();
+  const el=document.getElementById('keywordsHistoryList');
+  if(!S.keywordsArchive.length){ el.innerHTML='<div style="text-align:center;padding:30px;color:var(--text2)">هنوز چیزی توی تاریخچه نیست</div>'; }
+  else{
+    el.innerHTML = S.keywordsArchive.map(k=>{
+      const dateStr = new Date(k.created).toLocaleString('fa-IR');
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+        <div onclick="viewKeywordsFromHistory(${k.id})" style="flex:1;min-width:0;cursor:pointer">
+          <div style="font-size:13px;font-weight:700">${escHtml(k.term||'—')}</div>
+          <div style="font-size:11px;color:var(--text2)">${dateStr} · ${(k.keywords||[]).length} کلمه‌ی کلیدی</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="deleteKeywordsHistoryItem(${k.id}, event)">🗑</button>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('keywordsHistoryModal').classList.add('open');
+}
+function viewKeywordsFromHistory(id){
+  const k = S.keywordsArchive.find(x=>x.id===id);
+  if(!k) return;
+  document.getElementById('kwInput').value = k.term||'';
+  document.getElementById('kwResults').innerHTML = renderKeywordsHTML(k);
+  closeModal('keywordsHistoryModal');
+  nav('keywords');
+}
+function deleteKeywordsHistoryItem(id, evt){
+  if(evt) evt.stopPropagation();
+  if(!confirm('این جستجو از تاریخچه حذف بشه؟')) return;
+  S.keywordsArchive = S.keywordsArchive.filter(x=>x.id!==id);
+  saveCurrentShop();
+  openKeywordsHistory();
 }
 
 // ══ Trends ══
@@ -5567,15 +5709,60 @@ async function generateWeeklyCalendar(){
 }
 
 // ══ Reports ══
+function renderReportHTML(counts, d){
+  return `<div class="stats-grid" style="margin-bottom:16px"><div class="stat-card stat-orange"><div class="stat-icon">📦</div><div class="stat-val">${counts.products}</div><div class="stat-label">محصول</div></div><div class="stat-card stat-green"><div class="stat-icon">✅</div><div class="stat-val">${counts.optimized}</div><div class="stat-label">بهینه‌شده</div></div><div class="stat-card stat-blue"><div class="stat-icon">📊</div><div class="stat-val">${counts.avgScore}</div><div class="stat-label">میانگین SEO</div></div><div class="stat-card stat-purple"><div class="stat-icon">🏆</div><div class="stat-val">${counts.competitors}</div><div class="stat-label">رقبا</div></div></div><div class="card"><div style="font-size:14px;line-height:1.8;color:var(--text2);margin-bottom:14px">${d.summary}</div><div class="g2"><div><div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:8px">✅ نقاط قوت</div>${d.strengths.map(s=>`<div style="font-size:12px;color:var(--text2);margin-bottom:6px;padding:6px 8px;background:var(--green-light);border-radius:6px">• ${s}</div>`).join('')}</div><div><div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:8px">❌ نقاط ضعف</div>${d.weaknesses.map(s=>`<div style="font-size:12px;color:var(--text2);margin-bottom:6px;padding:6px 8px;background:var(--red-light);border-radius:6px">• ${s}</div>`).join('')}</div></div></div><div class="card"><div class="card-title" style="margin-bottom:12px">🚀 اقدامات فوری</div>${d.actions.map((a,i)=>`<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start"><div style="width:22px;height:22px;border-radius:50%;background:var(--orange);color:white;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${i+1}</div><div style="font-size:13px;color:var(--text2)">${a}</div></div>`).join('')}<div style="background:var(--blue-light);border:1px solid #bfdbfe;border-radius:8px;padding:12px;font-size:12px;color:var(--blue);margin-top:12px">🔮 پیش‌بینی: ${d.forecast}</div></div>`;
+}
 async function generateReport(){
   document.getElementById('reportResult').innerHTML=`<div style="text-align:center;padding:30px"><div class="spinner" style="width:32px;height:32px;margin:0 auto 12px"></div><div style="font-size:13px;color:var(--text2)">در حال تولید گزارش...</div></div>`;
   const scores=Object.values(S.analyzed).map(a=>a.score);
   const avgScore=scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):0;
-  const prompt=`گزارش جامع فروشگاه اتسی:\n- تعداد محصولات: ${S.products.length}\n- میانگین SEO Score: ${avgScore}\n- بهینه‌شده: ${Object.keys(S.optimized).length}\n- رقبا شناسایی‌شده: ${S.competitors.length}\nJSON:{"summary":"خلاصه وضعیت","score":${avgScore},"strengths":["قوت1","قوت2"],"weaknesses":["ضعف1","ضعف2"],"actions":["اقدام فوری1","اقدام فوری2","اقدام فوری3"],"forecast":"پیش‌بینی"}\nفقط JSON.`;
+  const counts={products:S.products.length, optimized:Object.keys(S.optimized).length, avgScore, competitors:S.competitors.length};
+  const prompt=`گزارش جامع فروشگاه اتسی:\n- تعداد محصولات: ${counts.products}\n- میانگین SEO Score: ${avgScore}\n- بهینه‌شده: ${counts.optimized}\n- رقبا شناسایی‌شده: ${counts.competitors}\nJSON:{"summary":"خلاصه وضعیت","score":${avgScore},"strengths":["قوت1","قوت2"],"weaknesses":["ضعف1","ضعف2"],"actions":["اقدام فوری1","اقدام فوری2","اقدام فوری3"],"forecast":"پیش‌بینی"}\nفقط JSON.`;
   try{
     const text=await callClaude(prompt);const d=parseJSON(text);
-    document.getElementById('reportResult').innerHTML=`<div class="stats-grid" style="margin-bottom:16px"><div class="stat-card stat-orange"><div class="stat-icon">📦</div><div class="stat-val">${S.products.length}</div><div class="stat-label">محصول</div></div><div class="stat-card stat-green"><div class="stat-icon">✅</div><div class="stat-val">${Object.keys(S.optimized).length}</div><div class="stat-label">بهینه‌شده</div></div><div class="stat-card stat-blue"><div class="stat-icon">📊</div><div class="stat-val">${avgScore}</div><div class="stat-label">میانگین SEO</div></div><div class="stat-card stat-purple"><div class="stat-icon">🏆</div><div class="stat-val">${S.competitors.length}</div><div class="stat-label">رقبا</div></div></div><div class="card"><div style="font-size:14px;line-height:1.8;color:var(--text2);margin-bottom:14px">${d.summary}</div><div class="g2"><div><div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:8px">✅ نقاط قوت</div>${d.strengths.map(s=>`<div style="font-size:12px;color:var(--text2);margin-bottom:6px;padding:6px 8px;background:var(--green-light);border-radius:6px">• ${s}</div>`).join('')}</div><div><div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:8px">❌ نقاط ضعف</div>${d.weaknesses.map(s=>`<div style="font-size:12px;color:var(--text2);margin-bottom:6px;padding:6px 8px;background:var(--red-light);border-radius:6px">• ${s}</div>`).join('')}</div></div></div><div class="card"><div class="card-title" style="margin-bottom:12px">🚀 اقدامات فوری</div>${d.actions.map((a,i)=>`<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start"><div style="width:22px;height:22px;border-radius:50%;background:var(--orange);color:white;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${i+1}</div><div style="font-size:13px;color:var(--text2)">${a}</div></div>`).join('')}<div style="background:var(--blue-light);border:1px solid #bfdbfe;border-radius:8px;padding:12px;font-size:12px;color:var(--blue);margin-top:12px">🔮 پیش‌بینی: ${d.forecast}</div></div>`;
+    document.getElementById('reportResult').innerHTML=renderReportHTML(counts, d);
+    S.reportsArchive.unshift({ id:Date.now(), created:new Date().toISOString(), counts, ...d });
+    if(S.reportsArchive.length>100) S.reportsArchive.length=100;
+    saveCurrentShop();
+    updateReportsHistoryCount();
   }catch{document.getElementById('reportResult').innerHTML=`<div class="alert alert-warn">❌ API Key لازم است</div>`;}
+}
+
+function updateReportsHistoryCount(){
+  const el=document.getElementById('reportsHistoryCount');
+  if(el) el.textContent=S.reportsArchive.length;
+}
+function openReportsHistory(){
+  updateReportsHistoryCount();
+  const el=document.getElementById('reportsHistoryList');
+  if(!S.reportsArchive.length){ el.innerHTML='<div style="text-align:center;padding:30px;color:var(--text2)">هنوز چیزی توی تاریخچه نیست</div>'; }
+  else{
+    el.innerHTML = S.reportsArchive.map(r=>{
+      const dateStr = new Date(r.created).toLocaleString('fa-IR');
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+        <div onclick="viewReportFromHistory(${r.id})" style="flex:1;min-width:0;cursor:pointer">
+          <div style="font-size:13px;font-weight:700">امتیاز ${r.counts?.avgScore ?? '—'} · ${r.counts?.products ?? 0} محصول</div>
+          <div style="font-size:11px;color:var(--text2)">${dateStr}</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="deleteReportsHistoryItem(${r.id}, event)">🗑</button>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('reportsHistoryModal').classList.add('open');
+}
+function viewReportFromHistory(id){
+  const r = S.reportsArchive.find(x=>x.id===id);
+  if(!r) return;
+  document.getElementById('reportResult').innerHTML = renderReportHTML(r.counts||{}, r);
+  closeModal('reportsHistoryModal');
+  nav('reports');
+}
+function deleteReportsHistoryItem(id, evt){
+  if(evt) evt.stopPropagation();
+  if(!confirm('این گزارش از تاریخچه حذف بشه؟')) return;
+  S.reportsArchive = S.reportsArchive.filter(x=>x.id!==id);
+  saveCurrentShop();
+  openReportsHistory();
 }
 
 
@@ -5622,11 +5809,25 @@ async function loadCustomers(){
     document.getElementById('cstatRepeat').textContent=repeatCount;
     document.getElementById('cstatRevenue').textContent='$'+totalRevenue.toFixed(0);
     generateCustomerInsights(S_customers);
+    saveCurrentShop(); // تا با رفرش/تغییر فروشگاه پاک نشه
     log(`✓ ${S_customers.length} مشتری بارگذاری شد`,'ok');
   }catch(e){
     document.getElementById('custList').innerHTML=`<div class="alert alert-warn">❌ خطا: ${e.message}<br>مطمئن شو OAuth Token معتبره و اگه لازمه تنظیمات رله رو پر کردی</div>`;
     log('✗ خطا در بارگذاری مشتریان: '+e.message,'err');
   }
+}
+
+// اگه از قبل مشتری‌های ذخیره‌شده داریم (از بارگذاری قبلی)، همون‌ها رو نشون بده — لازم نیست دوباره از Etsy بگیریم
+function renderCustomersFromCache(){
+  if(!S_customers.length) return;
+  renderCustomers(S_customers);
+  const repeatCount=S_customers.filter(c=>c.orders.length>1).length;
+  const totalRevenue=S_customers.reduce((a,c)=>a+c.total,0);
+  document.getElementById('custStats').style.display='grid';
+  document.getElementById('cstatTotal').textContent=S_customers.length;
+  document.getElementById('cstatRepeat').textContent=repeatCount;
+  document.getElementById('cstatRevenue').textContent='$'+totalRevenue.toFixed(0);
+  generateCustomerInsights(S_customers);
 }
 
 function renderCustomers(custs){
