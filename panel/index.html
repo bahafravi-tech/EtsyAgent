@@ -1,3 +1,4 @@
+<!-- APP_VERSION: 1.0.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -46,6 +47,25 @@
   #loginBox{max-width:340px;margin:80px auto}
   .empty{text-align:center;padding:60px 20px;color:var(--text2)}
   .hidden{display:none}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;justify-content:center;padding:30px 14px;overflow-y:auto;z-index:200}
+  .modal{background:var(--bg);max-width:920px;width:100%;border-radius:14px;border:1px solid var(--border);height:fit-content}
+  .modal-header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);border-radius:14px 14px 0 0;z-index:1}
+  .modal-body{padding:6px 18px 18px}
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:8px;margin:10px 0}
+  .kpi-card{background:var(--surface2);border-radius:10px;padding:10px;text-align:center}
+  .kpi-num{font-size:18px;font-weight:800}
+  .kpi-label{font-size:10.5px;color:var(--text2);margin-top:2px}
+  .bar-track{background:var(--surface3);border-radius:6px;height:8px;overflow:hidden;flex:1}
+  .bar-fill{background:var(--orange);height:100%}
+  .mtable{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+  .mtable th,.mtable td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--border)}
+  .mtable th{color:var(--text2);font-weight:700}
+  .warn-box{background:var(--orange-light);color:#fbbf24;border-radius:8px;padding:10px;font-size:12px;margin:10px 0;line-height:1.9}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .form-field label{display:block;font-size:11px;color:var(--text2);margin-bottom:4px}
+  .form-field.check{display:flex;align-items:center;gap:6px;flex-direction:row-reverse;justify-content:flex-end;margin-top:6px}
+  .mkt-section-title{font-size:13px;font-weight:800;margin:16px 0 6px;display:flex;align-items:center;gap:6px}
+  .badge-marketing{background:var(--purple-light);color:var(--purple)}
 </style>
 </head>
 <body>
@@ -62,7 +82,7 @@
 
 <div class="wrap hidden" id="mainBox">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-    <h1>🤖 Beguchee Content Agent</h1>
+    <h1>🤖 Beguchee Content Agent <span style="font-size:11px;font-weight:400;color:var(--text3)">v1.0.0</span></h1>
     <button class="btn btn-secondary btn-sm" onclick="doLogout()">خروج</button>
   </div>
   <div class="sub">بررسی و تأیید محتوای معرفی محصول قبل از انتشار خودکار</div>
@@ -75,6 +95,14 @@
   <div class="card">
     <div class="field-label" style="margin-top:0">دسته</div>
     <select class="input" id="categoryFilter" onchange="onCategoryFilterChange()"></select>
+  </div>
+
+  <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+    <div>
+      <div style="font-weight:800;font-size:14px">📈 بازاریابی خودکار</div>
+      <div style="font-size:11px;color:var(--text3)" id="mktStatusLine">—</div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="openMarketing()">باز کردن</button>
   </div>
 
   <div class="card">
@@ -117,6 +145,79 @@
   </div>
 
   <div id="list"></div>
+</div>
+
+<div class="modal-overlay hidden" id="mktOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div style="font-weight:800;font-size:15px">📈 بازاریابی خودکار</div>
+      <button class="btn btn-secondary btn-sm" onclick="closeMarketing()">✕ بستن</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="actions" style="margin-top:10px">
+        <button class="btn btn-secondary btn-sm" id="mktCollectBtn" onclick="collectMarketingNow()">📥 جمع‌آوری آمار الان</button>
+        <button class="btn btn-primary btn-sm" id="mktAnalyzeBtn" onclick="analyzeMarketingNow()">🧠 تحلیل و ساخت پلن جدید</button>
+        <span style="font-size:11px;color:var(--text3)">تحلیل ممکنه ۱ تا ۳ دقیقه طول بکشه — صبر کن</span>
+      </div>
+      <div id="mktActionMsg" style="font-size:12px;margin-top:6px"></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px" id="mktLastRuns"></div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="collapsible-head" onclick="toggleMktSettings()" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:700;font-size:13px">⚙️ تنظیمات</div>
+          <span id="mktSettingsToggleIcon">▾</span>
+        </div>
+        <div id="mktSettingsBox" class="hidden" style="margin-top:12px">
+          <div class="form-grid">
+            <div class="form-field">
+              <label>روز تحلیل خودکار</label>
+              <select class="input" id="mktAnalyzeWeekday">
+                <option value="1">دوشنبه</option><option value="2">سه‌شنبه</option><option value="3">چهارشنبه</option>
+                <option value="4">پنجشنبه</option><option value="5">جمعه</option><option value="6">شنبه</option><option value="7">یکشنبه</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>بازه‌ی تحلیل (روز)</label>
+              <input type="number" class="input" id="mktPeriodDays" min="7" max="90" value="30">
+            </div>
+            <div class="form-field">
+              <label>حداکثر پیش‌نویس در هر پلن</label>
+              <input type="number" class="input" id="mktMaxDrafts" min="1" max="30" value="5">
+            </div>
+            <div class="form-field">
+              <label>بودجه‌ی تبلیغاتی ماهانه ($)</label>
+              <input type="number" class="input" id="mktAdBudget" min="0" value="0">
+            </div>
+          </div>
+          <div class="form-field check"><label for="mktAutoEnabled">حالت خودکار (تحلیل هفتگی + پیش‌نویس روی cron)</label><input type="checkbox" id="mktAutoEnabled"></div>
+          <div class="form-field check"><label for="mktAutoDrafts">افزودن خودکار پیش‌نویس از پلن</label><input type="checkbox" id="mktAutoDrafts"></div>
+          <div class="form-field check"><label for="mktAutoCaptions">تولید خودکار کپشن برای پیش‌نویس‌ها</label><input type="checkbox" id="mktAutoCaptions"></div>
+          <div class="form-field" style="margin-top:8px">
+            <label>اهداف (متن آزاد)</label>
+            <textarea class="input" id="mktGoals" rows="2" placeholder="مثلاً افزایش بازدید لیستینگ‌ها و رشد فالوور اینستاگرام"></textarea>
+          </div>
+          <div class="form-field" style="margin-top:8px">
+            <label>مخاطب هدف (متن آزاد)</label>
+            <textarea class="input" id="mktAudience" rows="2" placeholder="مثلاً خریداران قالب‌های SVG برای کریکات/سیلوئت"></textarea>
+          </div>
+          <button class="btn btn-green btn-sm" style="margin-top:10px" onclick="saveMarketingConfig()">💾 ذخیره تنظیمات</button>
+        </div>
+      </div>
+
+      <div class="mkt-section-title">📊 آمار عملکرد
+        <input type="number" class="input" id="mktStatsDays" value="30" min="7" max="90" style="width:70px;padding:4px 8px">
+        <button class="btn btn-secondary btn-sm" onclick="loadMarketingStats()">بارگذاری</button>
+      </div>
+      <div id="mktStatsBox"><div class="empty">هنوز بارگذاری نشده</div></div>
+
+      <div class="mkt-section-title">🗂 پلن بازاریابی
+        <select class="input" id="mktPlanPicker" onchange="onMktPlanPick()" style="width:auto;flex:1"></select>
+      </div>
+      <div id="mktPlanBox"><div class="empty">پلنی بارگذاری نشده</div></div>
+
+    </div>
+  </div>
 </div>
 
 <script>
@@ -296,6 +397,7 @@ function renderItem(item){
   const r = item.research;
   return `<div class="card" data-id="${item.id}">
     <span class="status-pill" style="${statusColor[item.status]||''}">${statusLabel[item.status]||item.status}</span>
+    ${item.origin==='marketing' ? '<span class="badge badge-marketing" style="margin-inline-start:6px">🤖 مارکتینگ</span>' : ''}
     <div class="item-title">${escHtml(item.title)}</div>
     <div class="item-meta">#${item.id} · ${item.shop?('🏪 '+escHtml(item.shop)+' · '):''}🌐 ${escHtml(item.language||'English')} · ${item.keyword?('کلیدواژه: '+escHtml(item.keyword)+' · '):''}${new Date(item.created_at).toLocaleString('fa-IR')}</div>
     ${r?`<div class="research-box">📊 ${r.listingCount??'?'} رقیب فعال · میانگین قیمت ${r.avgPrice!=null?'$'+r.avgPrice:'?'} · محبوب‌ترین رقیب ${r.topFavorers??'?'} علاقه‌مندی${r.topListings?.length?'<br>'+r.topListings.map(l=>`<a href="${l.url}" target="_blank" rel="noopener" style="color:var(--orange);text-decoration:none;display:inline-block;margin-top:4px">🔗 ${escHtml(l.title.slice(0,50))}</a>`).join('<br>'):''}</div>`:''}
@@ -356,6 +458,293 @@ async function retryPlatform(id, platform){
   }catch(e){ alert('خطا: '+e.message); }
 }
 
+// ══════════ بازاریابی خودکار ══════════
+const weekdayLabel = {1:'دوشنبه',2:'سه‌شنبه',3:'چهارشنبه',4:'پنجشنبه',5:'جمعه',6:'شنبه',7:'یکشنبه'};
+const mktPlatformLabel = { telegram:'تلگرام', instagram:'اینستاگرام', pinterest:'پینترست', etsy:'اتسی' };
+let mktPlansCache = [];
+let mktLatestPlan = null;
+
+async function mktApiGet(action, extra=''){
+  return apiCall('marketing.php?action='+action+extra);
+}
+async function mktApiPost(body){
+  return apiCall('marketing.php', { method:'POST', body: JSON.stringify(body) });
+}
+function fmtNum(n){ return (n==null) ? '—' : Number(n).toLocaleString('en-US'); }
+function fmtDate(s){ return s ? new Date(s).toLocaleString('fa-IR') : '—'; }
+
+async function openMarketing(){
+  document.getElementById('mktOverlay').classList.remove('hidden');
+  refreshMktStatusLine();
+  try{
+    const cfgRes = await mktApiGet('config');
+    fillMarketingSettings(cfgRes.config || {});
+  }catch(e){ /* هنوز migration اجرا نشده، مشکلی نیست — پایین بهش اشاره می‌شه */ }
+  loadMarketingStats();
+  loadMktPlansList();
+}
+function closeMarketing(){
+  document.getElementById('mktOverlay').classList.add('hidden');
+}
+function toggleMktSettings(){
+  document.getElementById('mktSettingsBox').classList.toggle('hidden');
+  const open = !document.getElementById('mktSettingsBox').classList.contains('hidden');
+  document.getElementById('mktSettingsToggleIcon').textContent = open ? '▴' : '▾';
+}
+
+async function refreshMktStatusLine(){
+  try{
+    const [c, a] = await Promise.all([mktApiGet('last_collect'), mktApiGet('last_analysis')]);
+    document.getElementById('mktStatusLine').textContent =
+      `آخرین جمع‌آوری آمار: ${fmtDate(c.last_collect)} · آخرین تحلیل: ${fmtDate(a.last_analysis)}`;
+    document.getElementById('mktLastRuns').textContent =
+      `آخرین جمع‌آوری آمار: ${fmtDate(c.last_collect)} · آخرین تحلیل: ${fmtDate(a.last_analysis)}`;
+  }catch(e){ document.getElementById('mktStatusLine').textContent = 'جدول‌های مارکتینگ هنوز راه‌اندازی نشدن'; }
+}
+
+function fillMarketingSettings(cfg){
+  document.getElementById('mktAutoEnabled').checked = !!cfg.auto_enabled;
+  document.getElementById('mktAnalyzeWeekday').value = cfg.analyze_weekday || 1;
+  document.getElementById('mktAutoDrafts').checked = !!cfg.auto_create_drafts;
+  document.getElementById('mktAutoCaptions').checked = !!cfg.auto_generate_captions;
+  document.getElementById('mktMaxDrafts').value = cfg.max_drafts_per_plan || 5;
+  document.getElementById('mktPeriodDays').value = cfg.period_days || 30;
+  document.getElementById('mktAdBudget').value = cfg.monthly_ad_budget || 0;
+  document.getElementById('mktGoals').value = cfg.goals || '';
+  document.getElementById('mktAudience').value = cfg.audience || '';
+}
+async function saveMarketingConfig(){
+  try{
+    await mktApiPost({
+      action:'save_config',
+      auto_enabled: document.getElementById('mktAutoEnabled').checked,
+      analyze_weekday: parseInt(document.getElementById('mktAnalyzeWeekday').value, 10),
+      auto_create_drafts: document.getElementById('mktAutoDrafts').checked,
+      auto_generate_captions: document.getElementById('mktAutoCaptions').checked,
+      max_drafts_per_plan: parseInt(document.getElementById('mktMaxDrafts').value, 10) || 5,
+      period_days: parseInt(document.getElementById('mktPeriodDays').value, 10) || 30,
+      monthly_ad_budget: parseInt(document.getElementById('mktAdBudget').value, 10) || 0,
+      goals: document.getElementById('mktGoals').value.trim(),
+      audience: document.getElementById('mktAudience').value.trim(),
+    });
+    alert('✅ تنظیمات ذخیره شد');
+  }catch(e){ alert('خطا: '+e.message); }
+}
+
+async function collectMarketingNow(){
+  const btn = document.getElementById('mktCollectBtn');
+  btn.disabled = true; const t = btn.textContent; btn.textContent = '⏳ در حال جمع‌آوری...';
+  document.getElementById('mktActionMsg').textContent = '';
+  try{
+    const res = await mktApiPost({ action:'collect' });
+    document.getElementById('mktActionMsg').innerHTML = '<pre style="white-space:pre-wrap;font-size:11px;color:var(--text2);margin:0">'+escHtml(res.log||'')+'</pre>';
+    refreshMktStatusLine();
+    loadMarketingStats();
+  }catch(e){ document.getElementById('mktActionMsg').innerHTML = '<span style="color:var(--red)">خطا: '+escHtml(e.message)+'</span>'; }
+  btn.disabled = false; btn.textContent = t;
+}
+
+async function analyzeMarketingNow(){
+  if(!confirm('ساخت پلن جدید ممکنه ۱ تا ۳ دقیقه طول بکشه و هزینه‌ی API داره. ادامه بدم؟')) return;
+  const btn = document.getElementById('mktAnalyzeBtn');
+  btn.disabled = true; const t = btn.textContent; btn.textContent = '⏳ در حال تحلیل... (چند دقیقه صبر کن)';
+  document.getElementById('mktActionMsg').textContent = '';
+  try{
+    const res = await mktApiPost({ action:'analyze' });
+    document.getElementById('mktActionMsg').innerHTML = '<span style="color:var(--green)">✅ پلن #'+res.plan_id+' ساخته شد</span>';
+    refreshMktStatusLine();
+    await loadMktPlansList();
+    document.getElementById('mktPlanPicker').value = String(res.plan_id);
+    onMktPlanPick();
+  }catch(e){ document.getElementById('mktActionMsg').innerHTML = '<span style="color:var(--red)">خطا: '+escHtml(e.message)+'</span>'; }
+  btn.disabled = false; btn.textContent = t;
+}
+
+async function loadMarketingStats(){
+  const box = document.getElementById('mktStatsBox');
+  box.innerHTML = '<div class="empty">در حال بارگذاری...</div>';
+  const days = parseInt(document.getElementById('mktStatsDays').value, 10) || 30;
+  try{
+    const res = await mktApiGet('stats', '&days='+days);
+    renderMarketingStats(res.stats);
+  }catch(e){ box.innerHTML = '<div class="empty">خطا: '+escHtml(e.message)+'</div>'; }
+}
+
+function renderMarketingStats(s){
+  const box = document.getElementById('mktStatsBox');
+  if(!s){ box.innerHTML = '<div class="empty">آماری نیست</div>'; return; }
+  const t = s.totals || {};
+  const engRate = t.total_reach ? (t.total_engagement / t.total_reach * 100).toFixed(2) : '0';
+
+  let html = '<div class="kpi-grid">';
+  html += `<div class="kpi-card"><div class="kpi-num">${fmtNum(t.published_count)}</div><div class="kpi-label">پست منتشرشده</div></div>`;
+  html += `<div class="kpi-card"><div class="kpi-num">${fmtNum(t.with_metrics)}</div><div class="kpi-label">دارای آمار</div></div>`;
+  html += `<div class="kpi-card"><div class="kpi-num">${fmtNum(t.total_reach)}</div><div class="kpi-label">مجموع دسترسی</div></div>`;
+  html += `<div class="kpi-card"><div class="kpi-num">${fmtNum(t.total_engagement)}</div><div class="kpi-label">مجموع تعامل</div></div>`;
+  html += `<div class="kpi-card"><div class="kpi-num">${engRate}%</div><div class="kpi-label">نرخ تعامل</div></div>`;
+  html += '</div>';
+
+  if(s.data_gaps && s.data_gaps.length){
+    html += '<div class="warn-box">⚠️ داده‌هایی که نداریم:<br>' + s.data_gaps.map(g=>'• '+escHtml(g)).join('<br>') + '</div>';
+  }
+
+  if(s.platforms){
+    html += '<table class="mtable"><tr><th>پلتفرم</th><th>منتشرشده</th><th>ناموفق</th><th>دسترسی</th><th>تعامل</th></tr>';
+    for(const [p, v] of Object.entries(s.platforms)){
+      if(p === 'etsy'){
+        html += `<tr><td>🛍 اتسی</td><td colspan="2">${fmtNum(v.active_listings)} لیستینگ</td><td>${fmtNum(v.total_views)} بازدید</td><td>${fmtNum(v.total_favorers)} پسندیده</td></tr>`;
+      }else{
+        html += `<tr><td>${mktPlatformLabel[p]||p}</td><td>${fmtNum(v.published)}</td><td>${fmtNum(v.failed)}</td><td>${fmtNum(v.reach)}</td><td>${fmtNum(v.engagement)}</td></tr>`;
+      }
+    }
+    html += '</table>';
+  }
+
+  if(s.accounts && s.accounts.length){
+    html += '<div class="field-label">فالوور/اعضا (تغییر در بازه)</div><table class="mtable"><tr><th>پلتفرم</th><th>معیار</th><th>شروع</th><th>الان</th><th>تغییر</th></tr>';
+    s.accounts.forEach(a=>{
+      html += `<tr><td>${mktPlatformLabel[a.platform]||a.platform}</td><td>${escHtml(a.metric)}</td><td>${fmtNum(a.first)}</td><td>${fmtNum(a.last)}</td><td style="color:${a.change>=0?'var(--green)':'var(--red)'}">${a.change>=0?'+':''}${fmtNum(a.change)}</td></tr>`;
+    });
+    html += '</table>';
+  }
+
+  if(s.categories && s.categories.length){
+    html += '<div class="field-label">عملکرد دسته‌ها</div><table class="mtable"><tr><th>دسته</th><th>منتشر (بازه)</th><th>کل</th><th>پیش‌نویس</th><th>در صف</th><th>میانگین دسترسی</th><th>نرخ تعامل</th></tr>';
+    s.categories.forEach(c=>{
+      html += `<tr><td>${escHtml(c.category)}</td><td>${fmtNum(c.published_in_period)}</td><td>${fmtNum(c.total)}</td><td>${fmtNum(c.draft)}</td><td>${fmtNum(c.queued)}</td><td>${fmtNum(c.avg_reach)}</td><td>${c.engagement_rate}%</td></tr>`;
+    });
+    html += '</table>';
+  }
+
+  if((s.by_weekday && s.by_weekday.length) || (s.by_hour && s.by_hour.length)){
+    const bestWd = [...(s.by_weekday||[])].sort((a,b)=>b.avg_reach-a.avg_reach).slice(0,3);
+    const bestHr = [...(s.by_hour||[])].sort((a,b)=>b.avg_reach-a.avg_reach).slice(0,3);
+    html += '<div class="field-label">بهترین روز/ساعت (بر اساس میانگین دسترسی)</div><div style="font-size:12px;color:var(--text2)">';
+    html += 'روزها: ' + (bestWd.length ? bestWd.map(w=>`${weekdayLabel[w.weekday]||w.weekday} (${fmtNum(w.avg_reach)})`).join('، ') : '—') + '<br>';
+    html += 'ساعت‌ها: ' + (bestHr.length ? bestHr.map(h=>`${h.hour}:۰۰ (${fmtNum(h.avg_reach)})`).join('، ') : '—');
+    html += '</div>';
+  }
+
+  if(s.top_posts && s.top_posts.length){
+    html += '<div class="field-label">پست‌های برتر</div><table class="mtable"><tr><th>عنوان</th><th>پلتفرم</th><th>دسترسی</th><th>نرخ تعامل</th></tr>';
+    s.top_posts.forEach(p=>{
+      html += `<tr><td>${escHtml(p.title)}</td><td>${mktPlatformLabel[p.platform]||p.platform}</td><td>${fmtNum(p.reach)}</td><td>${p.engagement_rate}%</td></tr>`;
+    });
+    html += '</table>';
+  }
+
+  box.innerHTML = html;
+}
+
+async function loadMktPlansList(){
+  const picker = document.getElementById('mktPlanPicker');
+  try{
+    const res = await mktApiGet('plans');
+    mktPlansCache = res.plans || [];
+    picker.innerHTML = mktPlansCache.map(p=>`<option value="${p.id}">پلن #${p.id} — ${fmtDate(p.created_at)}${p.applied_at?' ✅':''}</option>`).join('') || '<option value="">پلنی وجود نداره</option>';
+    if(mktPlansCache.length){ picker.value = String(mktPlansCache[0].id); onMktPlanPick(); }
+    else{ document.getElementById('mktPlanBox').innerHTML = '<div class="empty">هنوز پلنی ساخته نشده — «تحلیل و ساخت پلن جدید» رو بزن</div>'; }
+  }catch(e){ picker.innerHTML=''; document.getElementById('mktPlanBox').innerHTML = '<div class="empty">خطا: '+escHtml(e.message)+'</div>'; }
+}
+
+async function onMktPlanPick(){
+  const id = document.getElementById('mktPlanPicker').value;
+  if(!id) return;
+  const box = document.getElementById('mktPlanBox');
+  box.innerHTML = '<div class="empty">در حال بارگذاری...</div>';
+  try{
+    const res = await mktApiPost({ action:'get_plan', plan_id: parseInt(id,10) });
+    mktLatestPlan = res.plan;
+    renderMktPlan(res.plan);
+  }catch(e){ box.innerHTML = '<div class="empty">خطا: '+escHtml(e.message)+'</div>'; }
+}
+
+function renderMktPlan(p){
+  const box = document.getElementById('mktPlanBox');
+  if(!p || !p.plan){ box.innerHTML = '<div class="empty">پلن پیدا نشد</div>'; return; }
+  const plan = p.plan;
+  let html = '';
+  html += `<div class="card"><div style="font-size:13px;line-height:1.9">${escHtml(plan.summary||'')}</div>`;
+  html += `<div style="font-size:11px;color:var(--text3);margin-top:6px">منبع: ${p.trigger_source==='cron'?'خودکار (cron)':'دستی'} · بازه: ${p.period_days} روز · مدل: ${escHtml(p.model||'')}${p.applied_at?' · اعمال‌شده در '+fmtDate(p.applied_at)+' ('+p.drafts_created+' پیش‌نویس)':''}</div></div>`;
+
+  if(plan.warnings && plan.warnings.length){
+    html += '<div class="warn-box">⚠️ ' + plan.warnings.map(w=>escHtml(w)).join('<br>⚠️ ') + '</div>';
+  }
+
+  if(plan.insights && plan.insights.length){
+    html += '<div class="mkt-section-title">🔍 یافته‌ها</div>';
+    plan.insights.forEach(i=>{
+      html += `<div class="card"><b>${escHtml(i.title)}</b><div style="font-size:12.5px;margin-top:4px">${escHtml(i.detail)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">مبنا: ${escHtml(i.evidence)}</div></div>`;
+    });
+  }
+
+  if(plan.goals_next_period && plan.goals_next_period.length){
+    html += '<div class="mkt-section-title">🎯 اهداف دوره‌ی بعد</div><table class="mtable"><tr><th>معیار</th><th>فعلی</th><th>هدف</th></tr>';
+    plan.goals_next_period.forEach(g=>{ html += `<tr><td>${escHtml(g.metric)}</td><td>${escHtml(g.current)}</td><td>${escHtml(g.target)}</td></tr>`; });
+    html += '</table>';
+  }
+
+  if(plan.content_mix && plan.content_mix.length){
+    html += '<div class="mkt-section-title">📦 ترکیب محتوا</div>';
+    plan.content_mix.forEach(c=>{
+      html += `<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span>${escHtml(c.category)}</span><span>${c.share_percent}%</span></div><div class="bar-track"><div class="bar-fill" style="width:${c.share_percent}%"></div></div><div style="font-size:11px;color:var(--text3);margin-top:2px">${escHtml(c.reason)}</div></div>`;
+    });
+  }
+
+  if(plan.posting_schedule && plan.posting_schedule.length){
+    html += '<div class="mkt-section-title">🗓 برنامه‌ی زمانی انتشار</div><table class="mtable"><tr><th>روز</th><th>ساعت</th><th>پلتفرم‌ها</th><th>دلیل</th></tr>';
+    plan.posting_schedule.forEach(s=>{
+      html += `<tr><td>${weekdayLabel[s.weekday]||s.weekday}</td><td>${escHtml(s.time)}</td><td>${(s.platforms||[]).map(pl=>mktPlatformLabel[pl]||pl).join('، ')}</td><td>${escHtml(s.reason)}</td></tr>`;
+    });
+    html += '</table>';
+  }
+
+  if(plan.topic_ideas && plan.topic_ideas.length){
+    html += '<div class="mkt-section-title">💡 پیشنهاد موضوع</div><table class="mtable"><tr><th>عنوان</th><th>دسته</th><th>پلتفرم</th><th>زمان</th><th>هدف</th></tr>';
+    plan.topic_ideas.forEach(t=>{
+      html += `<tr><td>${escHtml(t.title)}</td><td>${escHtml(t.category)}</td><td>${(t.platforms||[]).map(pl=>mktPlatformLabel[pl]||pl).join('، ')}</td><td>${weekdayLabel[t.weekday]||t.weekday} ${escHtml(t.time)}</td><td>${escHtml(t.goal)}</td></tr>`;
+    });
+    html += '</table>';
+    if(p.applied_at){
+      html += '<div style="font-size:12px;color:var(--green);margin-top:8px">✅ این پلن قبلاً به تقویم اضافه شده ('+p.drafts_created+' پیش‌نویس)</div>';
+    }else{
+      html += `<div style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <label style="font-size:12px;display:flex;align-items:center;gap:5px"><input type="checkbox" id="mktGenCaptionsOnApply" checked> همچنین تولید خودکار کپشن</label>
+        <button class="btn btn-green btn-sm" onclick="applyMktPlan(${p.id})">➕ افزودن همه‌ی موضوع‌ها به تقویم</button>
+      </div>`;
+    }
+  }
+
+  if(plan.ad_recommendations && plan.ad_recommendations.length){
+    html += '<div class="mkt-section-title">📢 پیشنهادهای تبلیغاتی <span style="font-size:10.5px;font-weight:400;color:var(--text3)">(فقط پیشنهاد — اجرای دستی توسط خودت)</span></div>';
+    plan.ad_recommendations.forEach(a=>{
+      html += `<div class="card"><b>${escHtml(a.channel)}</b> — ${escHtml(a.objective)}<div style="font-size:12px;color:var(--text2);margin-top:4px">مخاطب: ${escHtml(a.audience)} · بودجه: $${fmtNum(a.budget)} برای ${a.duration_days} روز · معیار موفقیت: ${escHtml(a.success_metric)}</div><div style="font-size:11.5px;color:var(--text3);margin-top:4px">${escHtml(a.rationale)}</div></div>`;
+    });
+  }
+
+  if(plan.experiments && plan.experiments.length){
+    html += '<div class="mkt-section-title">🧪 آزمایش‌های پیشنهادی</div>';
+    plan.experiments.forEach(e=>{
+      html += `<div class="card"><b>${escHtml(e.hypothesis)}</b><div style="font-size:12px;margin-top:4px">${escHtml(e.how)}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">معیار: ${escHtml(e.metric)}</div></div>`;
+    });
+  }
+
+  box.innerHTML = html;
+}
+
+async function applyMktPlan(planId){
+  const genCaptions = document.getElementById('mktGenCaptionsOnApply')?.checked;
+  if(!confirm('همه‌ی موضوع‌های این پلن به‌صورت پیش‌نویس به تقویم اضافه می‌شن' + (genCaptions?' و کپشن‌شون هم خودکار ساخته می‌شه':'') + '. ادامه بدم؟')) return;
+  try{
+    const res = await mktApiPost({ action:'apply', plan_id: planId, generate_captions: !!genCaptions });
+    alert('✅ '+res.drafts_created+' پیش‌نویس ساخته شد');
+    await loadMktPlansList();
+    document.getElementById('mktPlanPicker').value = String(planId);
+    onMktPlanPick();
+    loadList();
+  }catch(e){ alert('خطا: '+e.message); }
+}
+
 // اگه نشست از قبل معتبره، مستقیم برو تو
 (async function init(){
   try{
@@ -363,6 +752,7 @@ async function retryPlatform(id, platform){
     document.getElementById('loginBox').classList.add('hidden');
     document.getElementById('mainBox').classList.remove('hidden');
     loadList();
+    refreshMktStatusLine();
   }catch(e){ /* نیاز به لاگین داره، همون صفحه‌ی لاگین بمونه */ }
 })();
 </script>

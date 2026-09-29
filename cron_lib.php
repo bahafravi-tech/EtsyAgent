@@ -22,8 +22,8 @@ function runCronOnce(){
       logPublish($item['id'], $p['platform'], $result['ok'], $result['message'] ?? '');
       $summary['details'][] = ['id'=>$item['id'], 'title'=>$item['title'], 'platform'=>$p['platform'], 'ok'=>$result['ok'], 'message'=>$result['message'] ?? ''];
       if($result['ok']){
-        $pdo->prepare("UPDATE content_platforms SET status='published', published_at=NOW() WHERE content_id=? AND platform=?")
-            ->execute([$item['id'], $p['platform']]);
+        $pdo->prepare("UPDATE content_platforms SET status='published', published_at=NOW(), external_id=? WHERE content_id=? AND platform=?")
+            ->execute([$result['external_id'] ?? null, $item['id'], $p['platform']]);
         $anySuccess = true;
         $summary['published']++;
       }else{
@@ -83,7 +83,7 @@ function publishToTelegram($item){
     : ['chat_id'=>$c['TELEGRAM_CHAT_ID'], 'text'=>$caption];
   $res = relayFetch($url, 'POST', ['Content-Type'=>'application/json'], json_encode($body));
   $data = json_decode($res['body'] ?? '', true);
-  if($res['ok'] && !empty($data['ok'])) return ['ok'=>true];
+  if($res['ok'] && !empty($data['ok'])) return ['ok'=>true, 'external_id'=>$data['result']['message_id'] ?? null];
   return ['ok'=>false, 'message'=>$data['description'] ?? ($res['body'] ?? 'خطای نامشخص')];
 }
 
@@ -150,7 +150,7 @@ function publishToInstagram($item){
     'creation_id' => $finalContainerId, 'access_token' => $token,
   ]));
   $data2 = json_decode($res2['body'] ?? '', true);
-  if($res2['ok'] && !empty($data2['id'])) return ['ok'=>true];
+  if($res2['ok'] && !empty($data2['id'])) return ['ok'=>true, 'external_id'=>$data2['id']];
   return ['ok'=>false, 'message'=>$data2['error']['message'] ?? ($res2['body'] ?? 'خطا در انتشار')];
 }
 
@@ -169,6 +169,6 @@ function publishToPinterestPlatform($item){
   ]);
   $res = relayFetch($url, 'POST', ['Content-Type'=>'application/json', 'Authorization'=>'Bearer '.$c['PINTEREST_ACCESS_TOKEN']], $body);
   $data = json_decode($res['body'] ?? '', true);
-  if($res['ok'] && !empty($data['id'])) return ['ok'=>true];
+  if($res['ok'] && !empty($data['id'])) return ['ok'=>true, 'external_id'=>$data['id']];
   return ['ok'=>false, 'message'=>$data['message'] ?? ($res['body'] ?? 'خطای نامشخص')];
 }
