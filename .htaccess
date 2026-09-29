@@ -1,3 +1,3 @@
-<FilesMatch "^(config|config\.example|db|lib_generate|lib_marketing|cron_publish|cron_marketing|cron_lib|schema|schema_marketing)\.(php|sql)$">
+<FilesMatch "^(config|config\.example|db|lib_generate|lib_marketing|cron_publish|cron_marketing|cron_lib|schema|schema_marketing|deploy_webhook_config|deploy_webhook_config\.example)\.(php|sql)$">
   Require all denied
 </FilesMatch>

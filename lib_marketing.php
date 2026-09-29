@@ -144,21 +144,29 @@ function fetchAccountMetrics($platform){
   return [];
 }
 
-// آمار لیستینگ‌های Etsy — فقط با App API Key (بدون OAuth)، بازدید + پسندیده
+// آمار لیستینگ‌های Etsy — تلاش با App API Key تنها (بدون OAuth)
+// نکته: Etsy این مسیرِ بدون OAuth رو از پشتِ Cloudflare Worker (رله) مسدود می‌کنه (۴۰۳، سیستم ضدربات) —
+// این تابع فقط به‌عنوان تلاش دومه؛ مسیر اصلی submitEtsyListingMetrics()‌ست که از مرورگر کاربر
+// (با توکن OAuth موجود) صدا زده می‌شه، چون درخواست‌های OAuth‌دار از همین رله مشکلی ندارن.
 function fetchEtsyListingMetrics(){
   $c = cfg();
   if(empty($c['ETSY_API_KEY']) || empty($c['ETSY_SHOP_ID'])){
     throw new Exception('ETSY_API_KEY یا ETSY_SHOP_ID توی config.php تنظیم نشده');
   }
   $url = "https://openapi.etsy.com/v3/application/shops/{$c['ETSY_SHOP_ID']}/listings/active?limit=100";
-  // openapi.etsy.com هم مثل api.etsy.com مشمول بلاک تحریمی روی هاست‌های ایرانه — باید از رله رد بشه
   $res = relayFetch($url, 'GET', ['x-api-key'=>$c['ETSY_API_KEY']]);
   $data = json_decode($res['body'] ?? '', true);
   if(!$res['ok'] || !isset($data['results'])) throw new Exception('پاسخ نامعتبر از Etsy: '.substr($res['body']??'',0,200));
+  return submitEtsyListingMetrics($data['results']);
+}
 
+// آمار لیستینگ‌های Etsy — از مرورگر کاربر می‌رسه (با OAuth، چون مسیر بدون‌OAuth رو Etsy مسدود می‌کنه)
+// $listings: آرایه‌ای از {listing_id, views, num_favorers, title} — دقیقاً همون شکل results پاسخ Etsy
+function submitEtsyListingMetrics($listings){
   $count=0; $totalViews=0; $totalFav=0;
-  foreach($data['results'] as $listing){
-    $lid = (string)$listing['listing_id'];
+  foreach($listings as $listing){
+    $lid = (string)($listing['listing_id'] ?? '');
+    if(!$lid) continue;
     $views = (int)($listing['views'] ?? 0);
     $fav = (int)($listing['num_favorers'] ?? 0);
     db()->prepare('INSERT INTO marketing_post_metrics (content_id, platform, external_id, views, likes, raw_json, fetched_at)

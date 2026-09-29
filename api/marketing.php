@@ -77,6 +77,20 @@ if($method === 'POST'){
       }
       break;
 
+    // آمار لیستینگ‌های Etsy که از مرورگر کاربر (با OAuth موجود) گرفته شده —
+    // چون مسیر بدون‌OAuth سمت سرور رو Etsy مسدود می‌کنه (۴۰۳ ضدربات)
+    case 'submit_etsy_metrics':
+      try{
+        $listings = $input['listings'] ?? [];
+        if(!is_array($listings)) jsonResponse(['ok'=>false, 'error'=>'listings نامعتبر'], 400);
+        $result = submitEtsyListingMetrics($listings);
+        setSetting('marketing_last_collect', date('c'));
+        jsonResponse(['ok'=>true] + $result);
+      }catch(Throwable $e){
+        jsonResponse(['ok'=>false, 'error'=>$e->getMessage()], 500);
+      }
+      break;
+
     case 'analyze':
       try{
         $planId = runAnalysis('manual');

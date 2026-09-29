@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.5.0 -->
+<!-- APP_VERSION: 1.5.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v99</div>
+        <div class="logo-badge">v100</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · بخش «بازاریابی خودکار» به‌صورت کامل داخل همین اپ اضافه شد</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · آمار بازدید/پسندیده‌ی Etsy الان از مرورگر (با OAuth) گرفته می‌شه، نه از سرور</div>
     </div>
   </div>
   <div class="header-actions">
@@ -1031,10 +1031,12 @@ margin:0;background:var(--paper);color:var(--ink);
         <div><div class="card-title">⚡ اقدامات</div><div class="card-subtitle" id="mktLastRuns">—</div></div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <button class="btn btn-secondary btn-sm" id="mktCollectBtn" onclick="collectMarketingNow()">📥 جمع‌آوری آمار الان</button>
+        <button class="btn btn-secondary btn-sm" id="mktCollectBtn" onclick="collectMarketingNow()">📥 جمع‌آوری آمار سوشال</button>
+        <button class="btn btn-secondary btn-sm" id="mktEtsyCollectBtn" onclick="collectEtsyMetricsFromBrowser()">🛍 دریافت آمار Etsy (از این مرورگر)</button>
         <button class="btn btn-primary btn-sm" id="mktAnalyzeBtn" onclick="analyzeMarketingNow()">🧠 تحلیل و ساخت پلن جدید</button>
         <span style="font-size:11px;color:var(--text3)">تحلیل ممکنه ۱ تا ۳ دقیقه طول بکشه — صبر کن</span>
       </div>
+      <div style="font-size:10.5px;color:var(--text3);margin-top:6px">💡 آمار بازدید/پسندیده‌ی Etsy رو باید از همین مرورگر بگیری (دکمه‌ی «دریافت آمار Etsy») — چون Etsy درخواست‌های سرور بدون OAuth رو مسدود می‌کنه.</div>
       <div id="mktActionMsg" style="font-size:12px;margin-top:10px"></div>
     </div>
 
@@ -3100,6 +3102,29 @@ async function collectMarketingNow(){
   }catch(e){
     document.getElementById('mktActionMsg').innerHTML = '<span style="color:var(--red)">خطا: '+escHtml(e.message)+'</span>';
     log('✗ خطا در جمع‌آوری آمار بازاریابی: '+e.message,'err');
+  }
+  btn.disabled = false; btn.textContent = t;
+}
+
+async function collectEtsyMetricsFromBrowser(){
+  if(!S.etsyOAuthToken){ alert('اول توی تنظیمات «اتصال به Etsy» (OAuth) رو انجام بده'); nav('settings'); return; }
+  const btn = document.getElementById('mktEtsyCollectBtn');
+  btn.disabled = true; const t = btn.textContent; btn.textContent = '⏳ در حال دریافت از Etsy...';
+  document.getElementById('mktActionMsg').textContent = '';
+  try{
+    const shopId = await resolveEtsyShopId();
+    // این مسیر (بازدید/پسندیده‌ی لیستینگ‌ها) با OAuth از همین مرورگر گرفته می‌شه، نه از سرور —
+    // چون Etsy درخواست‌های بدون OAuth از IPهای دیتاسنتری (مثل رله) رو با ۴۰۳ مسدود می‌کنه
+    const data = await etsyApiGet(`https://openapi.etsy.com/v3/application/shops/${shopId}/listings/active?limit=100`, { 'Authorization': `Bearer ${S.etsyOAuthToken}` });
+    const listings = (data.results||[]).map(l=>({ listing_id: l.listing_id, views: l.views||0, num_favorers: l.num_favorers||0, title: l.title||'' }));
+    const res = await mktApiPost({ action:'submit_etsy_metrics', listings });
+    document.getElementById('mktActionMsg').innerHTML = `<span style="color:var(--green)">✅ آمار ${res.count} لیستینگ Etsy ثبت شد (بازدید کل: ${mktFmtNum(res.total_views)}، پسندیده کل: ${mktFmtNum(res.total_favorers)})</span>`;
+    log(`📥 آمار ${res.count} لیستینگ Etsy از مرورگر ثبت شد`,'ok');
+    refreshMktLastRuns();
+    loadMarketingStats();
+  }catch(e){
+    document.getElementById('mktActionMsg').innerHTML = '<span style="color:var(--red)">خطا: '+escHtml(e.message)+'</span>';
+    log('✗ خطا در دریافت آمار Etsy از مرورگر: '+e.message,'err');
   }
   btn.disabled = false; btn.textContent = t;
 }
