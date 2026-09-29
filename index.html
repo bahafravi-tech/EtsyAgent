@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.5.1 -->
+<!-- APP_VERSION: 1.5.2 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v100</div>
+        <div class="logo-badge">v101</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · آمار بازدید/پسندیده‌ی Etsy الان از مرورگر (با OAuth) گرفته می‌شه، نه از سرور</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · دریافت آمار Etsy حالا توکن منقضی‌شده رو خودکار تمدید می‌کنه</div>
     </div>
   </div>
   <div class="header-actions">
@@ -3106,6 +3106,21 @@ async function collectMarketingNow(){
   btn.disabled = false; btn.textContent = t;
 }
 
+async function fetchEtsyActiveListingsForMetrics(shopId, _isRetry){
+  try{
+    return await etsyApiGet(`https://openapi.etsy.com/v3/application/shops/${shopId}/listings/active?limit=100`, { 'Authorization': `Bearer ${S.etsyOAuthToken}` });
+  }catch(e){
+    // توکن منقضی شده — یه‌بار با توکن تازه (از refresh_token) دوباره امتحان کن
+    if(!_isRetry && /invalid_token/i.test(e.message)){
+      log('🔄 توکن Etsy منقضی شده — در حال تمدید خودکار...','warn');
+      const refreshed = await refreshEtsyOAuthToken();
+      if(refreshed) return await fetchEtsyActiveListingsForMetrics(shopId, true);
+      throw new Error('توکن Etsy منقضی شده و تمدید خودکار هم شکست خورد — از تنظیمات دوباره به Etsy وصل شو');
+    }
+    throw e;
+  }
+}
+
 async function collectEtsyMetricsFromBrowser(){
   if(!S.etsyOAuthToken){ alert('اول توی تنظیمات «اتصال به Etsy» (OAuth) رو انجام بده'); nav('settings'); return; }
   const btn = document.getElementById('mktEtsyCollectBtn');
@@ -3115,7 +3130,7 @@ async function collectEtsyMetricsFromBrowser(){
     const shopId = await resolveEtsyShopId();
     // این مسیر (بازدید/پسندیده‌ی لیستینگ‌ها) با OAuth از همین مرورگر گرفته می‌شه، نه از سرور —
     // چون Etsy درخواست‌های بدون OAuth از IPهای دیتاسنتری (مثل رله) رو با ۴۰۳ مسدود می‌کنه
-    const data = await etsyApiGet(`https://openapi.etsy.com/v3/application/shops/${shopId}/listings/active?limit=100`, { 'Authorization': `Bearer ${S.etsyOAuthToken}` });
+    const data = await fetchEtsyActiveListingsForMetrics(shopId);
     const listings = (data.results||[]).map(l=>({ listing_id: l.listing_id, views: l.views||0, num_favorers: l.num_favorers||0, title: l.title||'' }));
     const res = await mktApiPost({ action:'submit_etsy_metrics', listings });
     document.getElementById('mktActionMsg').innerHTML = `<span style="color:var(--green)">✅ آمار ${res.count} لیستینگ Etsy ثبت شد (بازدید کل: ${mktFmtNum(res.total_views)}، پسندیده کل: ${mktFmtNum(res.total_favorers)})</span>`;
