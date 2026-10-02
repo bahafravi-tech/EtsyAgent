@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.7.2 -->
+<!-- APP_VERSION: 1.7.3 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v106</div>
+        <div class="logo-badge">v107</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · استودیوی فروشگاه جدید دیگه داده‌ی فروشگاه قبلی رو نشون نمی‌ده (داده‌ی قدیمی به فروشگاه اصلی برگشت)</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · استودیو: محصول‌های کپی‌شده از فروشگاه اصلی توی فروشگاه جدید پاک می‌شن + دکمه‌ی «خالی کردن استودیوی این فروشگاه»</div>
     </div>
   </div>
   <div class="header-actions">
@@ -1609,6 +1609,7 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
     <div class="plist" id="st-plist"></div>
     <button class="ghost mini" id="st-btnImport">بازخوانی پشتیبان</button>
     <button class="ghost mini" id="st-btnBackup">پشتیبان کامل</button>
+    <button class="ghost mini" id="st-btnReset" style="color:var(--cut)">خالی کردن استودیوی این فروشگاه</button>
     <input type="file" id="st-importFile" accept="application/json" hidden>
     <p class="help" style="font-size:11.5px;color:var(--ink-2);margin-top:14px">
       همه‌چیز روی همین کامپیوتر و داخل مرورگر می‌ماند. فایل‌ها و تصاویر در IndexedDB نگه‌داری می‌شوند،
@@ -6745,11 +6746,18 @@ function load(){
   const isOwner = !!first && first.id === S.shopId;
   const own = readState(key);
   if(own){
-    // نسخه‌ی دست‌نخورده‌ی داده‌ی قدیمی که قبلاً اشتباهی توی یه فروشگاه غیراصلی کپی شده — دور ریخته می‌شه
-    const strayCopy = !isOwner && legacy && JSON.stringify(own) === JSON.stringify(legacy);
+    // محصول‌هایی که از داده‌ی قدیمیِ فروشگاه اصلی اشتباهی توی یه فروشگاه غیراصلی کپی شدن (همون شناسه‌ی محصول) — حذف می‌شن
+    // (حتی اگه بعد از کپی شدن کمی ویرایش شده باشن؛ محصول‌هایی که خودِ این فروشگاه ساخته می‌مونن)
+    if(!isOwner && legacy){
+      const legacyIds = new Set(legacy.products.map(p => p.id));
+      const kept = own.products.filter(p => !legacyIds.has(p.id));
+      if(kept.length !== own.products.length){
+        if(!kept.length){ const b = blankProduct(); return {products:[b], active:b.id}; }
+        return {products:kept, active: kept.some(p => p.id === own.active) ? own.active : kept[0].id};
+      }
+    }
     // فروشگاه اصلی که فقط یه محصول خالیِ خودکار داره و داده‌ی قدیمی هنوز هست — داده‌ی قدیمی برمی‌گرده
-    const ownerNeedsLegacy = isOwner && legacy && isPristine(own);
-    if(!strayCopy && !ownerNeedsLegacy) return own;
+    if(!(isOwner && legacy && isPristine(own))) return own;
   }
   if(isOwner && legacy) return JSON.parse(JSON.stringify(legacy));
   const p = blankProduct();
@@ -7144,6 +7152,21 @@ $("st-btnBackup").onclick = () => {
   download(new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),
     "beguchee-studio-backup.json");
   toast("پشتیبان متنی ذخیره شد. فایل‌ها و تصویرها داخل مرورگر می‌مانند.");
+};
+$("st-btnReset").onclick = async () => {
+  if(!confirm("همه‌ی محصول‌های استودیوی «" + (S.shopName || "این فروشگاه") + "» پاک بشن و از یه محصول خالی شروع بشه؟ (فقط همین فروشگاه، برگشت‌ناپذیر)")) return;
+  // فایل‌هایی که توی استودیوی یه فروشگاه دیگه (یا داده‌ی قدیمی) هم ازشون استفاده شده پاک نمی‌شن
+  const usedElsewhere = new Set();
+  Object.keys(localStorage).filter(k => (k === LS || k.startsWith(LS + ".")) && k !== curKey).forEach(k => {
+    const st = readState(k); if(!st) return;
+    st.products.forEach(p => ["files","images"].forEach(kind => Object.values(p[kind]||{}).forEach(f => { if(f && f.key) usedElsewhere.add(f.key); })));
+  });
+  for(const p of state.products)
+    for(const kind of ["files","images"])
+      for(const k in p[kind]) if(!usedElsewhere.has(p[kind][k].key)) await blobDel(p[kind][k].key);
+  const b = blankProduct();
+  state = {products:[b], active:b.id};
+  save(); renderAll(); toast("استودیوی این فروشگاه خالی شد.");
 };
 $("st-btnImport").onclick = () => $("st-importFile").click();
 $("st-importFile").onchange = e => {
