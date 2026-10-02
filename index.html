@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.7.5 -->
+<!-- APP_VERSION: 1.8.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -428,6 +428,11 @@ header {
   cursor:pointer;color:var(--text2);transition:all .15s;
 }
 .pd-copy:hover { background:var(--orange-light);color:var(--orange);border-color:var(--orange-mid); }
+/* هدر هر بخش: عنوان بخش یه طرف، دکمه‌ی کپی همون‌جا کنارش (قبلاً position:absolute باعث می‌شد همه‌ی دکمه‌های کپی روی هم توی گوشه‌ی کارت بیفتن) */
+.pd-section-header { display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px; }
+.pd-section-header .pd-label { margin-bottom:0; }
+.pd-section-header .pd-copy { position:static;padding:4px 10px;font-size:11px;font-family:inherit; }
+.pd-section-header .pd-copy.copied { background:var(--green-light);color:var(--green);border-color:#bbf7d0; }
 .pd-tags { display:flex;flex-wrap:wrap;gap:6px; }
 .pd-tag {
   background:var(--surface3);border:1px solid var(--border);
@@ -680,9 +685,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v109</div>
+        <div class="logo-badge">v111</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · دکمه‌ی کپی برای توضیحات: توی استودیو + توضیحات جدیدِ نتیجه‌ی بهینه‌سازی</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · دکمه‌های کپی جزئیات محصول درست جاشون افتاد + جزئیات محصول توی صفحه‌ی بهینه‌سازی هم باز می‌شه</div>
     </div>
   </div>
   <div class="header-actions">
@@ -1740,6 +1745,11 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
         <h3>متن جایگزین تصویرها</h3>
         <p class="help">هر خط برای یک تصویر، به ترتیب بالا. اتسی برای هر تصویر تا ۲۵۰ کاراکتر می‌پذیرد.</p>
         <label class="fld"><span>متن ALT <span class="cnt" id="st-altCnt"></span></span><textarea data-k="alt" style="min-height:190px"></textarea></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+          <button type="button" class="ghost mini" data-copy="alt">📋 کپی همه‌ی ALTها</button>
+          <button type="button" class="ghost mini" id="st-btnAutoAlt">✨ پر کردن خودکار ALT برای همه‌ی تصویرها</button>
+        </div>
+        <p class="help" style="margin-top:8px">هر تصویری که انتخاب کنید، ALT خطِ هم‌شماره‌اش به‌طور خودکار روی همون تصویر می‌نشینه (زیر تصویر دیده می‌شه) و موقع «ساخت بسته اتسی» داخل خودِ فایل تصویر (JPG/PNG) هم جاسازی می‌شه.</p>
       </div>
     </section>
 
@@ -1749,18 +1759,21 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
         <h3>عنوان و توضیحات</h3>
         <p class="help">عنوان تا ۱۴۰ کاراکتر جا دارد؛ چهل کاراکتر نخست مهم‌ترین بخش است چون در نتایج جست‌وجو دیده می‌شود.</p>
         <label class="fld"><span>عنوان لیستینگ <span class="cnt" id="st-titleCnt"></span></span><input type="text" data-k="title"></label>
+        <button type="button" class="ghost mini" data-copy="title" style="margin-top:6px">📋 کپی عنوان</button>
         <div style="margin-top:14px">
           <label class="fld"><span>توضیحات <span class="cnt" id="st-descCnt"></span></span><textarea data-k="description" style="min-height:220px"></textarea></label>
-          <button type="button" class="ghost mini" id="st-btnCopyDesc" style="margin-top:6px">📋 کپی توضیحات</button>
+          <button type="button" class="ghost mini" data-copy="description" style="margin-top:6px">📋 کپی توضیحات</button>
         </div>
       </div>
       <div class="block">
         <h3>تگ‌ها و جنس</h3>
         <p class="help">دقیقاً سیزده تگ، هرکدام حداکثر بیست کاراکتر. تگ‌های بیش از حد مجاز با رنگ مشخص می‌شوند.</p>
         <label class="fld"><span>تگ‌ها، جدا شده با ویرگول <span class="cnt" id="st-tagCnt"></span></span><textarea data-k="tags" style="min-height:80px"></textarea></label>
+        <button type="button" class="ghost mini" data-copy="tags" style="margin-top:6px">📋 کپی تگ‌ها</button>
         <div id="st-tagWarn" class="help" style="color:var(--cut);font-size:12px"></div>
         <div style="margin-top:14px">
           <label class="fld"><span>جنس‌ها، حداکثر سیزده مورد <span class="cnt" id="st-matCnt"></span></span><input type="text" data-k="materials"></label>
+          <button type="button" class="ghost mini" data-copy="materials" style="margin-top:6px">📋 کپی جنس‌ها</button>
         </div>
       </div>
     </section>
@@ -4453,6 +4466,7 @@ function renderSEOList(){
           <span>📝 ${p.TITLE.length} کاراکتر</span>
           ${p.PRICE?`<span>💰 $${p.PRICE}</span>`:''}
           ${a?(a.issues||[]).slice(0,1).map(is=>`<span style="color:${is.type==='error'?'var(--red)':is.type==='warn'?'var(--yellow)':'var(--green)'}">${is.text}</span>`).join(''):''}
+          <span style="color:var(--orange)">▾ جزئیات و کپی</span>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
@@ -4484,18 +4498,21 @@ function renderSEOList(){
             :`<button class="btn btn-green btn-sm" onclick="sendOptimizedToEtsy(${i})" title="جایگزینی این لیستینگ روی Etsy">🔁</button>`)
         ):(S.etsyApiKey&&!p._listing_id?`<button class="btn btn-green btn-sm" onclick="etsyUploadListing(S.products[${i}])" title="آپلود به اتسی (لیستینگ جدید)">📤</button>`:'')}
       </div></div>`;
-    // اضافه کردن click برای dropdown
-    (function(itemIdx, itemEl){
-      itemEl.addEventListener('click', function(e){
-        if(e.target.closest('button')||e.target.closest('a')||e.target.closest('[onclick]')) return;
-        const existing=this.querySelector('.product-dropdown');
-        if(existing){ existing.classList.toggle('open'); return; }
-        const dd=buildProductDropdown(itemIdx);
-        this.appendChild(dd);
-        setTimeout(()=>dd.classList.add('open'),10);
-      });
-    })(i, d);
+    attachProductDropdown(d, i);
     el.appendChild(d);
+  });
+}
+
+// کلیک روی ردیف محصول (توی لیست SEO و بهینه‌سازی) جزئیاتش رو با دکمه‌های کپی باز/بسته می‌کنه
+function attachProductDropdown(itemEl, itemIdx){
+  itemEl.addEventListener('click', function(e){
+    if(e.target.closest('.product-dropdown')) return; // کلیک/انتخاب متن داخل جزئیات نباید بسته‌ش کنه
+    if(e.target.closest('button')||e.target.closest('a')||e.target.closest('[onclick]')) return;
+    const existing=this.querySelector('.product-dropdown');
+    if(existing){ existing.classList.toggle('open'); return; }
+    const dd=buildProductDropdown(itemIdx);
+    this.appendChild(dd);
+    setTimeout(()=>dd.classList.add('open'),10);
   });
 }
 
@@ -4530,6 +4547,13 @@ function buildProductDropdown(idx){
       <div class="pd-tags">${tags.map((t,ti)=>`<span class="pd-tag ${t.trim().length>20?'tag-toolong':''}" onclick="navigator.clipboard.writeText('${t.replace(/'/g,"\\'")}').then(()=>{this.style.background='var(--green-light)';this.style.color='var(--green)';setTimeout(()=>{this.style.background='';this.style.color='';},1000)})" title="${t.trim().length>20?'⚠️ '+t.trim().length+' کاراکتر — بیش از حد مجاز (20)':'کلیک برای کپی'}">${t}${t.includes('_')?'<span style="color:var(--red)"> _</span>':''}${t.trim().length>20?'<span style="font-size:9px;font-weight:700"> '+t.trim().length+'!</span>':''}</span>`).join('')}
         ${tags.length<13?`<span class="pd-tag" style="border-style:dashed;color:var(--red)">+${13-tags.length} تگ کم</span>`:''}
       </div>
+    </div>
+    <div class="pd-section">
+      <div class="pd-section-header">
+        <div class="pd-label">🧵 متریال (Materials) — ${parseMaterials(p.MATERIALS).length}/13</div>
+        <button class="pd-copy" onclick="copyFieldClean('pdMat${idx}',this)">📋 کپی</button>
+      </div>
+      <div class="pd-value" id="pdMat${idx}" style="font-size:12px">${escHtml(parseMaterials(p.MATERIALS).join(', ')||'—')}</div>
     </div>
     <div class="pd-section">
       <div class="pd-section-header">
@@ -4700,7 +4724,7 @@ function renderOptimizeList(){
       ${imgUrl?`<img src="${imgUrl}" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0;border:1px solid var(--border)">`:`<div style="width:44px;height:44px;border-radius:8px;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📦</div>`}
       <div class="product-info">
         <div class="product-name">${S.optimized[idx]?'<span style="color:var(--green);font-size:10px;font-weight:700;margin-left:4px">✅</span>':''}${p.TITLE}</div>
-        <div class="product-meta">${a?(a.issues||[]).slice(0,2).map(is=>`<span style="color:${is.type==='error'?'var(--red)':is.type==='warn'?'#d97706':'var(--green)'}">${is.text}</span>`).join(' · '):'<span style="color:var(--text3)">آنالیز نشده</span>'}</div>
+        <div class="product-meta">${a?(a.issues||[]).slice(0,2).map(is=>`<span style="color:${is.type==='error'?'var(--red)':is.type==='warn'?'#d97706':'var(--green)'}">${is.text}</span>`).join(' · '):'<span style="color:var(--text3)">آنالیز نشده</span>'} <span style="color:var(--orange)">· ▾ جزئیات و کپی</span></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
         ${S.optimizing&&S.optimizing[idx]
@@ -4723,6 +4747,7 @@ function renderOptimizeList(){
         ):''}
       </div>
     </div>`;
+    attachProductDropdown(d, idx);
     el.appendChild(d);
   });
 }
@@ -4741,6 +4766,7 @@ Write new_title, new_tags, and new_description in natural, native ${S.contentLan
 CURRENT LISTING:
 Title (${titleLen} chars): ${p.TITLE}
 Tags: ${p.TAGS}
+Materials: ${p.MATERIALS||'none'}
 Description: ${(p.DESCRIPTION||'').slice(0,300)}
 
 TITLE REQUIREMENT: ${titleNote}
@@ -4764,11 +4790,12 @@ BANNED IN TITLE: premium, beautiful, amazing, best, gorgeous, luxury, stunning, 
 - Examples OK: "gift box svg"(12✅) "laser cut files"(15✅) "cricut templates"(16✅)
 - Examples FAIL: "laser cutting templates"(23❌) "svg files"+"svg templates"(same intent❌)
 
+MATERIALS RULES: 5-13 short items (each max 45 characters, letters/numbers/spaces/hyphens only, no duplicates) naming what the product is made from or meant to be cut/used with (e.g. cardstock, kraft paper, vinyl, wood, acrylic, felt). Improve/complete the current materials, don't invent unrelated ones.
 
 Return JSON:
-{"new_title":"expanded keyword-rich title between 120-140 chars","new_tags":["2-3 word tag 1","tag 2","tag 3","tag 4","tag 5","tag 6","tag 7","tag 8","tag 9","tag 10","tag 11","tag 12","tag 13"],"new_description":"original structure preserved with emoji, improved keyword placement in first 160 chars","improvements":["what changed 1","what changed 2","what changed 3"]}`;
+{"new_title":"expanded keyword-rich title between 120-140 chars","new_tags":["2-3 word tag 1","tag 2","tag 3","tag 4","tag 5","tag 6","tag 7","tag 8","tag 9","tag 10","tag 11","tag 12","tag 13"],"new_materials":["cardstock","paper","vinyl"],"new_description":"original structure preserved with emoji, improved keyword placement in first 160 chars","improvements":["what changed 1","what changed 2","what changed 3"]}`;
   try{
-    const text=await callClaude(prompt, 1500);
+    const text=await callClaude(prompt, 1800);
     log("📝 پاسخ بهینه‌سازی: "+text.slice(0,100)+"...","info");
     // پیدا کردن JSON حتی اگر متن اضافه داشته باشد
     let result;
@@ -4780,15 +4807,18 @@ Return JSON:
     }
     if(!result.new_title||!result.new_tags) throw new Error('فرمت پاسخ اشتباه');
     result.new_title=sanitizeEtsyTitle(result.new_title);
+    if(result.new_materials) result.new_materials=sanitizeMaterials(result.new_materials, []);
     S.pendingOpt=result;
     const oldTags=(p.TAGS||'').split(',').filter(Boolean);
+    const oldMats=parseMaterials(p.MATERIALS);
     document.getElementById('optContent').innerHTML=`
       <div class="compare-grid">
         <div class="compare-box"><div class="compare-label old">عنوان قبلی</div><div class="compare-val">${p.TITLE}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${p.TITLE.length} کاراکتر</div></div>
-        <div class="compare-box"><div class="compare-label new">عنوان جدید</div><div class="compare-val new-val">${result.new_title}</div><div style="font-size:11px;color:var(--green);margin-top:4px">${result.new_title.length} کاراکتر</div></div>
+        <div class="compare-box"><div class="compare-label new">عنوان جدید</div><div class="compare-val new-val" id="optNewTitle">${result.new_title}</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px"><span style="font-size:11px;color:var(--green)">${result.new_title.length} کاراکتر</span><button class="btn btn-secondary btn-sm" onclick="copyFieldClean('optNewTitle',this)">📋 کپی</button></div></div>
       </div>
       <div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:6px">تگ‌های قبلی</div><div class="tags">${oldTags.map(t=>`<span class="tag tag-bad">${t.replace(/_/g,' ')}</span>`).join('')}</div></div>
-      <div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:6px">تگ‌های جدید (${result.new_tags.length})</div><div class="tags">${result.new_tags.map(t=>`<span class="tag tag-ok">${t}</span>`).join('')}</div></div>
+      <div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:12px;font-weight:700;color:var(--green)">تگ‌های جدید (${result.new_tags.length})</div><button class="btn btn-secondary btn-sm" onclick="copyFieldClean('optNewTags',this)">📋 کپی همه</button></div><div class="tags">${result.new_tags.map(t=>`<span class="tag tag-ok">${t}</span>`).join('')}</div><div id="optNewTags" style="display:none">${escHtml(result.new_tags.map(t=>String(t).replace(/_/g,' ').trim()).join(','))}</div></div>
+      ${(result.new_materials&&result.new_materials.length)?`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:12px;font-weight:700;color:var(--green)">متریال جدید (${result.new_materials.length}/13)${oldMats.length?` <span style="font-weight:400;color:var(--text3)">— قبلی: ${escHtml(oldMats.join(', '))}</span>`:''}</div><button class="btn btn-secondary btn-sm" onclick="copyFieldClean('optNewMats',this)">📋 کپی</button></div><div class="tags">${result.new_materials.map(m=>`<span class="tag tag-ok">${escHtml(m)}</span>`).join('')}</div><div id="optNewMats" style="display:none">${escHtml(result.new_materials.join(', '))}</div></div>`:''}
       ${result.new_description?`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:12px;font-weight:700">توضیحات جدید (${result.new_description.length} کاراکتر)</div><button class="btn btn-secondary btn-sm" onclick="copyFieldClean('optNewDesc',this)">📋 کپی</button></div><div id="optNewDesc" style="font-size:11.5px;line-height:1.7;white-space:pre-wrap;background:var(--surface3);border-radius:8px;padding:10px;max-height:240px;overflow-y:auto">${escHtml(result.new_description)}</div></div>`:''}
       <div><div style="font-size:12px;font-weight:700;margin-bottom:6px">بهبودها</div>${(result.improvements||[]).map(i=>`<div style="font-size:12px;color:var(--green);margin-bottom:4px">✓ ${i}</div>`).join('')}</div>`;
   }catch(e){
@@ -4838,14 +4868,15 @@ BANNED IN TITLE: premium, beautiful, amazing, best, gorgeous, luxury, stunning, 
 - Examples FAIL: "laser cutting templates"(23❌) "svg files"+"svg templates"(same intent❌)
  Include US/UK/seasonal terms.
 3. DESCRIPTION: KEEP original structure with all emoji (✔ 🔹 📌 etc), bullet points, sections. Only improve first 160 chars for keywords. Keep same length. Do NOT replace with generic text.
+4. MATERIALS: 5-13 short items (each max 45 chars, letters/numbers/spaces/hyphens only, no duplicates) naming what the product is made from or meant to be cut/used with (cardstock, kraft paper, vinyl, wood, acrylic...). Improve/complete the current materials: ${p.MATERIALS||'none'}
 
 Current Tags: ${p.TAGS}
 Description (${fullDesc.length} chars — preserve ALL):
 ${fullDesc}
 
 Return ONLY JSON (no markdown, no explanation):
-{"new_title":"MUST BE 120-140 CHARS — write it fully expanded here","new_tags":["phrase one","phrase two","phrase three","phrase four","phrase five","phrase six","phrase seven","phrase eight","phrase nine","phrase ten","phrase eleven","phrase twelve","phrase thirteen"],"new_description":"preserve original structure+emoji+sections, only optimize first 160 chars for keywords"}`;
-    const text=await callClaude(prompt,1500);
+{"new_title":"MUST BE 120-140 CHARS — write it fully expanded here","new_tags":["phrase one","phrase two","phrase three","phrase four","phrase five","phrase six","phrase seven","phrase eight","phrase nine","phrase ten","phrase eleven","phrase twelve","phrase thirteen"],"new_materials":["cardstock","paper","vinyl"],"new_description":"preserve original structure+emoji+sections, only optimize first 160 chars for keywords"}`;
+    const text=await callClaude(prompt,1800);
     let r;
     try{ r=parseJSON(text); } catch(e){ const m=text.match(/\{[\s\S]*\}/); if(m) r=JSON.parse(m[0]); else throw e; }
     if(r.new_title) S.products[idx].TITLE=sanitizeEtsyTitle(r.new_title);
@@ -4865,6 +4896,7 @@ Return ONLY JSON (no markdown, no explanation):
       log(`tags: ${cleanTags.length}/13`,'ok');
     }
     if(r.new_description) S.products[idx].DESCRIPTION=r.new_description;
+    if(r.new_materials&&r.new_materials.length) S.products[idx].MATERIALS=sanitizeMaterials(r.new_materials, parseMaterials(p.MATERIALS)).join(',');
     S.optimized[idx]=true;
     // آنالیز مجدد محلی با قوانین واقعی
     const newScore=calcLocalScore(S.products[idx]);
@@ -4894,6 +4926,17 @@ Return ONLY JSON (no markdown, no explanation):
 
 // لایه‌ی محافظ سمت کد — صرف‌نظر از این‌که AI دستورات پرامپت رو رعایت کرده یا نه،
 // این تابع تضمین می‌کنه عنوان نهایی قوانین سخت‌گیرانه‌ی اعتبارسنجی Etsy رو نقض نکنه
+// متریال‌های لیستینگ (Materials): حداکثر ۱۳ مورد، هرکدوم حداکثر ۴۵ کاراکتر، فقط حرف/عدد/فاصله/خط‌تیره
+function parseMaterials(str){ return String(str||'').split(/[,;\n]/).map(s=>s.trim()).filter(Boolean); }
+function sanitizeMaterials(list, fallback){
+  const raw=Array.isArray(list)?list:parseMaterials(list);
+  const clean=raw
+    .map(m=>String(m).replace(/[^\p{L}\p{N}\s\-]/gu,'').replace(/\s+/g,' ').trim().slice(0,45))
+    .filter((m,i,a)=>m && a.findIndex(x=>x.toLowerCase()===m.toLowerCase())===i)
+    .slice(0,13);
+  return clean.length?clean:(fallback||[]);
+}
+
 function sanitizeEtsyTitle(title){
   let t=String(title||'').replace(/[$^`.°]/g,'').trim();
   t=t.replace(/^[^a-zA-Z0-9]+/,''); // باید با حرف یا عدد شروع بشه
@@ -4990,6 +5033,8 @@ async function etsyUpdateListing(product, _isRetry){
     tags:(product.TAGS||'').split(',').filter(Boolean).slice(0,13),
     description:product.DESCRIPTION||undefined
   };
+  const mats=sanitizeMaterials(product.MATERIALS,[]);
+  if(mats.length) body.materials=mats;
   try{
     let d;
     if(S.apiRelayUrl){
@@ -5039,6 +5084,7 @@ async function applyOpt(){
   }
   S.products[idx].TAGS=cleanedTags.join(',');
   if(S.pendingOpt.new_description) S.products[idx].DESCRIPTION=S.pendingOpt.new_description;
+  if(S.pendingOpt.new_materials&&S.pendingOpt.new_materials.length) S.products[idx].MATERIALS=sanitizeMaterials(S.pendingOpt.new_materials, parseMaterials(S.products[idx].MATERIALS)).join(',');
   S.optimized[idx]=true;
   // آنالیز محلی فوری با داده جدید
   const np=S.products[idx];
@@ -6806,6 +6852,72 @@ function slug(s){
 const tagList = p => String(p.tags||"").split(/[,\n]/).map(t=>t.trim()).filter(Boolean);
 const matList = p => String(p.materials||"").split(/[,\n]/).map(t=>t.trim()).filter(Boolean);
 const altList = p => String(p.alt||"").split("\n").map(t=>t.trim()).filter(Boolean);
+
+/* ===================== ALT تصویرها: خودکار روی هر تصویر می‌شینه ===================== */
+// ALT پیش‌فرض هر اسلات (انگلیسی، چون اتسی برای جست‌وجو و دسترسی‌پذیری می‌خونه) — خط i ام = تصویر i ام (ترتیب IMG_SLOTS)
+const ALT_DEFAULTS = {
+  hero:     "{NAME} SVG cut file template, finished size {W}x{H}x{D} mm",
+  dims:     "Dimensions diagram of the {NAME} template, {W}x{H}x{D} mm",
+  template: "Cutting template layout of {NAME} in SVG, DXF and PDF",
+  formats:  "Included file formats for {NAME}: SVG, DXF, PDF, AI",
+  machines: "{NAME} template compatible with Cricut, Silhouette and laser cutters",
+  included: "What is included with {NAME}: digital cut files and assembly instructions",
+  finished: "Finished {NAME} gift box made from cardstock",
+  ideas:    "Ideas for using {NAME}: wedding favors, party gifts and packaging",
+  assembly: "Step by step assembly instructions for the {NAME} paper box",
+  promo:    "{NAME} digital download template, instant download"
+};
+const altRaw = p => { const a = String(p.alt||"").split("\n").map(t=>t.trim()); return IMG_SLOTS.map((s,i) => a[i] || ""); };
+const altResolved = p => { const raw = altRaw(p); return IMG_SLOTS.map((s,i) => tokens(p, raw[i] || ALT_DEFAULTS[s.k])); };
+function fillAlt(p, onlyEmpty){
+  const raw = altRaw(p);
+  p.alt = IMG_SLOTS.map((s,i) => (onlyEmpty && raw[i]) ? raw[i] : ALT_DEFAULTS[s.k]).join("\n");
+}
+function xmpPacket(alt){
+  const esc = alt.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  return '<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>'
+    + '<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">'
+    + '<rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:Iptc4xmpCore="http://iptc.org/std/Iptc4xmpCore/1.0/xmlns/">'
+    + '<dc:description><rdf:Alt><rdf:li xml:lang="x-default">' + esc + '</rdf:li></rdf:Alt></dc:description>'
+    + '<Iptc4xmpCore:AltTextAccessibility><rdf:Alt><rdf:li xml:lang="x-default">' + esc + '</rdf:li></rdf:Alt></Iptc4xmpCore:AltTextAccessibility>'
+    + '</rdf:Description></rdf:RDF></x:xmpmeta><?xpacket end="w"?>';
+}
+// متن ALT رو داخل خودِ فایل تصویر جاسازی می‌کنه (JPEG: XMP، PNG: iTXt) — بقیه‌ی فرمت‌ها دست‌نخورده برمی‌گردن
+function embedAlt(u8, alt){
+  if(!alt) return u8;
+  const enc = new TextEncoder();
+  if(u8.length > 4 && u8[0] === 0xFF && u8[1] === 0xD8){
+    const head = enc.encode("http://ns.adobe.com/xap/1.0/\0"), xml = enc.encode(xmpPacket(alt));
+    const len = 2 + head.length + xml.length;
+    if(len > 65535) return u8;
+    let pos = 2;
+    while(pos + 4 <= u8.length && u8[pos] === 0xFF && (u8[pos+1] === 0xE0 || u8[pos+1] === 0xE1)){
+      if(u8[pos+1] === 0xE1 && String.fromCharCode.apply(null, u8.subarray(pos+4, pos+4+28)).indexOf("http://ns.adobe.com/xap/1.0/") === 0) return u8; // XMP از قبل هست
+      pos += 2 + ((u8[pos+2] << 8) | u8[pos+3]);
+    }
+    const seg = new Uint8Array(4 + head.length + xml.length);
+    seg[0] = 0xFF; seg[1] = 0xE1; seg[2] = (len >> 8) & 255; seg[3] = len & 255;
+    seg.set(head, 4); seg.set(xml, 4 + head.length);
+    const out = new Uint8Array(u8.length + seg.length);
+    out.set(u8.subarray(0, pos), 0); out.set(seg, pos); out.set(u8.subarray(pos), pos + seg.length);
+    return out;
+  }
+  if(u8.length > 40 && u8[0] === 0x89 && u8[1] === 0x50 && u8[2] === 0x4E && u8[3] === 0x47 && String.fromCharCode(u8[12], u8[13], u8[14], u8[15]) === "IHDR"){
+    const kw = enc.encode("Description"), txt = enc.encode(alt);
+    const data = new Uint8Array(kw.length + 5 + txt.length);
+    data.set(kw, 0); data.set(txt, kw.length + 5); // بعد از keyword: null، flag، method، lang\0، translated\0 (همه صفر)
+    const td = new Uint8Array(4 + data.length);
+    td.set([0x69,0x54,0x58,0x74], 0); td.set(data, 4); // "iTXt"
+    const crc = crc32(td);
+    const chunk = new Uint8Array(12 + data.length), dv = new DataView(chunk.buffer);
+    dv.setUint32(0, data.length); chunk.set(td, 4); dv.setUint32(8 + data.length, crc);
+    const at = 33; // درست بعد از IHDR
+    const out = new Uint8Array(u8.length + chunk.length);
+    out.set(u8.subarray(0, at), 0); out.set(chunk, at); out.set(u8.subarray(at), at + chunk.length);
+    return out;
+  }
+  return u8;
+}
 const ext = name => { const m = /\.([A-Za-z0-9]+)$/.exec(name||""); return m ? m[1].toLowerCase() : "bin"; };
 const kb = n => n < 1024*1024 ? fa(Math.max(1,Math.round(n/1024))) + " کیلوبایت"
                               : fa((n/1048576).toFixed(1)) + " مگابایت";
@@ -6935,7 +7047,9 @@ function renderImages(){
         (v ? '<img alt="">' : '<span class="no">رها کردن تصویر</span>') + '</div>' +
       '<div class="hd"><b>' + s.t + '</b></div>' +
       '<div class="meta">' + (v ? kb(v.size) : s.f + '.jpg') + '</div>' +
+      (v ? '<div class="meta" dir="ltr" style="text-align:left;line-height:1.5;margin-top:4px" title="ALT">ALT: ' + altResolved(p)[i].replace(/&/g,"&amp;").replace(/</g,"&lt;") + '</div>' : '') +
       '<div class="row">' +
+        (v ? '<button class="ghost mini" data-copy="alt:' + i + '">کپی ALT</button>' : '') +
         '<label class="pick" tabindex="0">' + (v ? "تعویض" : "انتخاب") +
           '<input type="file" accept="image/*" hidden></label>' +
         (v ? '<button class="ghost mini" data-x="1">برداشتن</button>' : '') +
@@ -6962,6 +7076,11 @@ async function pickFile(kind, slot, file){
   const key = p.id + ":" + kind + ":" + slot;
   await blobPut(key, file);
   p[kind][slot] = {name:file.name, size:file.size, type:file.type, key};
+  if(kind === "images"){
+    // ALT خطِ هم‌شماره‌ی این اسلات خودکار پر می‌شه (اگه خالی بود)، تا هر تصویر همیشه ALT داشته باشه
+    const i = IMG_SLOTS.findIndex(s => s.k === slot), raw = altRaw(p);
+    if(i >= 0 && !raw[i]){ raw[i] = ALT_DEFAULTS[slot]; p.alt = raw.join("\n"); }
+  }
   save(); renderAll();
 }
 async function dropSlot(kind, slot){
@@ -7061,7 +7180,7 @@ function listingText(p){
     "DESCRIPTION", tokens(p, p.description), "",
     "TAGS (13)", tagList(p).join(", "), "",
     "MATERIALS", matList(p).join(", "), "",
-    "ALT TEXT", altList(p).map(tokens.bind(null,p)).map((x,i)=> (i+1) + ". " + x).join("\n"), "",
+    "ALT TEXT", altResolved(p).map((x,i)=> (i+1) + ". [" + IMG_SLOTS[i].f + "] " + x).join("\n"), "",
     "FINISHED SIZE", p.w + " x " + p.h + " x " + p.d + " mm", "",
     "CODE", p.code
   ].join("\n");
@@ -7097,10 +7216,12 @@ async function exportPackage(){
   const entries = [];
   const inner = await buildProductZip(p);
   if(inner) entries.push({path: base + "/Product/" + base + ".zip", data: await bytes(inner)});
-  for(const s of IMG_SLOTS){
+  const alts = altResolved(p);
+  for(const [i, s] of IMG_SLOTS.entries()){
     const v = p.images[s.k]; if(!v) continue;
     const b = await blobGet(v.key); if(!b) continue;
-    entries.push({path: base + "/Listing/" + s.f + "." + ext(v.name), data: await bytes(b)});
+    // ALT همین تصویر داخل خودِ فایل (JPG/PNG) جاسازی می‌شه
+    entries.push({path: base + "/Listing/" + s.f + "." + ext(v.name), data: embedAlt(await bytes(b), alts[i])});
   }
   entries.push({path: base + "/Etsy-Listing.txt", data: enc.encode("\uFEFF" + listingText(p))});
   if(entries.length === 1) return toast("هنوز نه فایلی انتخاب شده و نه تصویری.");
@@ -7154,10 +7275,28 @@ $("st-btnDel").onclick = async () => {
 };
 $("st-btnPkg").onclick = exportPackage;
 $("st-btnZip").onclick = exportZipOnly;
-$("st-btnCopyDesc").onclick = async () => {
-  const txt = tokens(cur(), cur().description); // {W} {H} {NAME} ... با مقدار واقعی جایگزین می‌شن، مثل متن نهایی لیستینگ
-  try{ await navigator.clipboard.writeText(txt); toast("توضیحات کپی شد."); }
-  catch(e){ prompt("متن را کپی کنید:", txt); }
+// دکمه‌های کپیِ همه‌ی فیلدها (data-copy) — {W} {H} {NAME} ... با مقدار واقعی جایگزین می‌شن، مثل متن نهایی لیستینگ
+const COPY_LABELS = {title:"عنوان", description:"توضیحات", tags:"تگ‌ها", materials:"جنس‌ها", alt:"ALTها"};
+document.addEventListener("click", async e => {
+  const b = e.target.closest && e.target.closest("[data-copy]");
+  if(!b || !document.getElementById("page-studio").contains(b)) return;
+  const p = cur(), k = b.dataset.copy;
+  let txt = "", label = COPY_LABELS[k] || "ALT";
+  if(k === "title") txt = tokens(p, p.title);
+  else if(k === "description") txt = tokens(p, p.description);
+  else if(k === "tags") txt = tagList(p).join(", ");
+  else if(k === "materials") txt = matList(p).join(", ");
+  else if(k === "alt") txt = altResolved(p).join("\n");
+  else if(k.indexOf("alt:") === 0) txt = altResolved(p)[Number(k.slice(4))] || "";
+  if(!txt) return toast("چیزی برای کپی نیست.");
+  try{ await navigator.clipboard.writeText(txt); toast(label + " کپی شد."); }
+  catch(err){ prompt("متن را کپی کنید:", txt); }
+});
+$("st-btnAutoAlt").onclick = () => {
+  const p = cur(), before = altRaw(p).filter(Boolean).length;
+  fillAlt(p, true);
+  save(); renderAll();
+  toast(before >= IMG_SLOTS.length ? "همه‌ی ALTها از قبل پر بودن." : fa(IMG_SLOTS.length - before) + " ALT خالی خودکار پر شد.");
 };
 $("st-btnTxt").onclick = async () => {
   const txt = listingText(cur());
@@ -7235,15 +7374,19 @@ async function aiGenerateSeoForCurrent(){
       + ' (دسته: ' + (p.category||'—') + '، جنس: ' + (p.material||'—') + '، ابعاد نهایی: ' + p.w + 'x' + p.h + 'x' + p.d + ' میلی‌متر).'
       + (p.notes ? (' یادداشت فروشنده: ' + p.notes) : '')
       + '\nWrite the title, tags, and description in natural, native ' + lang + ' — not a literal word-for-word translation.'
-      + '\nفقط این JSON رو برگردون: {"title":"عنوان SEO شده حداکثر ۱۴۰ کاراکتر"،"tags":["دقیقاً ۱۳ تگ، بدون underscore، هرکدوم حداکثر ۲۰ کاراکتر"]،"description":"توضیح کامل حداقل ۱۵۰ کلمه"،"materials":"چند جنس با کاما جدا"}'
+      + '\nفقط این JSON رو برگردون: {"title":"عنوان SEO شده حداکثر ۱۴۰ کاراکتر"،"tags":["دقیقاً ۱۳ تگ، بدون underscore، هرکدوم حداکثر ۲۰ کاراکتر"]،"description":"توضیح کامل حداقل ۱۵۰ کلمه"،"materials":"چند جنس با کاما جدا"،"alt":["دقیقاً ۱۰ خط ALT توصیفیِ تصویر، به ترتیب: hero, dimensions, template, formats, machines, included, finished, ideas, assembly, promo — هرکدوم حداکثر ۲۰۰ کاراکتر"]}'
       + '\nفقط JSON.';
-    const text = await callClaude(prompt, 1200);
+    const text = await callClaude(prompt, 1800);
     const d = (typeof parseJSON === "function") ? parseJSON(text) : JSON.parse(text.replace(/```json|```/g,'').trim());
     if(d.title) p.title = d.title;
     if(d.description) p.description = d.description;
     if(Array.isArray(d.tags)) p.tags = d.tags.join(", ");
-    if(d.materials) p.materials = d.materials;
-    save(); renderFields(); renderChecks(); renderCounters(); renderHero();
+    if(d.materials) p.materials = Array.isArray(d.materials) ? d.materials.join(", ") : d.materials;
+    if(Array.isArray(d.alt) && d.alt.length){
+      p.alt = IMG_SLOTS.map((s,i) => String(d.alt[i]||"").replace(/\s+/g," ").trim().slice(0,250)).join("\n");
+      fillAlt(p, true); // اگه AI برای اسلاتی چیزی نداد، ALT پیش‌فرض می‌شینه
+    }
+    save(); renderAll();
     toast("✅ سئو با AI ساخته شد — می‌تونی ویرایشش کنی.");
   }catch(e){
     toast("خطا در تولید: " + (e && e.message ? e.message : "نامشخص"));
