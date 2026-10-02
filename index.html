@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.7.3 -->
+<!-- APP_VERSION: 1.7.4 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v107</div>
+        <div class="logo-badge">v108</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · استودیو: محصول‌های کپی‌شده از فروشگاه اصلی توی فروشگاه جدید پاک می‌شن + دکمه‌ی «خالی کردن استودیوی این فروشگاه»</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · رفع خطای پنهانِ تعویض فروشگاه (فروشگاه‌های دارای آنالیز SEO وسط کار می‌ایستادن و استودیو همگام نمی‌شد)</div>
     </div>
   </div>
   <div class="header-actions">
@@ -1615,6 +1615,7 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
       همه‌چیز روی همین کامپیوتر و داخل مرورگر می‌ماند. فایل‌ها و تصاویر در IndexedDB نگه‌داری می‌شوند،
       پس محدودیت چند مگابایتی ندارید.
     </p>
+    <p id="st-diag" style="font-size:10.5px;color:var(--ink-2);margin-top:8px;direction:ltr;text-align:left;word-break:break-all"></p>
   </aside>
 
   <main>
@@ -2268,6 +2269,8 @@ function resetShopScopedState(){
   [['btnSelectMode','☑ انتخاب'],['btnOptSelectMode','☑ انتخاب'],['btnCrSelectMode','☑ انتخاب'],['seoFilter','نمایش: همه']].forEach(([id,txt])=>{ const el=document.getElementById(id); if(el) el.textContent=txt; });
   document.querySelectorAll('.cr-tab').forEach(t=>t.classList.toggle('active', t.dataset.status===''));
   const crCat=document.getElementById('crCategoryFilter'); if(crCat) crCat.value='';
+  // استودیو رو همین‌جا هم همگام کن (اگه چیزی بعداً توی applyShopToUI خطا بده، استودیو از قلم نمی‌افته)
+  try{ if(window.studioReloadForShop) window.studioReloadForShop(); }catch(e){ console.error('studio reload failed', e); }
 }
 
 function switchShop(shopId){
@@ -2391,7 +2394,7 @@ function cleanAllTagsNow(){
 
 function updateSEOStats(){
   const scores=Object.values(S.analyzed).map(a=>a.score).filter(Boolean);
-  if(scores.length){ const avg=Math.round(scores.reduce((a,b)=>a+b,0)/scores.length); document.getElementById('statSEO').textContent=avg; }
+  if(scores.length){ const avg=Math.round(scores.reduce((a,b)=>a+b,0)/scores.length); const seoEl=document.getElementById('statSEO'); if(seoEl) seoEl.textContent=avg; }
   // تعداد واقعاً بهینه‌شده (نه فقط score بالا)
   updateOptimizedCount();
 }
@@ -2461,6 +2464,7 @@ function nav(name, el) {
   if(name==='content-review') loadContentReview();
   if(name==='marketing') loadMarketing();
   if(name==='customers') renderCustomersFromCache();
+  if(name==='studio' && window.studioReloadForShop) window.studioReloadForShop(); // هر بار که استودیو باز می‌شه با فروشگاه فعلی همگام می‌شه
   // وقتی صفحه optimize باز می‌شود لیست را render کن
   if(name==='optimize' && Object.keys(S.analyzed).length){
     renderOptimizeList();
@@ -7041,7 +7045,12 @@ function renderChecks(){
     IMG_SLOTS.map(s2 => "│   ├── " + s2.f + ".jpg").join("\n") + "\n" +
     "└── Etsy-Listing.txt";
 }
-function renderAll(){ renderRail(); renderFields(); renderFiles(); renderImages(); renderHero(); renderCounters(); renderChecks(); }
+function renderDiag(){
+  const el = $("st-diag"); if(!el) return;
+  const first = ShopManager.list()[0];
+  el.textContent = "shop: " + (S.shopName || "?") + " [" + (S.shopId || "-") + "] · " + (first && first.id === S.shopId ? "FIRST" : "not-first") + " · key: " + curKey.replace(LS, "…") + " · " + state.products.length + " products";
+}
+function renderAll(){ renderRail(); renderFields(); renderFiles(); renderImages(); renderHero(); renderCounters(); renderChecks(); renderDiag(); }
 
 /* ===================== متن لیستینگ ===================== */
 function listingText(p){
