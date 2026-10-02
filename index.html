@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.7.1 -->
+<!-- APP_VERSION: 1.7.2 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v105</div>
+        <div class="logo-badge">v106</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · تعویض فروشگاه دیگه چیزی از فروشگاه قبلی (استودیو، نتایج، انتخاب‌ها) رو نگه نمی‌داره</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · استودیوی فروشگاه جدید دیگه داده‌ی فروشگاه قبلی رو نشون نمی‌ده (داده‌ی قدیمی به فروشگاه اصلی برگشت)</div>
     </div>
   </div>
   <div class="header-actions">
@@ -6729,23 +6729,30 @@ This is an instant digital download. No physical item will be shipped.`;
 // ذخیره‌ی استودیو per-shop: هر فروشگاه کلید خودش رو داره (فایل‌های سنگین توی IndexedDB با شناسه‌ی یکتا می‌مونن)
 const shopKey = () => (typeof S !== "undefined" && S.shopId) ? LS + "." + S.shopId : LS;
 const validState = raw => raw && Array.isArray(raw.products) && raw.products.length;
+const readState = k => { try{ const r = JSON.parse(localStorage.getItem(k)); return validState(r) ? r : null; }catch(e){ return null; } };
+const isPristine = st => st.products.length === 1 && (p => p.name === "محصول تازه" && !p.title && !p.description && !p.tags && !Object.keys(p.files||{}).length && !Object.keys(p.images||{}).length)(st.products[0]);
 let curKey = shopKey();
 let state = load();
 function load(){
   const key = shopKey();
-  try{
-    const raw = JSON.parse(localStorage.getItem(key));
-    if(validState(raw)) return raw;
-  }catch(e){}
-  // داده‌ی قدیمی (قبل از per-shop شدن) یک‌بار به اولین فروشگاهی که استودیو رو باز می‌کنه منتقل می‌شه
-  if(key !== LS && !localStorage.getItem(LS + ".migrated")){
-    try{
-      const old = JSON.parse(localStorage.getItem(LS));
-      if(validState(old)){ localStorage.setItem(LS + ".migrated", "1"); return old; }
-    }catch(e){}
+  const legacy = readState(LS); // داده‌ی قدیمی (قبل از per-shop شدن) — دست نمی‌خوره
+  if(key === LS){
+    if(legacy) return legacy;
+    const p = seedProduct(); return {products:[p], active:p.id};
   }
-  const hasOtherData = Object.keys(localStorage).some(k => k.startsWith(LS + ".") && k !== LS + ".migrated");
-  const p = (key === LS || !hasOtherData) ? seedProduct() : blankProduct();
+  // داده‌ی قدیمی فقط مال «اولین فروشگاه» (فروشگاه اصلی) حساب می‌شه، نه هر فروشگاهی که اتفاقی اول باز بشه
+  const first = ShopManager.list()[0];
+  const isOwner = !!first && first.id === S.shopId;
+  const own = readState(key);
+  if(own){
+    // نسخه‌ی دست‌نخورده‌ی داده‌ی قدیمی که قبلاً اشتباهی توی یه فروشگاه غیراصلی کپی شده — دور ریخته می‌شه
+    const strayCopy = !isOwner && legacy && JSON.stringify(own) === JSON.stringify(legacy);
+    // فروشگاه اصلی که فقط یه محصول خالیِ خودکار داره و داده‌ی قدیمی هنوز هست — داده‌ی قدیمی برمی‌گرده
+    const ownerNeedsLegacy = isOwner && legacy && isPristine(own);
+    if(!strayCopy && !ownerNeedsLegacy) return own;
+  }
+  if(isOwner && legacy) return JSON.parse(JSON.stringify(legacy));
+  const p = blankProduct();
   return {products:[p], active:p.id};
 }
 let saveTimer = null;
