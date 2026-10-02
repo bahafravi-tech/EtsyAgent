@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.7.0 -->
+<!-- APP_VERSION: 1.7.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v104</div>
+        <div class="logo-badge">v105</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.09 · حذف چندتایی در محتوای معرفی + آرشیو تاریخ‌دار برای کلمات کلیدی و گزارش‌ها</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · تعویض فروشگاه دیگه چیزی از فروشگاه قبلی (استودیو، نتایج، انتخاب‌ها) رو نگه نمی‌داره</div>
     </div>
   </div>
   <div class="header-actions">
@@ -1989,6 +1989,8 @@ function loadShopToState(shopId){
   S.analyzedHash=shop.analyzedHash||'';
   S.competitors=shop.competitors||[];
   S.dailyArchive=shop.dailyArchive||[];
+  S.shopStyle=shop.shopStyle||'';
+  S.shopTarget=shop.shopTarget||'';
   S_customers=shop.customers||[];
   GS.currentShopId=shopId;
   DB.save('global_current_shop',shopId);
@@ -2028,6 +2030,8 @@ function saveCurrentShop(){
   shop.analyzedHash=S.analyzedHash;
   shop.competitors=S.competitors;
   shop.dailyArchive=S.dailyArchive;
+  shop.shopStyle=S.shopStyle||'';
+  shop.shopTarget=S.shopTarget||'';
   shop.customers=S_customers||[];
   shop.updatedAt=new Date().toISOString();
   ShopManager.save(shop);
@@ -2073,6 +2077,7 @@ function migrateOldData(){
 
 // ══ Init ══
 window.addEventListener('load', function(){
+  snapshotShopUI();
   document.getElementById('todayDate').textContent = new Date().toLocaleDateString('fa-IR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   // Global settings
   if(GS.apiKey){ S.apiKey=GS.apiKey; document.getElementById('apiKeyInput').value=GS.apiKey; document.getElementById('apiAlert').style.display='none'; updateApiStatus(true); }
@@ -2124,6 +2129,8 @@ function applyShopToUI(){
   updateArchiveBadge();
   updateTrendsHistoryCount();
   updateCompetitorHistoryCount();
+  updateKeywordsHistoryCount();
+  updateReportsHistoryCount();
   // بررسی نیاز به به‌روزرسانی SEO
   setTimeout(checkSEOUpdateNeeded, 1500);
   const _sl=document.getElementById('sidebarShopLink');
@@ -2174,6 +2181,7 @@ function applyShopToUI(){
     document.getElementById('uploadZone').style.display='';
   }
   if(Object.keys(S.analyzed).length) updateSEOStats();
+  if(window.studioReloadForShop) window.studioReloadForShop(); // استودیوی محصول هم per-shop ذخیره می‌شه
   log(`✓ فروشگاه "${S.shopName}" — ${S.products.length} محصول`,'ok');
 }
 
@@ -2236,12 +2244,38 @@ function renderShopSwitcher(){
   container.appendChild(addBtn);
 }
 
+// ══ پاک‌سازی حالت و نتایجِ فروشگاه قبلی موقع تعویض فروشگاه ══
+// بخش‌هایی که نتیجه‌شون فقط روی صفحه (DOM) یا توی متغیر موقت می‌مونه و جزو داده‌ی ذخیره‌شده‌ی هر فروشگاه نیست
+// — اگه پاک نشن، بعد از تعویض فروشگاه هنوز چیزهای فروشگاه قبلی رو نشون می‌دن.
+const SHOP_UI_HTML_IDS=['seoList','optimizeList','compList','dailyGrid','trendsResult','kwResults','reportResult','custList','crList','socialResult','emailResult','shopResult','descResult','calendarResult','customerResult','mktStatsBox','mktPlanBox','mktActionMsg'];
+const SHOP_UI_TEXT_IDS=['statProducts','statProductsDelta','statOptimized','statOptDelta','statCompetitors','statCompDelta','statPending','statSEO','archiveCount','trendsHistoryCount','competitorHistoryCount','keywordsHistoryCount','reportsHistoryCount'];
+const SHOP_UI_INPUT_IDS=['kwInput','custSearch','customerMsg','socialProduct','descProduct','descFeatures'];
+const _shopUiInitial={html:{},text:{}};
+function snapshotShopUI(){
+  SHOP_UI_HTML_IDS.forEach(id=>{ const el=document.getElementById(id); if(el) _shopUiInitial.html[id]=el.innerHTML; });
+  SHOP_UI_TEXT_IDS.forEach(id=>{ const el=document.getElementById(id); if(el) _shopUiInitial.text[id]=el.textContent; });
+}
+function resetShopScopedState(){
+  S.dailyProducts=[]; S.currentOpt=null; S.pendingOpt=null; S.currentDaily=null;
+  seoSelectMode=false; seoSelected=new Set(); seoShowWeak=false;
+  optSelectMode=false; optSelected=new Set();
+  crSelectMode=false; crSelected=new Set(); crCurrentItems=[]; crCurrentStatus=''; crCurrentCategory='';
+  Object.keys(_shopUiInitial.html).forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML=_shopUiInitial.html[id]; });
+  Object.keys(_shopUiInitial.text).forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=_shopUiInitial.text[id]; });
+  SHOP_UI_INPUT_IDS.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  ['selectModeBar','optSelectModeBar','crSelectModeBar','custStats'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
+  [['btnSelectMode','☑ انتخاب'],['btnOptSelectMode','☑ انتخاب'],['btnCrSelectMode','☑ انتخاب'],['seoFilter','نمایش: همه']].forEach(([id,txt])=>{ const el=document.getElementById(id); if(el) el.textContent=txt; });
+  document.querySelectorAll('.cr-tab').forEach(t=>t.classList.toggle('active', t.dataset.status===''));
+  const crCat=document.getElementById('crCategoryFilter'); if(crCat) crCat.value='';
+}
+
 function switchShop(shopId){
   if(shopId===S.shopId){return;}
   saveCurrentShop();
   if(!loadShopToState(shopId)){
     alert('فروشگاه پیدا نشد');return;
   }
+  resetShopScopedState();
   applyShopToUI();
   renderShopSwitcher();
 
@@ -2265,7 +2299,7 @@ function showInlineNewShop(){
 function createNewShopDirect(name, niche){
   saveCurrentShop();
   const shop={id:ShopManager.newId(name),name,niche,products:[],analyzed:{},optimized:{},analyzedHash:'',competitors:[],etsyApiKey:'',etsyShopId:'',etsyOAuthToken:'',createdAt:new Date().toISOString()};
-  ShopManager.save(shop); loadShopToState(shop.id); applyShopToUI(); renderShopSwitcher();
+  ShopManager.save(shop); loadShopToState(shop.id); resetShopScopedState(); applyShopToUI(); renderShopSwitcher();
   log(`✓ فروشگاه "${name}" ساخته شد`,'ok');
 }
 
@@ -2282,8 +2316,8 @@ function deleteCurrentShop(){
   if(!S.shopId||!confirm(`فروشگاه "${S.shopName}" و تمام داده‌هایش حذف شود؟`)) return;
   ShopManager.delete(S.shopId);
   const shops=ShopManager.list();
-  if(shops.length>0){loadShopToState(shops[0].id);applyShopToUI();}
-  else {S.shopId='';S.shopName='';S.products=[];S.analyzed={};S.optimized={};S.competitors=[];showNewShopModal();}
+  if(shops.length>0){loadShopToState(shops[0].id);resetShopScopedState();applyShopToUI();}
+  else {S.shopId='';S.shopName='';S.products=[];S.analyzed={};S.optimized={};S.competitors=[];S_customers=[];resetShopScopedState();showNewShopModal();}
   renderShopSwitcher(); log('✓ فروشگاه حذف شد','ok');
 }
 
@@ -6692,21 +6726,44 @@ This is an instant digital download. No physical item will be shipped.`;
   return p;
 }
 
+// ذخیره‌ی استودیو per-shop: هر فروشگاه کلید خودش رو داره (فایل‌های سنگین توی IndexedDB با شناسه‌ی یکتا می‌مونن)
+const shopKey = () => (typeof S !== "undefined" && S.shopId) ? LS + "." + S.shopId : LS;
+const validState = raw => raw && Array.isArray(raw.products) && raw.products.length;
+let curKey = shopKey();
 let state = load();
 function load(){
+  const key = shopKey();
   try{
-    const raw = JSON.parse(localStorage.getItem(LS));
-    if(raw && Array.isArray(raw.products) && raw.products.length) return raw;
+    const raw = JSON.parse(localStorage.getItem(key));
+    if(validState(raw)) return raw;
   }catch(e){}
-  const p = seedProduct();
+  // داده‌ی قدیمی (قبل از per-shop شدن) یک‌بار به اولین فروشگاهی که استودیو رو باز می‌کنه منتقل می‌شه
+  if(key !== LS && !localStorage.getItem(LS + ".migrated")){
+    try{
+      const old = JSON.parse(localStorage.getItem(LS));
+      if(validState(old)){ localStorage.setItem(LS + ".migrated", "1"); return old; }
+    }catch(e){}
+  }
+  const hasOtherData = Object.keys(localStorage).some(k => k.startsWith(LS + ".") && k !== LS + ".migrated");
+  const p = (key === LS || !hasOtherData) ? seedProduct() : blankProduct();
   return {products:[p], active:p.id};
 }
 let saveTimer = null;
 function save(){
-  localStorage.setItem(LS, JSON.stringify(state));
+  localStorage.setItem(curKey, JSON.stringify(state));
   const t = new Date();
   $("st-saved").textContent = "ذخیره شد، " + t.toLocaleTimeString("fa-IR",{hour:"2-digit",minute:"2-digit"});
 }
+// موقع تعویض فروشگاه: اول حالت فروشگاه قبلی (روی کلید قبلی) ذخیره می‌شه، بعد حالت فروشگاه جدید لود می‌شه
+window.studioReloadForShop = function(){
+  if(shopKey() === curKey) return;
+  clearTimeout(saveTimer);
+  save();
+  curKey = shopKey();
+  state = load();
+  renderAll();
+  save();
+};
 function queueSave(){ clearTimeout(saveTimer); saveTimer = setTimeout(save, 400); }
 const cur = () => state.products.find(p => p.id === state.active) || state.products[0];
 
@@ -6924,7 +6981,7 @@ function renderHero(){
   seg("sgAll",   s.pct, 100,             fa(s.pct) + "٪");
 }
 function seg(id, v, max, label){
-  const el = $(id);
+  const el = $("st-" + id); if(!el) return;
   el.querySelector("b").textContent = label;
   el.className = "seg" + (v >= max ? " done" : v > 0 ? " part" : "");
 }
@@ -6939,7 +6996,7 @@ function renderCounters(){
   $("st-tagWarn").textContent = bad.length ? "این تگ‌ها بلندتر از بیست کاراکترند: " + bad.join(" · ") : "";
 }
 function count(id, n, max, exact){
-  const el = $(id); if(!el) return;
+  const el = $("st-" + id); if(!el) return;
   el.textContent = max ? fa(n) + " از " + fa(max) : fa(n) + " کاراکتر";
   el.className = "cnt " + (max ? (exact ? (n === max ? "good" : n > max ? "over" : "") : (n > max ? "over" : n > max*0.7 ? "good" : "")) : "");
 }
