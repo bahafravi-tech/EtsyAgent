@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.7.4 -->
+<!-- APP_VERSION: 1.7.5 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -680,9 +680,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v108</div>
+        <div class="logo-badge">v109</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · رفع خطای پنهانِ تعویض فروشگاه (فروشگاه‌های دارای آنالیز SEO وسط کار می‌ایستادن و استودیو همگام نمی‌شد)</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · دکمه‌ی کپی برای توضیحات: توی استودیو + توضیحات جدیدِ نتیجه‌ی بهینه‌سازی</div>
     </div>
   </div>
   <div class="header-actions">
@@ -1751,6 +1751,7 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
         <label class="fld"><span>عنوان لیستینگ <span class="cnt" id="st-titleCnt"></span></span><input type="text" data-k="title"></label>
         <div style="margin-top:14px">
           <label class="fld"><span>توضیحات <span class="cnt" id="st-descCnt"></span></span><textarea data-k="description" style="min-height:220px"></textarea></label>
+          <button type="button" class="ghost mini" id="st-btnCopyDesc" style="margin-top:6px">📋 کپی توضیحات</button>
         </div>
       </div>
       <div class="block">
@@ -4788,6 +4789,7 @@ Return JSON:
       </div>
       <div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:6px">تگ‌های قبلی</div><div class="tags">${oldTags.map(t=>`<span class="tag tag-bad">${t.replace(/_/g,' ')}</span>`).join('')}</div></div>
       <div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:6px">تگ‌های جدید (${result.new_tags.length})</div><div class="tags">${result.new_tags.map(t=>`<span class="tag tag-ok">${t}</span>`).join('')}</div></div>
+      ${result.new_description?`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:12px;font-weight:700">توضیحات جدید (${result.new_description.length} کاراکتر)</div><button class="btn btn-secondary btn-sm" onclick="copyFieldClean('optNewDesc',this)">📋 کپی</button></div><div id="optNewDesc" style="font-size:11.5px;line-height:1.7;white-space:pre-wrap;background:var(--surface3);border-radius:8px;padding:10px;max-height:240px;overflow-y:auto">${escHtml(result.new_description)}</div></div>`:''}
       <div><div style="font-size:12px;font-weight:700;margin-bottom:6px">بهبودها</div>${(result.improvements||[]).map(i=>`<div style="font-size:12px;color:var(--green);margin-bottom:4px">✓ ${i}</div>`).join('')}</div>`;
   }catch(e){
     document.getElementById('optContent').innerHTML=`<div class="alert alert-warn">❌ خطا: ${e.message}</div>`;
@@ -7152,6 +7154,11 @@ $("st-btnDel").onclick = async () => {
 };
 $("st-btnPkg").onclick = exportPackage;
 $("st-btnZip").onclick = exportZipOnly;
+$("st-btnCopyDesc").onclick = async () => {
+  const txt = tokens(cur(), cur().description); // {W} {H} {NAME} ... با مقدار واقعی جایگزین می‌شن، مثل متن نهایی لیستینگ
+  try{ await navigator.clipboard.writeText(txt); toast("توضیحات کپی شد."); }
+  catch(e){ prompt("متن را کپی کنید:", txt); }
+};
 $("st-btnTxt").onclick = async () => {
   const txt = listingText(cur());
   try{ await navigator.clipboard.writeText(txt); toast("متن لیستینگ کپی شد."); }
