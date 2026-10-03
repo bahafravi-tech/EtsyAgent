@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.8.1 -->
+<!-- APP_VERSION: 1.9.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,9 +685,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v111</div>
+        <div class="logo-badge">v112</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · دکمه‌های کپی جزئیات محصول درست جاشون افتاد + جزئیات محصول توی صفحه‌ی بهینه‌سازی هم باز می‌شه</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بهینه‌سازی: عنوان حداکثر ۱۴ کلمه، توضیحات با بولت و آیکن و قابل ویرایش</div>
     </div>
   </div>
   <div class="header-actions">
@@ -4520,7 +4520,7 @@ function buildProductDropdown(idx){
   const p=S.products[idx];
   const a=S.analyzed[idx];
   const tags=(p.TAGS||'').split(',').filter(Boolean);
-  const titleWords=p.TITLE.trim().split(/\s+/).length;
+  const titleWords=titleWordCount(p.TITLE);
   const dd=document.createElement('div');
   dd.className='product-dropdown';
   dd.innerHTML=`
@@ -4557,10 +4557,20 @@ function buildProductDropdown(idx){
     </div>
     <div class="pd-section">
       <div class="pd-section-header">
-        <div class="pd-label">📄 توضیحات (Description) — ${(p.DESCRIPTION||'').length} کاراکتر</div>
-        <button class="pd-copy" onclick="copyFieldClean('pdDesc${idx}',this)">📋 کپی</button>
+        <div class="pd-label">📄 توضیحات (Description) — ${(p.DESCRIPTION||'').length} کاراکتر · ${descFormatOk(p.DESCRIPTION)?'✅ بولت و آیکن':'⚠️ بدون بولت/آیکن کافی'}</div>
+        <div style="display:flex;gap:6px">
+          <button class="pd-copy" onclick="editProductDescription(${idx})">✏️ ویرایش</button>
+          <button class="pd-copy" onclick="copyFieldClean('pdDesc${idx}',this)">📋 کپی</button>
+        </div>
       </div>
       <div class="pd-value" id="pdDesc${idx}" style="font-size:11px;max-height:400px;overflow-y:auto;white-space:pre-wrap">${escHtml(p.DESCRIPTION||'—')}</div>
+      <div id="pdDescEditBox${idx}" style="display:none">
+        <textarea id="pdDescTa${idx}" class="content-editor" style="min-height:260px;font-size:12px;line-height:1.8">${escHtml(p.DESCRIPTION||'')}</textarea>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn btn-green btn-sm" onclick="saveProductDescription(${idx})">💾 ذخیره</button>
+          <button class="btn btn-secondary btn-sm" onclick="cancelProductDescriptionEdit(${idx})">انصراف</button>
+        </div>
+      </div>
     </div>
     ${(()=>{
       const img2=getProductImage(p);
@@ -4752,13 +4762,41 @@ function renderOptimizeList(){
   });
 }
 
+// ویرایشِ دستیِ توضیحات جدید توی پنجره‌ی بهینه‌سازی — همون لحظه توی S.pendingOpt هم می‌شینه تا «اعمال» همین متن رو ذخیره کنه
+function onOptDescEdit(ta){
+  if(S.pendingOpt) S.pendingOpt.new_description=ta.value;
+  const meta=document.getElementById('optDescMeta');
+  if(meta) meta.textContent=`· ${ta.value.length} کاراکتر · ${descFormatOk(ta.value)?'✅ بولت و آیکن دارد':'⚠️ بولت/آیکن کافی نداره'}`;
+}
+
+// ویرایش توضیحات یه محصول (بعد از بهینه‌سازی یا هر وقت دیگه) داخل جزئیات محصول
+function editProductDescription(idx){
+  document.getElementById('pdDescEditBox'+idx).style.display='block';
+  document.getElementById('pdDesc'+idx).style.display='none';
+  const ta=document.getElementById('pdDescTa'+idx); ta.focus();
+}
+function cancelProductDescriptionEdit(idx){
+  document.getElementById('pdDescEditBox'+idx).style.display='none';
+  document.getElementById('pdDesc'+idx).style.display='';
+  document.getElementById('pdDescTa'+idx).value=S.products[idx].DESCRIPTION||'';
+}
+function saveProductDescription(idx){
+  const ta=document.getElementById('pdDescTa'+idx);
+  S.products[idx].DESCRIPTION=ta.value;
+  // متن عوض شده، پس دیگه با نسخه‌ی روی Etsy یکی نیست — دکمه‌ی ارسال دوباره فعال بشه
+  if(S.pushedToEtsy) delete S.pushedToEtsy[idx];
+  saveCurrentShop();
+  log('✏️ توضیحات محصول ویرایش و ذخیره شد','ok');
+  renderSEOList(); renderOptimizeList();
+}
+
 async function startOptimize(idx){
   S.currentOpt=idx; const p=S.products[idx];
   document.getElementById('optContent').innerHTML=`<div style="text-align:center;padding:30px"><div class="spinner" style="width:32px;height:32px;margin:0 auto 12px"></div><div style="color:var(--text2);font-size:13px">در حال بهینه‌سازی...</div></div>`;
   document.getElementById('optModal').classList.add('open');
   const titleLen=p.TITLE.length;
   const fullDescS=p.DESCRIPTION||'';
-  const titleNote=titleLen<80?`⚠️ CURRENT TITLE IS ONLY ${titleLen} CHARS — MUST expand to 120-140 chars by adding keywords, materials, occasions, use cases`:
+  const titleNote=titleLen<80?`⚠️ CURRENT TITLE IS ONLY ${titleLen} CHARS — MUST expand to 100-140 chars (max 14 words) by adding keywords, materials, occasions, use cases`:
                   titleLen>140?`⚠️ CURRENT TITLE IS ${titleLen} CHARS — MUST shorten to under 140 chars`:'Title length OK';
   const prompt=`Optimize this Etsy listing for SEO. Return ONLY valid JSON, no extra text.
 Write new_title, new_tags, and new_description in natural, native ${S.contentLanguage||'English'} — not a literal word-for-word translation.
@@ -4770,7 +4808,7 @@ Materials: ${p.MATERIALS||'none'}
 Description: ${(p.DESCRIPTION||'').slice(0,300)}
 
 TITLE REQUIREMENT: ${titleNote}
-The new title MUST be between 120-140 characters. Count carefully before responding.
+The new title MUST be between 100-140 characters AND contain AT MOST 14 WORDS (hard limit — count the words before responding; a word is any chunk with letters/digits, separators like "|" or "-" don't count). If you can't reach 100+ characters within 14 words, use fewer, longer, higher-value words — never exceed 14 words or 140 characters.
 Put the PRIMARY keyword in the FIRST 40 characters (most visible on mobile search results).
 Structure: [Primary Keyword] | [Secondary Keyword + modifier] | [Occasion/Recipient] — separate phrases with ", " (comma + space), not just a bare space, so Etsy's parser reads them as distinct phrases.
 Add: materials, occasions (gift, birthday, wedding), target users (Cricut, Silhouette), file formats.
@@ -4792,10 +4830,12 @@ BANNED IN TITLE: premium, beautiful, amazing, best, gorgeous, luxury, stunning, 
 
 MATERIALS RULES: 5-13 short items (each max 45 characters, letters/numbers/spaces/hyphens only, no duplicates) naming what the product is made from or meant to be cut/used with (e.g. cardstock, kraft paper, vinyl, wood, acrylic, felt). Improve/complete the current materials, don't invent unrelated ones.
 
+${DESC_FORMAT_RULES}
+
 Return JSON:
-{"new_title":"expanded keyword-rich title between 120-140 chars","new_tags":["2-3 word tag 1","tag 2","tag 3","tag 4","tag 5","tag 6","tag 7","tag 8","tag 9","tag 10","tag 11","tag 12","tag 13"],"new_materials":["cardstock","paper","vinyl"],"new_description":"original structure preserved with emoji, improved keyword placement in first 160 chars","improvements":["what changed 1","what changed 2","what changed 3"]}`;
+{"new_title":"keyword-rich title, 100-140 chars, MAX 14 words","new_tags":["2-3 word tag 1","tag 2","tag 3","tag 4","tag 5","tag 6","tag 7","tag 8","tag 9","tag 10","tag 11","tag 12","tag 13"],"new_materials":["cardstock","paper","vinyl"],"new_description":"formatted per DESCRIPTION FORMAT: keyword hook, then icon headings with • bullets","improvements":["what changed 1","what changed 2","what changed 3"]}`;
   try{
-    const text=await callClaude(prompt, 1800);
+    const text=await callClaude(prompt, 2800);
     log("📝 پاسخ بهینه‌سازی: "+text.slice(0,100)+"...","info");
     // پیدا کردن JSON حتی اگر متن اضافه داشته باشد
     let result;
@@ -4808,19 +4848,21 @@ Return JSON:
     if(!result.new_title||!result.new_tags) throw new Error('فرمت پاسخ اشتباه');
     result.new_title=sanitizeEtsyTitle(result.new_title);
     if(result.new_materials) result.new_materials=sanitizeMaterials(result.new_materials, []);
+    if(result.new_description) result.new_description=normalizeDescription(result.new_description);
     S.pendingOpt=result;
     const oldTags=(p.TAGS||'').split(',').filter(Boolean);
     const oldMats=parseMaterials(p.MATERIALS);
     document.getElementById('optContent').innerHTML=`
       <div class="compare-grid">
         <div class="compare-box"><div class="compare-label old">عنوان قبلی</div><div class="compare-val">${p.TITLE}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${p.TITLE.length} کاراکتر</div></div>
-        <div class="compare-box"><div class="compare-label new">عنوان جدید</div><div class="compare-val new-val" id="optNewTitle">${result.new_title}</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px"><span style="font-size:11px;color:var(--green)">${result.new_title.length} کاراکتر</span><button class="btn btn-secondary btn-sm" onclick="copyFieldClean('optNewTitle',this)">📋 کپی</button></div></div>
+        <div class="compare-box"><div class="compare-label new">عنوان جدید</div><div class="compare-val new-val" id="optNewTitle">${result.new_title}</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px"><span style="font-size:11px;color:var(--green)">${result.new_title.length} کاراکتر · ${titleWordCount(result.new_title)} کلمه (حداکثر ۱۴)</span><button class="btn btn-secondary btn-sm" onclick="copyFieldClean('optNewTitle',this)">📋 کپی</button></div></div>
       </div>
       <div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:6px">تگ‌های قبلی</div><div class="tags">${oldTags.map(t=>`<span class="tag tag-bad">${t.replace(/_/g,' ')}</span>`).join('')}</div></div>
       <div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:12px;font-weight:700;color:var(--green)">تگ‌های جدید (${result.new_tags.length})</div><button class="btn btn-secondary btn-sm" onclick="copyFieldClean('optNewTags',this)">📋 کپی همه</button></div><div class="tags">${result.new_tags.map(t=>`<span class="tag tag-ok">${t}</span>`).join('')}</div><div id="optNewTags" style="display:none">${escHtml(result.new_tags.map(t=>String(t).replace(/_/g,' ').trim()).join(','))}</div></div>
       ${(result.new_materials&&result.new_materials.length)?`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:12px;font-weight:700;color:var(--green)">متریال جدید (${result.new_materials.length}/13)${oldMats.length?` <span style="font-weight:400;color:var(--text3)">— قبلی: ${escHtml(oldMats.join(', '))}</span>`:''}</div><button class="btn btn-secondary btn-sm" onclick="copyFieldClean('optNewMats',this)">📋 کپی</button></div><div class="tags">${result.new_materials.map(m=>`<span class="tag tag-ok">${escHtml(m)}</span>`).join('')}</div><div id="optNewMats" style="display:none">${escHtml(result.new_materials.join(', '))}</div></div>`:''}
-      ${result.new_description?`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:12px;font-weight:700">توضیحات جدید (${result.new_description.length} کاراکتر)</div><button class="btn btn-secondary btn-sm" onclick="copyFieldClean('optNewDesc',this)">📋 کپی</button></div><div id="optNewDesc" style="font-size:11.5px;line-height:1.7;white-space:pre-wrap;background:var(--surface3);border-radius:8px;padding:10px;max-height:240px;overflow-y:auto">${escHtml(result.new_description)}</div></div>`:''}
+      ${result.new_description?`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;flex-wrap:wrap"><div style="font-size:12px;font-weight:700">✏️ توضیحات جدید — قابل ویرایش <span id="optDescMeta" style="font-weight:400;color:var(--text3)"></span></div><button class="btn btn-secondary btn-sm" onclick="copyFieldClean('optNewDesc',this)">📋 کپی</button></div><textarea id="optNewDesc" class="content-editor" style="min-height:240px;font-size:12px;line-height:1.8" oninput="onOptDescEdit(this)">${escHtml(result.new_description)}</textarea><div style="font-size:11px;color:var(--text3);margin-top:4px">هرچی اینجا ویرایش کنی با «اعمال» همین ذخیره می‌شه.</div></div>`:''}
       <div><div style="font-size:12px;font-weight:700;margin-bottom:6px">بهبودها</div>${(result.improvements||[]).map(i=>`<div style="font-size:12px;color:var(--green);margin-bottom:4px">✓ ${i}</div>`).join('')}</div>`;
+    const descTa=document.getElementById('optNewDesc'); if(descTa) onOptDescEdit(descTa);
   }catch(e){
     document.getElementById('optContent').innerHTML=`<div class="alert alert-warn">❌ خطا: ${e.message}</div>`;
     log('✗ خطای بهینه‌سازی: '+e.message,'err');
@@ -4845,7 +4887,7 @@ async function autoOpt(idx){
     const shopN=getShopName(), nicheN=getNiche();
     const tLen=p.TITLE.length;
     const fullDesc=p.DESCRIPTION||'';
-    const tWarn=tLen<80?`⚠️ CRITICAL: Title is only ${tLen} chars. You MUST write a NEW title of 120-140 characters. Do NOT keep the short title.`:
+    const tWarn=tLen<80?`⚠️ CRITICAL: Title is only ${tLen} chars. You MUST write a NEW title of 100-140 characters (max 14 words). Do NOT keep the short title.`:
                 tLen>140?`⚠️ Title is ${tLen} chars, must be under 140.`:`Title is ${tLen} chars (good range).`;
     const prompt=`Etsy SEO Expert. Shop: ${shopN} | Niche: ${nicheN}
 Write the new title, tags, and description in natural, native ${S.contentLanguage||'English'} — not a literal word-for-word translation.
@@ -4854,7 +4896,7 @@ CURRENT TITLE (${tLen} chars): ${p.TITLE}
 ${tWarn}
 
 RULES:
-1. TITLE: MUST be 120-140 characters (count every character). Structure: [Primary Keyword] | [Secondary Keyword+modifier] | [Occasion/Recipient], separated by ", " (comma+space, not bare space). Primary keyword in first 40 chars. Add: file formats, machine compatibility (Cricut/Silhouette/laser), occasions (gift/birthday/wedding), sizes, digital download.
+1. TITLE: MUST be 100-140 characters (count every character) AND AT MOST 14 WORDS — hard limit, count words before answering (a word = any chunk with letters/digits; "|" or "-" separators don't count); if 100+ chars isn't reachable in 14 words, use fewer, longer, higher-value words. Structure: [Primary Keyword] | [Secondary Keyword+modifier] | [Occasion/Recipient], separated by ", " (comma+space, not bare space). Primary keyword in first 40 chars. Add: file formats, machine compatibility (Cricut/Silhouette/laser), occasions (gift/birthday/wedding), sizes, digital download.
 ⚠️ ETSY VALIDATION (violating these gets the listing REJECTED, not just a lower score):
 - More than 3 words starting with 2+ consecutive capital letters (SVG, DXF, PDF, AI, CDR, DIY, CNC, EPS, WMF — Cricut/Silhouette don't count) is REJECTED. Use AT MOST 3 total; drop or lowercase the rest.
 - Must start with a letter/number, never a quote or symbol. Never use: $ ^ \` . ° anywhere. Characters % : & may each appear AT MOST ONCE.
@@ -4867,7 +4909,7 @@ BANNED IN TITLE: premium, beautiful, amazing, best, gorgeous, luxury, stunning, 
 - Examples OK: "gift box svg"(12✅) "laser cut files"(15✅) "cricut templates"(16✅)
 - Examples FAIL: "laser cutting templates"(23❌) "svg files"+"svg templates"(same intent❌)
  Include US/UK/seasonal terms.
-3. DESCRIPTION: KEEP original structure with all emoji (✔ 🔹 📌 etc), bullet points, sections. Only improve first 160 chars for keywords. Keep same length. Do NOT replace with generic text.
+3. ${DESC_FORMAT_RULES}
 4. MATERIALS: 5-13 short items (each max 45 chars, letters/numbers/spaces/hyphens only, no duplicates) naming what the product is made from or meant to be cut/used with (cardstock, kraft paper, vinyl, wood, acrylic...). Improve/complete the current materials: ${p.MATERIALS||'none'}
 
 Current Tags: ${p.TAGS}
@@ -4875,8 +4917,8 @@ Description (${fullDesc.length} chars — preserve ALL):
 ${fullDesc}
 
 Return ONLY JSON (no markdown, no explanation):
-{"new_title":"MUST BE 120-140 CHARS — write it fully expanded here","new_tags":["phrase one","phrase two","phrase three","phrase four","phrase five","phrase six","phrase seven","phrase eight","phrase nine","phrase ten","phrase eleven","phrase twelve","phrase thirteen"],"new_materials":["cardstock","paper","vinyl"],"new_description":"preserve original structure+emoji+sections, only optimize first 160 chars for keywords"}`;
-    const text=await callClaude(prompt,1800);
+{"new_title":"MUST BE 100-140 CHARS AND MAX 14 WORDS — write it here","new_tags":["phrase one","phrase two","phrase three","phrase four","phrase five","phrase six","phrase seven","phrase eight","phrase nine","phrase ten","phrase eleven","phrase twelve","phrase thirteen"],"new_materials":["cardstock","paper","vinyl"],"new_description":"formatted per DESCRIPTION FORMAT: keyword hook, then icon headings with • bullets"}`;
+    const text=await callClaude(prompt,2800);
     let r;
     try{ r=parseJSON(text); } catch(e){ const m=text.match(/\{[\s\S]*\}/); if(m) r=JSON.parse(m[0]); else throw e; }
     if(r.new_title) S.products[idx].TITLE=sanitizeEtsyTitle(r.new_title);
@@ -4895,7 +4937,7 @@ Return ONLY JSON (no markdown, no explanation):
       S.products[idx].TAGS=cleanTags.join(',');
       log(`tags: ${cleanTags.length}/13`,'ok');
     }
-    if(r.new_description) S.products[idx].DESCRIPTION=r.new_description;
+    if(r.new_description) S.products[idx].DESCRIPTION=normalizeDescription(r.new_description);
     if(r.new_materials&&r.new_materials.length) S.products[idx].MATERIALS=sanitizeMaterials(r.new_materials, parseMaterials(p.MATERIALS)).join(',');
     S.optimized[idx]=true;
     // آنالیز مجدد محلی با قوانین واقعی
@@ -4937,6 +4979,36 @@ function sanitizeMaterials(list, fallback){
   return clean.length?clean:(fallback||[]);
 }
 
+// ── قوانین نهاییِ عنوان: حداکثر ۱۴ کلمه و ۱۴۰ کاراکتر (کلمه = هر تکه‌ای که حرف/عدد داشته باشه؛ جداکننده‌هایی مثل | یا - کلمه حساب نمی‌شن)
+const TITLE_MAX_WORDS=14, TITLE_MAX_CHARS=140;
+function titleWordCount(t){ return String(t||'').trim().split(/\s+/).filter(w=>/[\p{L}\p{N}]/u.test(w)).length; }
+function limitTitle(t){
+  const out=[]; let n=0;
+  for(const tok of String(t||'').split(/\s+/)){
+    const isWord=/[\p{L}\p{N}]/u.test(tok);
+    if(isWord && n>=TITLE_MAX_WORDS) break;
+    if(isWord) n++;
+    out.push(tok);
+  }
+  let r=out.join(' ');
+  if(r.length>TITLE_MAX_CHARS){ r=r.slice(0,TITLE_MAX_CHARS); const sp=r.lastIndexOf(' '); if(sp>60) r=r.slice(0,sp); }
+  return r.replace(/[\s,|\-–—:;\/&%]+$/,'').trim();
+}
+
+// ── قالب توضیحات: مقدمه‌ی کوتاه + بخش‌هایی با تیتر آیکن‌دار و بولت — خوندنش برای مشتری ساده باشه
+const DESC_FORMAT_RULES=`DESCRIPTION FORMAT (mandatory — it must be easy for buyers to scan):
+- Plain text only (no markdown, no HTML, no ** or #).
+- Start with a 1-2 sentence keyword-rich hook (the first 160 characters carry the main keywords).
+- Then short sections. Each section has a heading line that STARTS WITH AN ICON EMOJI (e.g. 📦 WHAT'S INCLUDED, 📏 SIZE, ✂️ COMPATIBLE WITH, 🛠 HOW TO USE, ⬇️ INSTANT DOWNLOAD, ❤️ PERFECT FOR) followed by bullet lines that each start with "• " or "✔ " — ONE fact per bullet, max ~15 words. Put a blank line between sections.
+- Keep EVERY factual detail from the original (sizes, file formats, what's included, usage/licence notes, the "digital download — no physical item will be shipped" notice). You may reorganize and improve the wording, but never invent facts and never replace it with generic text.`;
+function normalizeDescription(d){
+  return String(d||'').replace(/\r/g,'').replace(/\*\*(.+?)\*\*/g,'$1').replace(/^[ \t]*[-*–][ \t]+/gm,'• ').replace(/\n{3,}/g,'\n\n').trim();
+}
+function descFormatOk(d){
+  const bullets=String(d||'').split('\n').filter(l=>/^\s*(•|✔|✅|🔹|▪|➤|→)/u.test(l)).length;
+  return bullets>=3 && /\p{Extended_Pictographic}/u.test(String(d||''));
+}
+
 function sanitizeEtsyTitle(title){
   let t=String(title||'').replace(/[$^`.°]/g,'').trim();
   t=t.replace(/^[^a-zA-Z0-9]+/,''); // باید با حرف یا عدد شروع بشه
@@ -4958,7 +5030,7 @@ function sanitizeEtsyTitle(title){
     }
     return w;
   });
-  return fixedWords.join(' ').trim();
+  return limitTitle(fixedWords.join(' ').trim());
 }
 
 // محاسبه امتیاز محلی بدون API
