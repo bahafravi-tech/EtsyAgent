@@ -40,6 +40,31 @@ if($method === 'GET'){
     case 'trend':
       jsonResponse(['trend'=>marketingPlanTrend()]);
       break;
+    // عیب‌یابی کلید Claude: کلیدِ واقعاً بارگذاری‌شده (ماسک‌شده) + مسیر config.php + تست رایگان با Anthropic
+    case 'check_key':
+      $cfgPath = __DIR__.'/../config.php';
+      $rawKey = (string)(cfg()['ANTHROPIC_API_KEY'] ?? '');
+      $usedKey = anthropicApiKey();
+      $info = [
+        'config_path'=>realpath($cfgPath) ?: $cfgPath,
+        'config_modified'=>@date('Y-m-d H:i:s', (int)@filemtime($cfgPath)),
+        'is_set'=>$usedKey !== '',
+        'length'=>strlen($usedKey),
+        'masked'=>$usedKey !== '' ? substr($usedKey, 0, 16).'…'.substr($usedKey, -4) : '',
+        'starts_ok'=>strpos($usedKey, 'sk-ant-') === 0,
+        'had_extra_edges'=>$rawKey !== $usedKey,
+        'has_inner_whitespace'=>(bool)preg_match('/\s/', $usedKey),
+        'has_non_ascii'=>(bool)preg_match('/[^\x20-\x7E]/', $usedKey),
+      ];
+      if($usedKey !== ''){
+        // لیست مدل‌ها رایگانه و فقط اعتبار کلید رو می‌سنجه
+        $t = directFetch('https://api.anthropic.com/v1/models?limit=1', 'GET', ['x-api-key'=>$usedKey, 'anthropic-version'=>'2023-06-01']);
+        $td = json_decode($t['body'] ?? '', true);
+        $info['test_status'] = $t['status'] ?? 0;
+        $info['test_message'] = is_array($td) ? (string)($td['error']['message'] ?? '') : substr((string)($t['body'] ?? ''), 0, 200);
+      }
+      jsonResponse($info);
+      break;
     case 'plans':
       $rows = $pdo->query('SELECT id, trigger_source, period_days, summary, drafts_created, applied_at, created_at FROM marketing_plans ORDER BY id DESC LIMIT 12')->fetchAll();
       jsonResponse(['plans'=>$rows]);

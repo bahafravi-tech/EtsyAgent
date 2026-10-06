@@ -136,6 +136,11 @@ function resizeAndSaveJpeg($bytes, $destPath, $maxDim=1080, $quality=82){
   return $ok;
 }
 
+// کلید Anthropic از config.php — فاصله/خط جدید/کوتیشنِ اضافه‌ی ابتدا و انتها (موقع کپی/پیست شایعه) حذف می‌شه
+function anthropicApiKey(){
+  return trim((string)(cfg()['ANTHROPIC_API_KEY'] ?? ''), " \t\n\r\0\x0B\"'`");
+}
+
 function directFetch($url, $method='GET', $headers=[], $body=null){
   $ch = curl_init($url);
   $hdrs = [];

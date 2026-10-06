@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.11.0 -->
+<!-- APP_VERSION: 1.11.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,9 +685,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v116</div>
+        <div class="logo-badge">v117</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: انتخاب مدل تحلیل (Opus دقیق‌تر / Sonnet ارزان‌تر) + پیام خطای خوانا برای کلید و اعتبار</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: دکمه‌ی «🔑 بررسی کلید Claude» (نشون می‌ده سرور چه کلیدی از کدوم فایل می‌خونه)</div>
     </div>
   </div>
   <div class="header-actions">
@@ -1045,6 +1045,7 @@ margin:0;background:var(--paper);color:var(--ink);
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <button class="btn btn-secondary btn-sm" id="mktCollectBtn" onclick="collectMarketingNow()">📥 جمع‌آوری آمار سوشال</button>
         <button class="btn btn-secondary btn-sm" id="mktEtsyCollectBtn" onclick="collectEtsyMetricsFromBrowser()">🛍 دریافت آمار Etsy (از این مرورگر)</button>
+        <button class="btn btn-secondary btn-sm" id="mktKeyBtn" onclick="checkClaudeKey()">🔑 بررسی کلید Claude</button>
         <button class="btn btn-primary btn-sm" id="mktAnalyzeBtn" onclick="analyzeMarketingNow()">🧠 تحلیل و ساخت پلن جدید</button>
         <span style="font-size:11px;color:var(--text3)">تحلیل ممکنه ۱ تا ۳ دقیقه طول بکشه — صبر کن</span>
       </div>
@@ -3253,6 +3254,31 @@ async function collectEtsyMetricsFromBrowser(){
     document.getElementById('mktActionMsg').innerHTML = '<span style="color:var(--red)">خطا: '+escHtml(e.message)+'</span>';
     log('✗ خطا در دریافت آمار Etsy از مرورگر: '+e.message,'err');
   }
+  btn.disabled = false; btn.textContent = t;
+}
+
+// عیب‌یابی کلید Claude سمت سرور — نشون می‌ده سرور واقعاً چه کلیدی (ماسک‌شده) از کدوم فایل می‌خونه و Anthropic قبولش می‌کنه یا نه
+async function checkClaudeKey(){
+  const btn = document.getElementById('mktKeyBtn'), msg = document.getElementById('mktActionMsg');
+  btn.disabled = true; const t = btn.textContent; btn.textContent = '⏳ در حال بررسی...';
+  try{
+    const k = await mktApiGet('check_key');
+    const ok = k.test_status === 200;
+    const row = (good, text)=>`<div style="margin-bottom:4px;color:${good===true?'var(--green)':good===false?'var(--red)':'var(--text2)'}">${good===true?'✅':good===false?'❌':'•'} ${text}</div>`;
+    let html = '<div style="background:var(--surface3);border-radius:10px;padding:12px;font-size:12px;line-height:1.8">';
+    html += row(null, 'فایلی که سرور می‌خونه: <span dir="ltr" style="unicode-bidi:embed;font-family:monospace">'+escHtml(k.config_path)+'</span> (آخرین تغییر: '+escHtml(k.config_modified)+')');
+    html += row(k.is_set, k.is_set ? 'کلید توی فایل هست — طول '+k.length+' کاراکتر' : 'کلید ANTHROPIC_API_KEY توی این فایل خالیه');
+    if(k.is_set){
+      html += row(null, 'ابتدا و انتهای کلیدی که سرور داره (با ردیف‌های Console مقایسه کن): <span dir="ltr" style="unicode-bidi:embed;font-family:monospace;font-weight:700">'+escHtml(k.masked)+'</span>');
+      html += row(k.starts_ok, k.starts_ok ? 'با sk-ant- شروع می‌شه' : 'با sk-ant- شروع نمی‌شه — احتمالاً کلید سرویس دیگه‌ایه (مثلاً Gemini)');
+      if(k.had_extra_edges) html += row(null, 'فاصله/کوتیشن اضافه‌ی ابتدا یا انتهای کلید بود (خودکار پاک می‌شه)');
+      if(k.has_inner_whitespace) html += row(false, 'وسط کلید فاصله یا خط جدید هست — کلید ناقص یا خراب کپی شده');
+      if(k.has_non_ascii) html += row(false, 'کاراکتر غیرمعمول (فارسی/نامرئی) داخل کلید هست — دوباره تمیز کپی کن');
+      html += row(ok, ok ? 'Anthropic این کلید رو قبول کرد 🎉 — اگه هنوز خطای ۴۰۱ می‌گیری چند دقیقه صبر کن (کش سرور) و دوباره امتحان کن'
+                         : 'Anthropic این کلید رو رد کرد (کد '+k.test_status+'): '+escHtml(k.test_message||'')+' — از Console یه کلید جدید بساز و جایگزین کن');
+    }
+    msg.innerHTML = html + '</div>';
+  }catch(e){ msg.innerHTML = '<span style="color:var(--red)">خطا: '+escHtml(e.message)+'</span>'; }
   btn.disabled = false; btn.textContent = t;
 }
 

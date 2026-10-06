@@ -558,8 +558,8 @@ function claudeStructuredRequest($body, $headers){
 }
 
 function callClaudeOpusStructured($systemPrompt, $userPrompt, $schema, $retryNoFallback=true, $model='claude-opus-5'){
-  $c = cfg();
-  if(empty($c['ANTHROPIC_API_KEY'])) return ['ok'=>false, 'error'=>'ANTHROPIC_API_KEY توی config.php تنظیم نشده'];
+  $apiKey = anthropicApiKey();
+  if($apiKey === '') return ['ok'=>false, 'error'=>'ANTHROPIC_API_KEY توی config.php تنظیم نشده'];
   $isOpus = strpos($model, 'opus') !== false;
   $body = [
     'model' => $model,
@@ -571,7 +571,7 @@ function callClaudeOpusStructured($systemPrompt, $userPrompt, $schema, $retryNoF
   ];
   $headers = [
     'Content-Type' => 'application/json',
-    'x-api-key' => $c['ANTHROPIC_API_KEY'],
+    'x-api-key' => $apiKey,
     'anthropic-version' => '2023-06-01',
   ];
   if($isOpus){ // fallback سمت سرور فقط برای Opus

@@ -2,11 +2,11 @@
 // lib_generate.php — تولید کپشن (Claude) و عکس پس‌زمینه (Gemini) برای یک آیتم محتوا
 
 function callClaudeAPI($prompt, $maxTokens=800){
-  $c = cfg();
-  if(empty($c['ANTHROPIC_API_KEY'])) return ['ok'=>false, 'error'=>'ANTHROPIC_API_KEY توی config.php تنظیم نشده'];
+  $apiKey = anthropicApiKey();
+  if($apiKey === '') return ['ok'=>false, 'error'=>'ANTHROPIC_API_KEY توی config.php تنظیم نشده'];
   $res = directFetch('https://api.anthropic.com/v1/messages', 'POST', [
     'Content-Type' => 'application/json',
-    'x-api-key' => $c['ANTHROPIC_API_KEY'],
+    'x-api-key' => $apiKey,
     'anthropic-version' => '2023-06-01',
   ], json_encode([
     'model' => 'claude-sonnet-4-6',

@@ -1,3 +1,6 @@
 <FilesMatch "^(config|config\.example|db|lib_generate|lib_marketing|cron_publish|cron_marketing|cron_lib|schema|schema_marketing|migration_marketing_v2|deploy_webhook_config|deploy_webhook_config\.example)\.(php|sql)$">
   Require all denied
 </FilesMatch>
+<FilesMatch "^deploy_webhook\.log$">
+  Require all denied
+</FilesMatch>
