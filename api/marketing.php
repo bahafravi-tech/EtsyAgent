@@ -37,6 +37,9 @@ if($method === 'GET'){
       if(!$row){ jsonResponse(['plan'=>null]); break; }
       jsonResponse(['plan'=>formatPlanRow($row)]);
       break;
+    case 'trend':
+      jsonResponse(['trend'=>marketingPlanTrend()]);
+      break;
     case 'plans':
       $rows = $pdo->query('SELECT id, trigger_source, period_days, summary, drafts_created, applied_at, created_at FROM marketing_plans ORDER BY id DESC LIMIT 12')->fetchAll();
       jsonResponse(['plans'=>$rows]);
@@ -111,6 +114,16 @@ if($method === 'POST'){
       }
       break;
 
+    case 'save_ad_result':
+      try{
+        marketingSaveAdResult((int)($input['plan_id'] ?? 0), (int)($input['ad_index'] ?? -1), (string)($input['status'] ?? ''),
+          $input['spent_usd'] ?? 0, (string)($input['note'] ?? ''));
+        jsonResponse(['ok'=>true]);
+      }catch(Throwable $e){
+        jsonResponse(['ok'=>false, 'error'=>$e->getMessage()], 400);
+      }
+      break;
+
     case 'get_plan':
       $planId = (int)($input['plan_id'] ?? 0);
       $stmt = $pdo->prepare('SELECT * FROM marketing_plans WHERE id=?');
@@ -134,5 +147,6 @@ function formatPlanRow($row){
     'summary'=>$row['summary'], 'plan'=>json_decode($row['plan_json'], true),
     'stats'=>json_decode($row['stats_json'], true), 'model'=>$row['model'],
     'drafts_created'=>(int)$row['drafts_created'], 'applied_at'=>$row['applied_at'], 'created_at'=>$row['created_at'],
+    'ad_results'=>(object)marketingAdResults((int)$row['id']),
   ];
 }

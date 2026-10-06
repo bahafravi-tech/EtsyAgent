@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.9.0 -->
+<!-- APP_VERSION: 1.10.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,9 +685,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v112</div>
+        <div class="logo-badge">v113</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بهینه‌سازی: عنوان حداکثر ۱۴ کلمه، توضیحات با بولت و آیکن و قابل ویرایش</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: مقایسه‌ی هفتگی، ارزیابی پلن قبلی، راهنمای کمپین و ثبت نتیجه‌ی تبلیغ</div>
     </div>
   </div>
   <div class="header-actions">
@@ -3265,8 +3265,50 @@ async function loadMarketingStats(){
   const days = parseInt(document.getElementById('mktStatsDays').value, 10) || 30;
   try{
     const res = await mktApiGet('stats', '&days='+days);
-    renderMarketingStats(res.stats);
+    let trend = [];
+    try{ trend = (await mktApiGet('trend')).trend || []; }catch(e){ /* روند اختیاریه */ }
+    renderMarketingStats(res.stats, trend);
   }catch(e){ box.innerHTML = '<div style="text-align:center;padding:24px;color:var(--red);font-size:13px">خطا: '+escHtml(e.message)+'</div>'; }
+}
+
+// ▲▼ و درصد تغییر بین دو عدد (مقایسه‌ی هفتگی)
+function mktDelta(now, before, lowerIsBetter){
+  const n = Number(now)||0, b = Number(before)||0;
+  if(!b && !n) return '<span style="color:var(--text3)">—</span>';
+  if(!b) return '<span style="color:var(--green)">▲ جدید</span>';
+  const pct = Math.round((n-b)/b*100);
+  if(pct===0) return '<span style="color:var(--text3)">= بدون تغییر</span>';
+  const good = lowerIsBetter ? pct<0 : pct>0;
+  return `<span style="color:${good?'var(--green)':'var(--red)'}">${pct>0?'▲':'▼'} ${Math.abs(pct)}%</span>`;
+}
+function mktWeeklyHTML(w){
+  if(!w || !w.this_week || !w.last_week) return '';
+  const a = w.this_week, b = w.last_week;
+  const row = (label, x, y, fmt)=>`<tr>${mktTd(label)}${mktTd(fmt?fmt(x):mktFmtNum(x),true)}${mktTd(fmt?fmt(y):mktFmtNum(y),true)}${mktTd(mktDelta(x,y),true)}</tr>`;
+  let html = '<div style="font-size:13px;font-weight:700;margin:14px 0 6px">📆 مقایسه‌ی هفتگی</div>';
+  html += `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">${mktTableHead([{label:'معیار'},{label:'این هفته',right:false},{label:'هفته‌ی قبل',right:false},{label:'تغییر',right:false}])}<tbody>`
+    + row('پست منتشرشده', a.posts, b.posts)
+    + row('از پلن بازاریابی', a.from_plan, b.from_plan)
+    + row('دسترسی (تجمعی)', a.reach, b.reach)
+    + row('تعامل', a.engagement, b.engagement)
+    + row('نرخ تعامل', a.engagement_rate, b.engagement_rate, v=>(Number(v)||0)+'%')
+    + '</tbody></table></div>';
+  const ch = (a.account_changes||[]).filter(x=>x.change!==0);
+  if(ch.length){
+    html += '<div style="font-size:11.5px;color:var(--text2);margin-top:8px">تغییر آمار حساب‌ها در این هفته: ' + ch.map(x=>`${mktPlatformLabel[x.platform]||x.platform} ${escHtml(x.metric)} <b style="color:${x.change>=0?'var(--green)':'var(--red)'}">${x.change>=0?'+':''}${mktFmtNum(x.change)}</b>`).join(' · ') + '</div>';
+  }
+  if(w.note) html += `<div style="font-size:10.5px;color:var(--text3);margin-top:6px;line-height:1.7">ℹ️ ${escHtml(w.note)}</div>`;
+  return html;
+}
+function mktTrendHTML(trend){
+  if(!trend || trend.length<2) return '';
+  const max = Math.max(1, ...trend.map(t=>Number(t.engagement)||0));
+  let html = '<div style="font-size:13px;font-weight:700;margin:14px 0 6px">📈 روند پلن‌ها (تعامل هفته‌ی هر پلن)</div><div style="display:grid;gap:6px">';
+  trend.forEach(t=>{
+    const v = Number(t.engagement)||0;
+    html += `<div style="display:flex;align-items:center;gap:8px;font-size:11.5px"><span style="min-width:96px;color:var(--text2)">پلن #${t.plan_id} · ${new Date(t.created_at).toLocaleDateString('fa-IR')}</span><div class="prog-bar" style="flex:1"><div class="prog-fill" style="width:${Math.round(v/max*100)}%"></div></div><span style="min-width:120px;text-align:left">${mktFmtNum(v)} تعامل · ${mktFmtNum(t.posts)} پست</span></div>`;
+  });
+  return html + '</div>';
 }
 
 function mktTableHead(cols){
@@ -3274,7 +3316,7 @@ function mktTableHead(cols){
 }
 function mktTd(v, center){ return `<td style="padding:9px 10px;text-align:${center?'center':'right'};font-size:12.5px;border-top:1px solid var(--border)">${v}</td>`; }
 
-function renderMarketingStats(s){
+function renderMarketingStats(s, trend){
   const box = document.getElementById('mktStatsBox');
   if(!s){ box.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text2)">آماری نیست</div>'; return; }
   const t = s.totals || {};
@@ -3287,6 +3329,8 @@ function renderMarketingStats(s){
   html += `<div class="stat-card stat-purple"><div class="stat-icon">💬</div><div class="stat-val">${mktFmtNum(t.total_engagement)}</div><div class="stat-label">مجموع تعامل</div></div>`;
   html += `<div class="stat-card stat-orange"><div class="stat-icon">🔥</div><div class="stat-val">${engRate}%</div><div class="stat-label">نرخ تعامل</div></div>`;
   html += '</div>';
+  html += mktWeeklyHTML(s.weekly);
+  html += mktTrendHTML(trend);
 
   if(s.data_gaps && s.data_gaps.length){
     html += '<div style="background:var(--yellow-light);color:#92400e;border:1px solid #fde68a;border-radius:10px;padding:12px;font-size:12px;line-height:1.9;margin-bottom:16px">⚠️ داده‌هایی که نداریم:<br>' + s.data_gaps.map(g=>'• '+escHtml(g)).join('<br>') + '</div>';
@@ -3366,6 +3410,29 @@ function renderMktPlan(p){
     html += '<div style="background:var(--yellow-light);color:#92400e;border:1px solid #fde68a;border-radius:10px;padding:12px;font-size:12px;line-height:1.9;margin-bottom:14px">⚠️ ' + plan.warnings.map(w=>escHtml(w)).join('<br>⚠️ ') + '</div>';
   }
 
+  if(plan.week_over_week){
+    html += `<div style="font-size:13px;font-weight:700;margin:14px 0 6px">📆 این هفته در برابر هفته‌ی قبل</div><div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:12.5px;line-height:1.9">${escHtml(plan.week_over_week)}</div>`;
+  }
+
+  const rev = plan.previous_plan_review;
+  if(rev && (rev.verdict || (rev.what_worked||[]).length || (rev.what_did_not||[]).length)){
+    html += `<div style="font-size:13px;font-weight:700;margin:14px 0 6px">🔁 ارزیابی پلن قبلی</div><div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px">`;
+    html += `<div style="font-size:12.5px;font-weight:700;margin-bottom:8px">${escHtml(rev.verdict||'')}</div>`;
+    if((rev.what_worked||[]).length) html += '<div style="font-size:12px;color:var(--green);margin-bottom:6px">✅ جواب داد:<br>' + rev.what_worked.map(x=>'• '+escHtml(x)).join('<br>') + '</div>';
+    if((rev.what_did_not||[]).length) html += '<div style="font-size:12px;color:var(--red)">❌ جواب نداد:<br>' + rev.what_did_not.map(x=>'• '+escHtml(x)).join('<br>') + '</div>';
+    html += '</div>';
+  }
+
+  if(plan.campaign_guidance && plan.campaign_guidance.length){
+    const decStyle = {continue:['✅ ادامه بده','badge-ok'], adjust:['🔧 اصلاح کن','badge-wait'], stop:['⛔ متوقف کن','badge-no'], start:['🚀 شروع کن','badge-info']};
+    const typeLabel = {content:'محتوا', ad:'تبلیغ', experiment:'آزمایش', schedule:'زمان‌بندی', platform:'پلتفرم'};
+    html += '<div style="font-size:13px;font-weight:700;margin:14px 0 6px">🧭 راهنمای ادامه‌ی کمپین‌ها</div>';
+    plan.campaign_guidance.forEach(g=>{
+      const d = decStyle[g.decision] || [escHtml(g.decision), 'badge-neutral'];
+      html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px"><span class="badge ${d[1]}">${d[0]}</span><span class="badge badge-neutral">${typeLabel[g.type]||escHtml(g.type)}</span><b style="font-size:12.5px">${escHtml(g.item)}</b></div><div style="font-size:12px;color:var(--text)">👉 ${escHtml(g.next_step)}</div><div style="font-size:11.5px;color:var(--text3);margin-top:4px">${escHtml(g.reason)}</div></div>`;
+    });
+  }
+
   if(plan.insights && plan.insights.length){
     html += '<div style="font-size:13px;font-weight:700;margin:14px 0 6px">🔍 یافته‌ها</div>';
     plan.insights.forEach(i=>{
@@ -3405,8 +3472,19 @@ function renderMktPlan(p){
 
   if(plan.ad_recommendations && plan.ad_recommendations.length){
     html += '<div style="font-size:13px;font-weight:700;margin:14px 0 6px">📢 پیشنهادهای تبلیغاتی <span style="font-size:10.5px;font-weight:400;color:var(--text3)">(فقط پیشنهاد — اجرای دستی توسط خودت)</span></div>';
-    plan.ad_recommendations.forEach(a=>{
-      html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px"><b style="font-size:12.5px">${escHtml(a.channel)}</b> — ${escHtml(a.objective)}<div style="font-size:12px;color:var(--text2);margin-top:4px">مخاطب: ${escHtml(a.audience)} · بودجه: $${mktFmtNum(a.budget)} برای ${a.duration_days} روز · معیار موفقیت: ${escHtml(a.success_metric)}</div><div style="font-size:11.5px;color:var(--text3);margin-top:4px">${escHtml(a.rationale)}</div></div>`;
+    const adRes = p.ad_results || {};
+    plan.ad_recommendations.forEach((a, i)=>{
+      const r = adRes[i] || {status:'not_started', spent_usd:0, note:''};
+      const opts = [['not_started','هنوز شروع نکردم'],['running','در حال اجرا'],['done','تموم شد'],['skipped','اجرا نکردم']]
+        .map(([v,l])=>`<option value="${v}"${r.status===v?' selected':''}>${l}</option>`).join('');
+      html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px"><b style="font-size:12.5px">${escHtml(a.channel)}</b> — ${escHtml(a.objective)}<div style="font-size:12px;color:var(--text2);margin-top:4px">مخاطب: ${escHtml(a.audience)} · بودجه: $${mktFmtNum(a.budget)} برای ${a.duration_days} روز · معیار موفقیت: ${escHtml(a.success_metric)}</div><div style="font-size:11.5px;color:var(--text3);margin-top:4px">${escHtml(a.rationale)}</div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)"><div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px">📝 نتیجه‌ی اجرای دستی (تحلیل بعدی ازش استفاده می‌کنه)</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <select class="input" id="adSt_${p.id}_${i}" style="width:auto;font-size:12px">${opts}</select>
+          <input type="number" class="input" id="adSp_${p.id}_${i}" min="0" step="0.5" placeholder="هزینه‌ی واقعی ($)" value="${r.spent_usd||''}" style="width:130px;font-size:12px">
+          <input type="text" class="input" id="adNote_${p.id}_${i}" placeholder="نتیجه (مثلاً چند کلیک/فروش گرفتی)" value="${escHtml(r.note||'')}" style="flex:1;min-width:160px;font-size:12px">
+          <button class="btn btn-secondary btn-sm" onclick="saveMktAdResult(${p.id},${i})">💾 ثبت</button>
+        </div></div></div>`;
     });
   }
 
@@ -3418,6 +3496,14 @@ function renderMktPlan(p){
   }
 
   box.innerHTML = html;
+}
+
+async function saveMktAdResult(planId, adIndex){
+  const g = id => document.getElementById(id+'_'+planId+'_'+adIndex);
+  try{
+    await mktApiPost({ action:'save_ad_result', plan_id:planId, ad_index:adIndex, status:g('adSt').value, spent_usd:parseFloat(g('adSp').value)||0, note:g('adNote').value.trim() });
+    toast('✅ نتیجه‌ی تبلیغ ثبت شد');
+  }catch(e){ alert('خطا: '+e.message); }
 }
 
 async function applyMktPlan(planId){

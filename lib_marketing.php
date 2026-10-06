@@ -86,8 +86,13 @@ function fetchPostMetric($platform, $externalId){
     if(!$res['ok'] || !is_array($data) || isset($data['error'])) return null;
     $m = ['likes'=>$data['like_count']??0, 'comments'=>$data['comments_count']??0];
     // insights فقط برای بعضی نوع مدیاها و بعد از یه مدت در دسترسه — اگه نبود، فقط لایک/کامنت کافیه
+    // بعضی نوع مدیاها متریک shares رو نمی‌دن و کل درخواست خطا می‌ده — پس اگه نشد، بدون اون دوباره امتحان کن
     $res2 = relayFetch("https://graph.facebook.com/v19.0/{$externalId}/insights?metric=reach,saved,shares&access_token={$token}", 'GET');
     $data2 = json_decode($res2['body'] ?? '', true);
+    if(!$res2['ok'] || empty($data2['data'])){
+      $res2 = relayFetch("https://graph.facebook.com/v19.0/{$externalId}/insights?metric=reach,saved&access_token={$token}", 'GET');
+      $data2 = json_decode($res2['body'] ?? '', true);
+    }
     if($res2['ok'] && !empty($data2['data'])){
       foreach($data2['data'] as $d){
         $val = $d['values'][0]['value'] ?? 0;
@@ -285,8 +290,154 @@ function buildStats($days=30){
     'posts' => array_slice($posts, 0, 80),
     'upcoming' => $upcoming,
     'data_gaps' => $dataGaps,
+    'weekly' => [
+      'this_week' => marketingWindowStats(7, 0),
+      'last_week' => marketingWindowStats(14, 7),
+      'note' => 'reach تجمعی است (از زمان انتشار تا الان): پست‌های تازه‌تر هنوز فرصت کمتری برای دیده‌شدن داشتن، پس مقایسه‌ی مستقیم reach این‌دو هفته به نفع هفته‌ی قدیمی‌تره — نرخ تعامل و تغییر آمار حساب‌ها معیار منصفانه‌تره.',
+    ],
     'period_days' => $days,
   ];
+}
+
+// ══ ۲-ب. مقایسه‌ی هفتگی، ارزیابی پلن قبلی، روند ══
+
+// آمار پست‌های منتشرشده بین «$fromDays روز پیش» و «$toDays روز پیش» + تغییر آمار حساب‌ها در همون بازه
+function marketingWindowStats($fromDays, $toDays){
+  $pdo = db();
+  $from = date('Y-m-d H:i:s', strtotime("-{$fromDays} days"));
+  $to   = date('Y-m-d H:i:s', strtotime("-{$toDays} days"));
+  $stmt = $pdo->prepare("SELECT ci.id, ci.tag, ci.plan_id, cp.platform,
+      COALESCE(mm.reach,0) reach,
+      (COALESCE(mm.likes,0)+COALESCE(mm.comments,0)+COALESCE(mm.saves,0)+COALESCE(mm.shares,0)+COALESCE(mm.clicks,0)) eng
+    FROM content_items ci
+    JOIN content_platforms cp ON cp.content_id=ci.id AND cp.status='published'
+    LEFT JOIN marketing_post_metrics mm ON mm.content_id=ci.id AND mm.platform=cp.platform
+    WHERE ci.published_at >= ? AND ci.published_at < ?");
+  $stmt->execute([$from, $to]);
+  $rows = $stmt->fetchAll();
+
+  $ids = []; $planIds = []; $reach = 0; $eng = 0; $byPlatform = []; $byCategory = [];
+  foreach($rows as $r){
+    $ids[$r['id']] = 1;
+    if($r['plan_id']) $planIds[$r['id']] = 1;
+    $reach += (int)$r['reach']; $eng += (int)$r['eng'];
+    $pl = $r['platform'];
+    if(!isset($byPlatform[$pl])) $byPlatform[$pl] = ['posts'=>0,'reach'=>0,'engagement'=>0];
+    $byPlatform[$pl]['posts']++; $byPlatform[$pl]['reach'] += (int)$r['reach']; $byPlatform[$pl]['engagement'] += (int)$r['eng'];
+    $cat = $r['tag'] !== null && $r['tag'] !== '' ? $r['tag'] : '—';
+    if(!isset($byCategory[$cat])) $byCategory[$cat] = ['posts'=>0,'reach'=>0,'engagement'=>0];
+    $byCategory[$cat]['posts']++; $byCategory[$cat]['reach'] += (int)$r['reach']; $byCategory[$cat]['engagement'] += (int)$r['eng'];
+  }
+
+  // تغییر آمار حساب‌ها (فالوور/عضو/بازدید کل لیستینگ‌ها...) = آخرین مقدار تا پایان بازه − آخرین مقدار تا ابتدای بازه
+  $acc = [];
+  try{
+    $q = $pdo->prepare("SELECT a.platform, a.metric,
+        (SELECT x.value FROM marketing_account_metrics x WHERE x.platform=a.platform AND x.metric=a.metric AND x.recorded_on<=? ORDER BY x.recorded_on DESC LIMIT 1) end_val,
+        (SELECT y.value FROM marketing_account_metrics y WHERE y.platform=a.platform AND y.metric=a.metric AND y.recorded_on<=? ORDER BY y.recorded_on DESC LIMIT 1) start_val
+      FROM (SELECT DISTINCT platform, metric FROM marketing_account_metrics) a");
+    $q->execute([date('Y-m-d', strtotime("-{$toDays} days")), date('Y-m-d', strtotime("-{$fromDays} days"))]);
+    foreach($q->fetchAll() as $r){
+      if($r['end_val'] === null || $r['start_val'] === null) continue;
+      $acc[] = ['platform'=>$r['platform'], 'metric'=>$r['metric'], 'start'=>(int)$r['start_val'], 'end'=>(int)$r['end_val'], 'change'=>(int)$r['end_val']-(int)$r['start_val']];
+    }
+  }catch(Throwable $e){ /* جدول آمار حساب خالی/ناقص — مهم نیست */ }
+
+  return [
+    'from'=>$from, 'to'=>$to,
+    'posts'=>count($ids), 'publications'=>count($rows), 'from_plan'=>count($planIds),
+    'reach'=>$reach, 'engagement'=>$eng, 'engagement_rate'=>$reach ? round($eng / $reach * 100, 2) : 0,
+    'by_platform'=>$byPlatform, 'by_category'=>$byCategory, 'account_changes'=>$acc,
+  ];
+}
+
+// نتیجه‌ی تبلیغ‌هایی که کاربر خودش اجرا و ثبت کرده — [ad_index => {status, spent_usd, note}]
+function marketingAdResults($planId){
+  $out = [];
+  try{
+    $st = db()->prepare('SELECT ad_index, status, spent_usd, result_note FROM marketing_ad_results WHERE plan_id=?');
+    $st->execute([$planId]);
+    foreach($st->fetchAll() as $r) $out[(int)$r['ad_index']] = ['status'=>$r['status'], 'spent_usd'=>(float)$r['spent_usd'], 'note'=>(string)$r['result_note']];
+  }catch(Throwable $e){ /* migration_marketing_v2.sql هنوز اجرا نشده */ }
+  return $out;
+}
+
+function marketingSaveAdResult($planId, $adIndex, $status, $spentUsd, $note){
+  if(!in_array($status, ['not_started','running','done','skipped'], true)) throw new Exception('وضعیت نامعتبر');
+  $spent = max(0, (float)$spentUsd);
+  try{
+    db()->prepare('INSERT INTO marketing_ad_results (plan_id, ad_index, status, spent_usd, result_note) VALUES (?,?,?,?,?)
+        ON DUPLICATE KEY UPDATE status=VALUES(status), spent_usd=VALUES(spent_usd), result_note=VALUES(result_note)')
+      ->execute([$planId, $adIndex, $status, $spent, mb_substr((string)$note, 0, 2000)]);
+  }catch(PDOException $e){
+    throw new Exception('جدول ثبت نتیجه‌ی تبلیغ هنوز ساخته نشده — migration_marketing_v2.sql را از phpMyAdmin اجرا کن');
+  }
+}
+
+// ارزیابی آخرین پلن (قبل از ساخت پلن جدید): چی برنامه‌ریزی شده بود، چی اجرا شد، و پست‌های همون پلن از اون تاریخ چه عملکردی داشتن
+function marketingPreviousPlanReview(){
+  $pdo = db();
+  $row = $pdo->query('SELECT * FROM marketing_plans ORDER BY id DESC LIMIT 1')->fetch();
+  if(!$row) return null;
+  $plan = json_decode($row['plan_json'], true) ?: [];
+  $planId = (int)$row['id'];
+
+  $st = $pdo->prepare('SELECT status, COUNT(*) c FROM content_items WHERE plan_id=? GROUP BY status');
+  $st->execute([$planId]);
+  $draftStatuses = [];
+  foreach($st->fetchAll() as $r) $draftStatuses[$r['status']] = (int)$r['c'];
+
+  $perfStmt = $pdo->prepare("SELECT IF(ci.plan_id=?,1,0) from_plan, COUNT(DISTINCT ci.id) posts,
+      COALESCE(AVG(mm.reach),0) avg_reach,
+      COALESCE(AVG(mm.likes+mm.comments+mm.saves+mm.shares+mm.clicks),0) avg_eng
+    FROM content_items ci
+    JOIN content_platforms cp ON cp.content_id=ci.id AND cp.status='published'
+    LEFT JOIN marketing_post_metrics mm ON mm.content_id=ci.id AND mm.platform=cp.platform
+    WHERE ci.published_at >= ? GROUP BY from_plan");
+  $perfStmt->execute([$planId, $row['created_at']]);
+  $perf = ['plan_posts'=>['posts'=>0,'avg_reach'=>0,'avg_engagement'=>0], 'other_posts'=>['posts'=>0,'avg_reach'=>0,'avg_engagement'=>0]];
+  foreach($perfStmt->fetchAll() as $r){
+    $key = $r['from_plan'] ? 'plan_posts' : 'other_posts';
+    $perf[$key] = ['posts'=>(int)$r['posts'], 'avg_reach'=>round((float)$r['avg_reach'],1), 'avg_engagement'=>round((float)$r['avg_eng'],1)];
+  }
+
+  $userAds = marketingAdResults($planId);
+  $ads = [];
+  foreach(($plan['ad_recommendations'] ?? []) as $i => $ad){
+    $ads[] = [
+      'index'=>$i, 'channel'=>$ad['channel'] ?? '', 'objective'=>$ad['objective'] ?? '', 'planned_budget_usd'=>$ad['budget'] ?? 0,
+      'success_metric'=>$ad['success_metric'] ?? '',
+      'user_reported'=>$userAds[$i] ?? ['status'=>'not_reported'],
+    ];
+  }
+
+  return [
+    'plan_id'=>$planId, 'created_at'=>$row['created_at'], 'summary'=>$row['summary'],
+    'goals'=>$plan['goals_next_period'] ?? [], 'planned_content_mix'=>$plan['content_mix'] ?? [],
+    'planned_topics'=>count($plan['topic_ideas'] ?? []), 'drafts_created'=>(int)$row['drafts_created'],
+    'applied'=>!empty($row['applied_at']), 'draft_statuses'=>$draftStatuses,
+    'performance_since_plan'=>$perf, 'experiments'=>$plan['experiments'] ?? [], 'ads'=>$ads,
+  ];
+}
+
+// روند پلن‌ها (۱۲ تای آخر) — از روی آمار ذخیره‌شده‌ی خودِ هر پلن، ترجیحاً هفته‌ی جاری همون لحظه
+function marketingPlanTrend(){
+  $rows = db()->query('SELECT id, created_at, stats_json FROM marketing_plans ORDER BY id DESC LIMIT 12')->fetchAll();
+  $out = [];
+  foreach(array_reverse($rows) as $r){
+    $s = json_decode($r['stats_json'], true) ?: [];
+    $w = $s['weekly']['this_week'] ?? null;
+    $t = $s['totals'] ?? [];
+    $out[] = [
+      'plan_id'=>(int)$r['id'], 'created_at'=>$r['created_at'],
+      'source'=>$w ? 'weekly' : 'period',
+      'posts'=>$w ? $w['posts'] : ($t['published_count'] ?? null),
+      'reach'=>$w ? $w['reach'] : ($t['total_reach'] ?? null),
+      'engagement'=>$w ? $w['engagement'] : ($t['total_engagement'] ?? null),
+      'engagement_rate'=>$w ? $w['engagement_rate'] : null,
+    ];
+  }
+  return $out;
 }
 
 // ══ ۳. تحلیل با Claude ══
@@ -295,6 +446,7 @@ function runAnalysis($triggerSource='manual'){
   $mcfg = json_decode($configJson, true) ?: [];
   $days = max(7, min(90, (int)($mcfg['period_days'] ?? 30)));
   $stats = buildStats($days);
+  $stats['previous_plan_review'] = marketingPreviousPlanReview(); // قبل از ساخت پلن جدید — آخرین پلن موجود
 
   $schema = marketingPlanSchema();
   $goals = $mcfg['goals'] ?? '';
@@ -313,6 +465,9 @@ function runAnalysis($triggerSource='manual'){
     ."- مجموع بودجه‌ی پیشنهادی تبلیغات نباید از یک‌چهارم بودجه‌ی ماهانه (".round($budget/4)." واحد) بیشتر بشه؛ اگه بودجه صفره، فقط اقدامات رایگان (ارگانیک) پیشنهاد بده.\n"
     ."- محدودیت واقعی کانال‌های تبلیغاتی رو در نظر بگیر: حداقل بودجه‌ی روزانه‌ی Etsy Ads معمولاً حدود \$1 در روزه؛ تبلیغات Pinterest/Instagram هم حداقل بودجه‌ی مشخص خودشون رو دارن — پیشنهاد بودجه رو واقع‌بینانه بده.\n"
     ."- طبق تحقیق بازار Etsy: بیشترین خرید از جستجوی داخلی خودِ Etsy میاد، و بین شبکه‌های اجتماعی، Pinterest برای فروشنده‌های Etsy معمولاً مؤثرتر از Instagram است (ترافیک قصد-خرید بالاتر) — این اولویت رو توی content_mix و posting_schedule منعکس کن، مگر آمار واقعی چیز دیگه‌ای نشون بده.\n"
+    ."- week_over_week: weekly.this_week رو با weekly.last_week مقایسه کن و برای تعامل/نرخ تعامل/پست‌ها/تغییر آمار حساب‌ها (از account_changes) درصد یا عدد تغییر رو بنویس؛ note ی weekly رو رعایت کن (reach تجمعیه)؛ اگه یکی از دو هفته داده‌ی کافی نداره صریح بگو.\n"
+    ."- previous_plan_review: اگه previous_plan_review در ورودی null است، verdict رو «پلن قبلی وجود نداره» بذار و what_worked/what_did_not رو خالی بذار. وگرنه فقط با تکیه بر performance_since_plan (پست‌های پلن در برابر بقیه)، draft_statuses و user_reported هر تبلیغ، بگو پلن قبلی جواب داد یا نه و چی کار کرد/نکرد. چیزی که داده‌ش نیست رو حدس نزن.\n"
+    ."- campaign_guidance: برای هر مورد پلن قبلی (موضوع‌ها، تبلیغات، آزمایش‌ها، زمان‌بندی) تصمیم continue/adjust/stop بده و برای هر ابتکار تازه start؛ هر مورد یه next_step مشخص برای همین هفته داشته باشه. اگه برای یه تبلیغ توی user_reported نتیجه‌ای ثبت نشده (status=not_reported)، تصمیمش adjust باشه و next_step ‌ش «نتیجه‌ی اجرا رو ثبت کن» باشه — درباره‌ی تبلیغ بی‌نتیجه نظر قطعی نده.\n"
     ."- همه‌ی متن‌ها فارسی باشه.\n"
     .($goals ? "اهداف کسب‌وکار: {$goals}\n" : '')
     .($audience ? "مخاطب هدف: {$audience}\n" : '');
@@ -336,9 +491,19 @@ function marketingPlanSchema(){
   $platformEnum = ['telegram','instagram','pinterest'];
   return [
     'type'=>'object','additionalProperties'=>false,
-    'required'=>['summary','insights','goals_next_period','content_mix','posting_schedule','topic_ideas','ad_recommendations','experiments','warnings'],
+    'required'=>['summary','week_over_week','previous_plan_review','campaign_guidance','insights','goals_next_period','content_mix','posting_schedule','topic_ideas','ad_recommendations','experiments','warnings'],
     'properties'=>[
       'summary'=>['type'=>'string'],
+      'week_over_week'=>['type'=>'string'],
+      'previous_plan_review'=>['type'=>'object','additionalProperties'=>false,'required'=>['verdict','what_worked','what_did_not'],
+        'properties'=>['verdict'=>['type'=>'string'],
+          'what_worked'=>['type'=>'array','items'=>['type'=>'string']],
+          'what_did_not'=>['type'=>'array','items'=>['type'=>'string']]]],
+      'campaign_guidance'=>['type'=>'array','items'=>['type'=>'object','additionalProperties'=>false,'required'=>['item','type','decision','next_step','reason'],
+        'properties'=>['item'=>['type'=>'string'],
+          'type'=>['type'=>'string','enum'=>['content','ad','experiment','schedule','platform']],
+          'decision'=>['type'=>'string','enum'=>['continue','adjust','stop','start']],
+          'next_step'=>['type'=>'string'],'reason'=>['type'=>'string']]]],
       'insights'=>['type'=>'array','items'=>['type'=>'object','additionalProperties'=>false,'required'=>['title','detail','evidence'],
         'properties'=>['title'=>['type'=>'string'],'detail'=>['type'=>'string'],'evidence'=>['type'=>'string']]]],
       'goals_next_period'=>['type'=>'array','items'=>['type'=>'object','additionalProperties'=>false,'required'=>['metric','current','target'],
