@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.10.0 -->
+<!-- APP_VERSION: 1.10.2 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,9 +685,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v113</div>
+        <div class="logo-badge">v115</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: مقایسه‌ی هفتگی، ارزیابی پلن قبلی، راهنمای کمپین و ثبت نتیجه‌ی تبلیغ</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · رفع خطای «toast is not defined» (ذخیره‌ی تنظیمات/ثبت نتیجه‌ی تبلیغ/افزودن به تقویم)</div>
     </div>
   </div>
   <div class="header-actions">
@@ -1054,8 +1054,8 @@ margin:0;background:var(--paper);color:var(--ink);
 
     <div class="card">
       <div class="card-header" style="cursor:pointer" onclick="toggleMktSettings()">
-        <div class="card-title">⚙️ تنظیمات</div>
-        <span id="mktSettingsToggleIcon" style="color:var(--text2)">▾</span>
+        <div><div class="card-title">⚙️ تنظیمات</div><div class="card-subtitle">بودجه‌ی تبلیغات، حالت خودکار، اهداف و مخاطب — برای دیدن روی دکمه بزن</div></div>
+        <button class="btn btn-secondary btn-sm" id="mktSettingsToggleIcon" type="button">▾ باز کردن</button>
       </div>
       <div id="mktSettingsBox" class="hidden">
         <div class="toggle-row"><div class="toggle" id="mktAutoEnabled" onclick="this.classList.toggle('on')"></div><div><div class="toggle-text">حالت خودکار</div><div class="toggle-sub">تحلیل هفتگی + پیش‌نویس روی cron روزانه</div></div></div>
@@ -3141,7 +3141,7 @@ async function loadMarketing(){
 function toggleMktSettings(){
   document.getElementById('mktSettingsBox').classList.toggle('hidden');
   const open = !document.getElementById('mktSettingsBox').classList.contains('hidden');
-  document.getElementById('mktSettingsToggleIcon').textContent = open ? '▴' : '▾';
+  document.getElementById('mktSettingsToggleIcon').textContent = open ? '▴ بستن' : '▾ باز کردن';
 }
 
 async function refreshMktLastRuns(){
@@ -6791,6 +6791,17 @@ function exportSingleProduct(p){
 // ══ Utils ══
 function copyText(text){navigator.clipboard.writeText(text).then(()=>{alert('✅ کپی شد!');});}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
+// پیام کوتاه و گذرا برای کل برنامه (استودیو داخل IIFE خودش toast جدا و محلی داره، با این تداخلی نداره)
+function toast(msg){
+  let el=document.getElementById('appToast');
+  if(!el){
+    el=document.createElement('div'); el.id='appToast';
+    el.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;z-index:9999;box-shadow:0 10px 40px rgba(0,0,0,.25);opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center;font-family:inherit';
+    document.body.appendChild(el);
+  }
+  el.textContent=msg; el.style.opacity='1';
+  clearTimeout(el._t); el._t=setTimeout(()=>{ el.style.opacity='0'; },2600);
+}
 function updateSidebar(){document.getElementById('sidebarOptimized').textContent=Object.keys(S.optimized).length;document.getElementById('sidebarPending').textContent=S.dailyProducts.filter(p=>p.status==='pending').length;}
 document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
 // ══ CSV Upload Handler ══
