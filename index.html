@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.11.1 -->
+<!-- APP_VERSION: 1.11.2 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,9 +685,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v117</div>
+        <div class="logo-badge">v118</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: دکمه‌ی «🔑 بررسی کلید Claude» (نشون می‌ده سرور چه کلیدی از کدوم فایل می‌خونه)</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
   </div>
   <div class="header-actions">
@@ -3115,17 +3115,22 @@ const mktWeekdayLabel = {1:'دوشنبه',2:'سه‌شنبه',3:'چهارشنب�
 const mktPlatformLabel = { telegram:'تلگرام', instagram:'اینستاگرام', pinterest:'پینترست', etsy:'اتسی' };
 let mktLatestPlanId = null;
 
+// پاسخ API بازاریابی: JSON رو می‌خونه؛ اگه سرور خطا داد (حتی با کد ۲۰۰ و {ok:false}، یا پاسخ غیر JSON مثل صفحه‌ی خطای هاست)، متن واقعی خطا نشون داده می‌شه
+async function mktParseResponse(res){
+  const text = await res.text();
+  let data = null;
+  try{ data = JSON.parse(text); }catch(e){}
+  if(!res.ok || (data && data.ok === false && data.error)){
+    const snippet = data ? '' : ' — پاسخ سرور: ' + (text.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,200) || '(خالی)');
+    throw new Error((data && data.error) || ('خطای '+res.status+snippet));
+  }
+  return data || {};
+}
 async function mktApiGet(action, extra=''){
-  const res = await fetch(crApiUrl('marketing.php?action='+action+extra), { headers: crHeaders() });
-  const data = await res.json().catch(()=>({}));
-  if(!res.ok) throw new Error(data.error || ('خطای '+res.status));
-  return data;
+  return mktParseResponse(await fetch(crApiUrl('marketing.php?action='+action+extra), { headers: crHeaders() }));
 }
 async function mktApiPost(body){
-  const res = await fetch(crApiUrl('marketing.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify(body) });
-  const data = await res.json().catch(()=>({}));
-  if(!res.ok) throw new Error(data.error || ('خطای '+res.status));
-  return data;
+  return mktParseResponse(await fetch(crApiUrl('marketing.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify(body) }));
 }
 function mktFmtNum(n){ return (n==null) ? '—' : Number(n).toLocaleString('en-US'); }
 function mktFmtDate(s){ return s ? new Date(s).toLocaleString('fa-IR') : '—'; }
@@ -3274,6 +3279,7 @@ async function checkClaudeKey(){
       if(k.had_extra_edges) html += row(null, 'فاصله/کوتیشن اضافه‌ی ابتدا یا انتهای کلید بود (خودکار پاک می‌شه)');
       if(k.has_inner_whitespace) html += row(false, 'وسط کلید فاصله یا خط جدید هست — کلید ناقص یا خراب کپی شده');
       if(k.has_non_ascii) html += row(false, 'کاراکتر غیرمعمول (فارسی/نامرئی) داخل کلید هست — دوباره تمیز کپی کن');
+      html += row(null, 'محدودیت‌های PHP روی هاست: زمان اجرا <span dir="ltr" style="unicode-bidi:embed;font-family:monospace">'+escHtml(k.max_execution_time||'?')+'s</span> · حافظه <span dir="ltr" style="unicode-bidi:embed;font-family:monospace">'+escHtml(k.memory_limit||'?')+'</span> · نسخه‌ی PHP <span dir="ltr" style="unicode-bidi:embed;font-family:monospace">'+escHtml(k.php_version||'?')+' ('+escHtml(k.php_sapi||'?')+')</span>'+(k.set_time_limit_disabled?' · <b style="color:var(--red)">set_time_limit روی هاست غیرفعاله</b>':''));
       html += row(ok, ok ? 'Anthropic این کلید رو قبول کرد 🎉 — اگه هنوز خطای ۴۰۱ می‌گیری چند دقیقه صبر کن (کش سرور) و دوباره امتحان کن'
                          : 'Anthropic این کلید رو رد کرد (کد '+k.test_status+'): '+escHtml(k.test_message||'')+' — از Console یه کلید جدید بساز و جایگزین کن');
     }

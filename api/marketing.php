@@ -1,6 +1,15 @@
 <?php
 // api/marketing.php — endpoint واحد سیستم «بازاریابی خودکار» (فقط پنل، با نشست کوکی)
 
+// خطای مرگبار PHP (timeout / حافظه / syntax) به‌جای صفحه‌ی خالی ۵۰۰، به‌صورت JSON با متن خطا برمی‌گرده
+register_shutdown_function(function(){
+  $e = error_get_last();
+  if($e && in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)){
+    if(!headers_sent()){ http_response_code(500); header('Content-Type: application/json; charset=utf-8'); }
+    echo json_encode(['ok'=>false, 'error'=>'خطای PHP روی سرور: '.$e['message'].' ('.basename($e['file']).':'.$e['line'].')'], JSON_UNESCAPED_UNICODE);
+  }
+});
+
 require __DIR__.'/../db.php';
 require __DIR__.'/../lib_marketing.php';
 require __DIR__.'/../lib_generate.php'; // برای generateCaptionForItem که applyPlan صداش می‌زنه
@@ -55,6 +64,12 @@ if($method === 'GET'){
         'had_extra_edges'=>$rawKey !== $usedKey,
         'has_inner_whitespace'=>(bool)preg_match('/\s/', $usedKey),
         'has_non_ascii'=>(bool)preg_match('/[^\x20-\x7E]/', $usedKey),
+        // محدودیت‌های PHP روی هاست — برای عیب‌یابی خطای ۵۰۰ موقع کارهای طولانی
+        'php_version'=>PHP_VERSION,
+        'php_sapi'=>PHP_SAPI,
+        'max_execution_time'=>(string)ini_get('max_execution_time'),
+        'memory_limit'=>(string)ini_get('memory_limit'),
+        'set_time_limit_disabled'=>in_array('set_time_limit', array_map('trim', explode(',', (string)ini_get('disable_functions'))), true),
       ];
       if($usedKey !== ''){
         // لیست مدل‌ها رایگانه و فقط اعتبار کلید رو می‌سنجه

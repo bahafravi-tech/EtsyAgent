@@ -542,6 +542,26 @@ function claudeFriendlyError($status, $res){
   return "خطای HTTP {$status} از Claude: ".($msg !== '' ? $msg : substr($res, 0, 400));
 }
 
+// تحلیل با Claude ۱ تا ۳ دقیقه طول می‌کشه؛ بعضی وب‌سرورها (مثل mod_fcgid) اگه چند ده ثانیه هیچ خروجی نیاد درخواست رو با ۵۰۰ می‌کشن.
+// این تابع هر ~۸ ثانیه یه فاصله‌ی بی‌ضرر می‌فرسته (JSON اول خودش فاصله‌ی ابتدایی رو نادیده می‌گیره) تا اتصال زنده بمونه.
+function claudeKeepAlive(){
+  static $last = 0;
+  if(PHP_SAPI === 'cli') return; // کرون خروجی وب نداره
+  $now = time();
+  if($now - $last < 8) return;
+  $last = $now;
+  if(!headers_sent()){
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    header('X-Accel-Buffering: no');
+    if(function_exists('apache_setenv')) @apache_setenv('no-gzip', '1');
+    @ini_set('zlib.output_compression', '0');
+  }
+  echo ' ';
+  while(ob_get_level() > 0) @ob_end_flush();
+  @flush();
+}
+
 function claudeStructuredRequest($body, $headers){
   $ch = curl_init('https://api.anthropic.com/v1/messages');
   curl_setopt_array($ch, [
@@ -549,6 +569,8 @@ function claudeStructuredRequest($body, $headers){
     CURLOPT_HTTPHEADER=>array_map(fn($k,$v)=>"$k: $v", array_keys($headers), $headers),
     CURLOPT_POSTFIELDS=>json_encode($body),
     CURLOPT_TIMEOUT=>280,
+    CURLOPT_NOPROGRESS=>false,
+    CURLOPT_PROGRESSFUNCTION=>function($ch, $dlTotal, $dlNow, $ulTotal, $ulNow){ claudeKeepAlive(); return 0; },
   ]);
   $raw = curl_exec($ch);
   $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -636,6 +658,7 @@ function applyPlan($planId, $generateCaptions=false){
     }
     $existingTitles[] = $normTitle;
     $created++;
+    claudeKeepAlive(); // تولید کپشن برای چند موضوع ممکنه طول بکشه
 
     if($generateCaptions){
       try{ generateCaptionForItem($newId); }catch(Throwable $e){ /* خطای تولید کپشن این آیتم رو متوقف نمی‌کنه، پیش‌نویس می‌مونه */ }
