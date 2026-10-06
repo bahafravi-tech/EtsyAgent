@@ -474,7 +474,7 @@ function runAnalysis($triggerSource='manual'){
 
   $userPrompt = "این خلاصه‌ی آمار ".$days." روز اخیره:\n".json_encode($stats, JSON_UNESCAPED_UNICODE)."\n\nبر اساس این آمار، یه پلن بازاریابی کامل طبق schema بساز.";
 
-  $result = callClaudeOpusStructured($systemPrompt, $userPrompt, $schema);
+  $result = callClaudeOpusStructured($systemPrompt, $userPrompt, $schema, true, marketingModelId($mcfg['analysis_model'] ?? 'opus'));
   if(!$result['ok']) throw new Exception($result['error']);
 
   $pdo = db();
@@ -526,25 +526,23 @@ function marketingPlanSchema(){
   ];
 }
 
-function callClaudeOpusStructured($systemPrompt, $userPrompt, $schema, $retryNoFallback=true){
-  $c = cfg();
-  if(empty($c['ANTHROPIC_API_KEY'])) return ['ok'=>false, 'error'=>'ANTHROPIC_API_KEY توی config.php تنظیم نشده'];
-  $model = 'claude-opus-5';
-  $body = [
-    'model' => $model,
-    'max_tokens' => 16000,
-    'system' => $systemPrompt,
-    'messages' => [['role'=>'user', 'content'=>$userPrompt]],
-    'thinking' => ['type'=>'adaptive'],
-    'output_config' => ['effort'=>'high', 'format'=>['type'=>'json_schema', 'schema'=>$schema]],
-    'fallbacks' => 'default',
-  ];
-  $headers = [
-    'Content-Type' => 'application/json',
-    'x-api-key' => $c['ANTHROPIC_API_KEY'],
-    'anthropic-version' => '2023-06-01',
-    'anthropic-beta' => 'server-side-fallback-2026-07-01',
-  ];
+// مدل‌های قابل‌انتخاب برای تحلیل: opus = دقیق‌تر و گران‌تر (پیش‌فرض)، sonnet = ارزان‌تر
+function marketingModelId($key){
+  return $key === 'sonnet' ? 'claude-sonnet-5-5' : 'claude-opus-5';
+}
+
+// پیام خوانا برای خطاهای رایج Anthropic
+function claudeFriendlyError($status, $res){
+  $d = json_decode($res, true);
+  $msg = (is_array($d) && isset($d['error']['message'])) ? (string)$d['error']['message'] : '';
+  if($status === 401) return 'کلید ANTHROPIC_API_KEY توی config.php نامعتبره (۴۰۱) — از Console یه کلید جدید بساز و جایگزین کن';
+  if(stripos($msg, 'credit balance') !== false) return 'اعتبار حساب Anthropic کافی نیست — از Console اعتبار اضافه کن، یا مدل تحلیل رو (توی تنظیمات بازاریابی) روی «Sonnet» بذار';
+  if($status === 429) return 'سقف نرخ درخواست Claude پر شد (۴۲۹) — چند دقیقه بعد دوباره امتحان کن';
+  if($status >= 500) return "سرور Claude موقتاً در دسترس نیست ({$status}) — دوباره امتحان کن";
+  return "خطای HTTP {$status} از Claude: ".($msg !== '' ? $msg : substr($res, 0, 400));
+}
+
+function claudeStructuredRequest($body, $headers){
   $ch = curl_init('https://api.anthropic.com/v1/messages');
   curl_setopt_array($ch, [
     CURLOPT_POST=>true, CURLOPT_RETURNTRANSFER=>true,
@@ -552,20 +550,46 @@ function callClaudeOpusStructured($systemPrompt, $userPrompt, $schema, $retryNoF
     CURLOPT_POSTFIELDS=>json_encode($body),
     CURLOPT_TIMEOUT=>280,
   ]);
-  $res = curl_exec($ch);
+  $raw = curl_exec($ch);
   $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
   $err = curl_error($ch);
   curl_close($ch);
-  if($err) return ['ok'=>false, 'error'=>'خطای curl: '.$err];
-  $data = json_decode($res, true);
+  return ['status'=>(int)$status, 'raw'=>(string)$raw, 'curl_error'=>$err];
+}
 
-  // اگه 400 داد و متن خطا به fallback مربوط بود، یه‌بار بدون اون هدر/فیلد تکرار کن
-  if($status===400 && $retryNoFallback && stripos($res, 'fallback')!==false){
-    unset($body['fallbacks']); unset($headers['anthropic-beta']);
-    return callClaudeOpusStructuredRaw($body, $headers);
+function callClaudeOpusStructured($systemPrompt, $userPrompt, $schema, $retryNoFallback=true, $model='claude-opus-5'){
+  $c = cfg();
+  if(empty($c['ANTHROPIC_API_KEY'])) return ['ok'=>false, 'error'=>'ANTHROPIC_API_KEY توی config.php تنظیم نشده'];
+  $isOpus = strpos($model, 'opus') !== false;
+  $body = [
+    'model' => $model,
+    'max_tokens' => $isOpus ? 16000 : 12000,
+    'system' => $systemPrompt,
+    'messages' => [['role'=>'user', 'content'=>$userPrompt]],
+    'thinking' => ['type'=>'adaptive'],
+    'output_config' => ['effort'=>$isOpus ? 'high' : 'medium', 'format'=>['type'=>'json_schema', 'schema'=>$schema]],
+  ];
+  $headers = [
+    'Content-Type' => 'application/json',
+    'x-api-key' => $c['ANTHROPIC_API_KEY'],
+    'anthropic-version' => '2023-06-01',
+  ];
+  if($isOpus){ // fallback سمت سرور فقط برای Opus
+    $body['fallbacks'] = 'default';
+    $headers['anthropic-beta'] = 'server-side-fallback-2026-07-01';
   }
-  if($status<200 || $status>=300) return ['ok'=>false, 'error'=>"خطای HTTP {$status} از Claude: ".substr($res,0,400)];
 
+  $r = claudeStructuredRequest($body, $headers);
+  // 400 (غیر از مشکل اعتبار): یه‌بار با درخواست ساده‌تر — بدون fallbacks/thinking/effort — تکرار کن
+  if($r['status'] === 400 && $retryNoFallback && stripos($r['raw'], 'credit balance') === false){
+    unset($body['fallbacks'], $body['thinking'], $headers['anthropic-beta']);
+    $body['output_config'] = ['format'=>$body['output_config']['format']];
+    $r = claudeStructuredRequest($body, $headers);
+  }
+  if($r['curl_error']) return ['ok'=>false, 'error'=>'خطای curl: '.$r['curl_error']];
+  if($r['status'] < 200 || $r['status'] >= 300) return ['ok'=>false, 'error'=>claudeFriendlyError($r['status'], $r['raw'])];
+
+  $data = json_decode($r['raw'], true);
   $stopReason = $data['stop_reason'] ?? null;
   if($stopReason==='refusal') return ['ok'=>false, 'error'=>'مدل از پاسخ‌دادن امتناع کرد (refusal)'];
   if($stopReason==='max_tokens') return ['ok'=>false, 'error'=>'پاسخ به سقف توکن رسید و ناقص موند (max_tokens)'];
@@ -574,32 +598,10 @@ function callClaudeOpusStructured($systemPrompt, $userPrompt, $schema, $retryNoF
   foreach(($data['content'] ?? []) as $block){
     if(($block['type'] ?? '')==='text' || isset($block['text'])){ $text = $block['text']; break; }
   }
-  if(!$text) return ['ok'=>false, 'error'=>'متنی توی پاسخ Claude نبود: '.substr($res,0,300)];
-  $clean = trim(preg_replace('/```json|```/', '', $text));
-  $plan = json_decode($clean, true);
+  if(!$text) return ['ok'=>false, 'error'=>'متنی توی پاسخ Claude نبود: '.substr($r['raw'],0,300)];
+  $plan = json_decode(trim(preg_replace('/```json|```/', '', $text)), true);
   if(!is_array($plan)) return ['ok'=>false, 'error'=>'پاسخ JSON قابل‌پارس نبود'];
   return ['ok'=>true, 'plan'=>$plan, 'model'=>$data['model'] ?? $model];
-}
-
-function callClaudeOpusStructuredRaw($body, $headers){
-  $ch = curl_init('https://api.anthropic.com/v1/messages');
-  curl_setopt_array($ch, [
-    CURLOPT_POST=>true, CURLOPT_RETURNTRANSFER=>true,
-    CURLOPT_HTTPHEADER=>array_map(fn($k,$v)=>"$k: $v", array_keys($headers), $headers),
-    CURLOPT_POSTFIELDS=>json_encode($body),
-    CURLOPT_TIMEOUT=>280,
-  ]);
-  $res = curl_exec($ch);
-  $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-  curl_close($ch);
-  if($status<200 || $status>=300) return ['ok'=>false, 'error'=>"خطای HTTP {$status} از Claude (تلاش دوم): ".substr($res,0,400)];
-  $data = json_decode($res, true);
-  $text = null;
-  foreach(($data['content'] ?? []) as $block){ if(isset($block['text'])){ $text=$block['text']; break; } }
-  if(!$text) return ['ok'=>false, 'error'=>'متنی توی پاسخ Claude نبود (تلاش دوم)'];
-  $plan = json_decode(trim(preg_replace('/```json|```/', '', $text)), true);
-  if(!is_array($plan)) return ['ok'=>false, 'error'=>'پاسخ JSON قابل‌پارس نبود (تلاش دوم)'];
-  return ['ok'=>true, 'plan'=>$plan, 'model'=>$data['model'] ?? 'claude-opus-5'];
 }
 
 // ══ ۴. اجرای پلن ══

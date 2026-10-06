@@ -64,7 +64,7 @@ if($method === 'POST'){
   switch($action){
     case 'save_config':
       $editable = ['auto_enabled','analyze_weekday','auto_create_drafts','auto_generate_captions',
-        'max_drafts_per_plan','period_days','monthly_ad_budget','goals','audience'];
+        'max_drafts_per_plan','period_days','monthly_ad_budget','goals','audience','analysis_model'];
       $current = json_decode(getSetting('marketing_config', '{}'), true) ?: [];
       foreach($editable as $k){ if(array_key_exists($k, $input)) $current[$k] = $input[$k]; }
       setSetting('marketing_config', json_encode($current, JSON_UNESCAPED_UNICODE));

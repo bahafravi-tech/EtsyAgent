@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.10.2 -->
+<!-- APP_VERSION: 1.11.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,9 +685,9 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v115</div>
+        <div class="logo-badge">v116</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · رفع خطای «toast is not defined» (ذخیره‌ی تنظیمات/ثبت نتیجه‌ی تبلیغ/افزودن به تقویم)</div>
+      <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: انتخاب مدل تحلیل (Opus دقیق‌تر / Sonnet ارزان‌تر) + پیام خطای خوانا برای کلید و اعتبار</div>
     </div>
   </div>
   <div class="header-actions">
@@ -1071,6 +1071,14 @@ margin:0;background:var(--paper);color:var(--ink);
           <div><div class="input-label">بازه‌ی تحلیل (روز)</div><input type="number" class="input" id="mktPeriodDays" min="7" max="90" value="30"></div>
           <div><div class="input-label">حداکثر پیش‌نویس در هر پلن</div><input type="number" class="input" id="mktMaxDrafts" min="1" max="30" value="5"></div>
           <div><div class="input-label">بودجه‌ی تبلیغاتی ماهانه ($)</div><input type="number" class="input" id="mktAdBudget" min="0" value="0"></div>
+          <div style="grid-column:1/-1">
+            <div class="input-label">مدل تحلیل</div>
+            <select class="input" id="mktAnalysisModel" onchange="updateMktModelHint()">
+              <option value="opus">Opus — دقیق‌تر (پیشنهادی برای پلن هفتگی و تصمیم‌های مهم)</option>
+              <option value="sonnet">Sonnet — ارزان‌تر (برای امتحان، یا وقتی اعتبار Anthropic کمه)</option>
+            </select>
+            <div id="mktModelHint" style="font-size:11px;color:var(--text3);margin-top:4px;line-height:1.8"></div>
+          </div>
         </div>
         <div style="margin-top:10px"><div class="input-label">اهداف کسب‌وکار</div><textarea class="content-editor" id="mktGoals" placeholder="مثلاً افزایش بازدید لیستینگ‌ها و رشد فالوور اینستاگرام"></textarea></div>
         <div style="margin-top:10px"><div class="input-label">مخاطب هدف</div><textarea class="content-editor" id="mktAudience" placeholder="مثلاً خریداران قالب‌های SVG برای Cricut/Silhouette"></textarea></div>
@@ -3162,6 +3170,14 @@ function fillMarketingSettings(cfg){
   document.getElementById('mktAdBudget').value = cfg.monthly_ad_budget || 0;
   document.getElementById('mktGoals').value = cfg.goals || '';
   document.getElementById('mktAudience').value = cfg.audience || '';
+  document.getElementById('mktAnalysisModel').value = cfg.analysis_model === 'sonnet' ? 'sonnet' : 'opus';
+  updateMktModelHint();
+}
+function updateMktModelHint(){
+  const sonnet = document.getElementById('mktAnalysisModel').value === 'sonnet';
+  document.getElementById('mktModelHint').textContent = sonnet
+    ? '⚠️ Sonnet ارزان‌تره ولی برای تحلیل چندمرحله‌ای (مقایسه‌ی هفته‌ها، ارزیابی پلن قبلی، تصمیم کمپین) کمی سطحی‌تر می‌شه. برای پلن‌های جدی دوباره Opus رو بذار.'
+    : '✅ Opus برای این کار دقیق‌تره (حالت تفکر عمیق)؛ هر تحلیل گران‌تره، پس موقع اعتبار کم به Sonnet برو. تنظیم برای تحلیل دستی و خودکار (cron) یکسانه.';
 }
 async function saveMarketingConfig(){
   try{
@@ -3176,6 +3192,7 @@ async function saveMarketingConfig(){
       monthly_ad_budget: parseInt(document.getElementById('mktAdBudget').value, 10) || 0,
       goals: document.getElementById('mktGoals').value.trim(),
       audience: document.getElementById('mktAudience').value.trim(),
+      analysis_model: document.getElementById('mktAnalysisModel').value,
     });
     toast('✅ تنظیمات ذخیره شد');
   }catch(e){ alert('خطا: '+e.message); }
@@ -3240,7 +3257,8 @@ async function collectEtsyMetricsFromBrowser(){
 }
 
 async function analyzeMarketingNow(){
-  if(!confirm('ساخت پلن جدید ممکنه ۱ تا ۳ دقیقه طول بکشه و هزینه‌ی API داره. ادامه بدم؟')) return;
+  const modelName = document.getElementById('mktAnalysisModel').value === 'sonnet' ? 'Sonnet (ارزان‌تر)' : 'Opus (دقیق‌تر)';
+  if(!confirm('ساخت پلن جدید با مدل '+modelName+' ممکنه ۱ تا ۳ دقیقه طول بکشه و هزینه‌ی API داره. ادامه بدم؟\n(مدل رو از «⚙️ تنظیمات» می‌تونی عوض کنی)')) return;
   const btn = document.getElementById('mktAnalyzeBtn');
   btn.disabled = true; const t = btn.textContent; btn.textContent = '⏳ در حال تحلیل... (چند دقیقه صبر کن)';
   document.getElementById('mktActionMsg').textContent = '';
