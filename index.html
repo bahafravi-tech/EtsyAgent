@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.12.1 -->
+<!-- APP_VERSION: 1.12.2 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v121</div>
+        <div class="logo-badge">v122</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1415,6 +1415,8 @@ margin:0;background:var(--paper);color:var(--ink);
           <div>
             <div class="input-label">Taxonomy ID <span style="color:var(--text3);font-weight:400">(دسته‌بندی محصول دیجیتال — الزامی برای ساخت لیستینگ)</span></div>
             <input type="text" class="input" id="etsyTaxonomyIdInput" placeholder="مثلاً 6924 برای Templates" style="direction:ltr">
+            <div style="margin-top:6px"><button class="btn btn-secondary btn-sm" type="button" onclick="findEtsyTaxonomy()">🔎 پیدا کردن خودکار Taxonomy ID</button></div>
+            <div id="etsyTaxonomyResult" style="margin-top:8px;font-size:12px"></div>
             <div style="font-size:11px;color:var(--text3);margin-top:4px">پیدا کردنش: یکی از لیستینگ‌های مشابه خودت یا رقبا رو توی مرورگر باز کن و آدرسش رو ببین، یا با فراخوانی <code>getSellerTaxonomyNodes</code> از API اتسی، آیدی دسته‌ی «Templates» یا نزدیک‌ترین دسته به محصولت رو پیدا کن. بدون این مقدار، ساخت خودکار لیستینگ رد می‌شود.</div>
           </div>
           <div id="etsyOAuthSection">
@@ -6598,6 +6600,33 @@ function saveEtsySettings(){
   saveCurrentShop();
   showEtsyStatus(sharedSecret?'✅ ذخیره شد':'⚠️ ذخیره شد — ولی بدون Shared Secret، اتسی از ۹ فوریه ۲۰۲۶ درخواست‌ها رو رد می‌کنه',!!sharedSecret);
   log('✓ Etsy API Key ذخیره شد','ok');
+}
+// پیدا کردن Taxonomy ID: دسته‌های لیستینگ‌های فعال خودت (با نام دسته) + پیشنهاد دسته‌های مرتبط با محصول دیجیتال
+async function findEtsyTaxonomy(){
+  const out=document.getElementById('etsyTaxonomyResult');
+  const key=document.getElementById('etsyApiKeyInput').value.trim()||S.etsyApiKey;
+  const shop=document.getElementById('etsyShopIdInput').value.trim()||S.etsyShopId;
+  if(!key||!shop){ out.innerHTML='<span style="color:var(--red)">اول App API Key و Shop ID را وارد و «ذخیره» کن.</span>'; return; }
+  S.etsyApiKey=key; S.etsyShopId=shop;
+  out.textContent='⏳ در حال دریافت از Etsy...';
+  try{
+    const flatten=(nodes,path,acc)=>{ (nodes||[]).forEach(n=>{ const p=[...path,n.name]; acc[n.id]={path:p.join(' › '),leaf:!(n.children&&n.children.length)}; flatten(n.children,p,acc); }); return acc; };
+    const tree=await etsyApiGet('https://openapi.etsy.com/v3/application/seller-taxonomy/nodes');
+    const map=flatten(tree.results,[],{});
+    const counts={};
+    try{
+      const shopId=await resolveEtsyShopId();
+      const d=await etsyApiGet(`https://openapi.etsy.com/v3/application/shops/${shopId}/listings/active?limit=100`);
+      (d.results||[]).forEach(l=>{ if(l.taxonomy_id) counts[l.taxonomy_id]=(counts[l.taxonomy_id]||0)+1; });
+    }catch(e){ log('⚠ لیستینگ‌های فروشگاه خوانده نشد: '+e.message,'warn'); }
+    const chip=(id,label,extra)=>`<div style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;direction:ltr;text-align:left" onclick="document.getElementById('etsyTaxonomyIdInput').value='${id}'">${escHtml(label)} — <b>${id}</b>${extra||''}</div>`;
+    const mine=Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([id,n])=>chip(id,(map[id]&&map[id].path)||'(unknown)',` · ${n} listing`));
+    const re=/template|pattern|svg|clip ?art|printable|digital|cut file|laser/i;
+    const sugg=Object.entries(map).filter(([id,v])=>v.leaf&&re.test(v.path)).slice(0,25).map(([id,v])=>chip(id,v.path));
+    out.innerHTML=`${mine.length?`<div style="font-weight:700;margin-bottom:6px">دسته‌های لیستینگ‌های خودت (روی یکی بزن تا پر شود):</div>${mine.join('')}`:'<div>لیستینگ فعالی با دسته پیدا نشد.</div>'}
+      <div style="font-weight:700;margin:10px 0 6px">دسته‌های پیشنهادی مرتبط با محصول دیجیتال:</div>${sugg.join('')||'—'}
+      <div style="color:var(--text3);margin-top:6px">بعد از انتخاب، دکمه‌ی «ذخیره» Etsy را بزن.</div>`;
+  }catch(e){ out.innerHTML=`<span style="color:var(--red)">خطا: ${escHtml(e.message)}</span>`; }
 }
 function onBrandLogoSelected(evt){
   const file = evt.target.files[0];
