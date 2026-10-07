@@ -71,6 +71,9 @@ function cpanelUapi($module, $function, $params)
     curl_close($ch);
     $json = json_decode((string)$body, true);
     return [
+        'hint'      => in_array($httpCode, [401, 403], true)
+            ? 'احراز هویت cPanel رد شد — CPANEL_API_TOKEN و CPANEL_USERNAME را بررسی کن و CPANEL_HOST را روی نام سرور (مثل https://cp91.hostmihan.com:2083) بگذار، نه دامنه‌ی سایت'
+            : null,
         'http_code' => $httpCode,
         'ok'        => is_array($json) && ($json['status'] ?? 0) == 1,
         'errors'    => is_array($json) ? ($json['errors'] ?? null) : null,

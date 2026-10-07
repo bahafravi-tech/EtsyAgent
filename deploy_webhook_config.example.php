@@ -5,7 +5,8 @@
 // از cPanel → Security → Manage API Tokens بساز (اسمش مهم نیست، مثلاً github-deploy)
 define('CPANEL_USERNAME', 'rxgqxbxs');
 define('CPANEL_API_TOKEN', 'توکنی که از cPanel گرفتی');
-define('CPANEL_HOST', 'https://etsyagent.afravi.com:2083');
+// آدرس cPanel روی «نام سرور» هاست (همونی که توی صفحه‌ی ورود cPanel می‌بینی)، نه دامنه‌ی سایت
+define('CPANEL_HOST', 'https://cp91.hostmihan.com:2083');
 define('CPANEL_REPO_ROOT', '/home/rxgqxbxs/repositories/etsyagent.afravi.com');
 
 // یه رشته‌ی تصادفی دلخواه بساز (مثلاً با همون روش RELAY_SECRET) — این دقیقاً همون
