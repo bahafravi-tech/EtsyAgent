@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.16.0 -->
+<!-- APP_VERSION: 1.17.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v129</div>
+        <div class="logo-badge">v130</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1776,9 +1776,29 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
             <label class="fld"><span>رنگ اصلی (تأکید)</span><input type="color" id="st-gAcc"></label>
             <label class="fld"><span>رنگ متن</span><input type="color" id="st-gInk"></label>
             <label class="fld"><span>فونت</span><select id="st-gFont"><option value="sans">ساده (Sans)</option><option value="serif">کلاسیک (Serif)</option><option value="round">گرد</option></select></label>
-            <label class="fld"><span>چیدمان تصویر اصلی</span><select id="st-gHero"><option value="split">متن چپ + طرح برش راست</option><option value="center">طرح برش بزرگ وسط</option><option value="3d">متن + جعبه‌ی ۳بعدی</option></select></label>
+            <label class="fld"><span>چیدمان تصویر اصلی</span><select id="st-gHero"><option value="combo">جعبه ۳بعدی بزرگ + طرح برش (پیشنهادی)</option><option value="split">متن چپ + طرح برش راست</option><option value="center">طرح برش بزرگ وسط</option><option value="3d">متن + جعبه‌ی ۳بعدی</option></select></label>
             <label class="fld"><span>قاب تصویر</span><select id="st-gFrame"><option value="bar">نوار رنگی بالا</option><option value="border">کادر دورتادور</option><option value="none">بدون قاب</option></select></label>
             <label class="fld"><span>تراز عنوان</span><select id="st-gAlign"><option value="center">وسط</option><option value="left">چپ</option></select></label>
+            <label class="fld"><span>نوع جعبه در تصویر ۳بعدی باز</span><select id="st-gBoxStyle"><option value="auto">خودکار (از طرح)</option><option value="tuck">جعبه تاشو با درب بازشده</option><option value="tray">سینی + درب جدا</option></select></label>
+          </div>
+          <div style="border:1px dashed var(--rule);border-radius:8px;padding:10px;margin:10px 0">
+            <b style="font-size:13px">🎭 قالب طراحی من</b>
+            <p class="help">«رنگ از تصویر نمونه»: عکس یک طرح نمونه (مثلاً یک لیستینگ که دوست داری) را بده تا رنگ‌هایش خودکار روی تصویرها بنشیند. «پس‌زمینه‌ی دلخواه»: طرح خودت (مثلاً از Canva) را بده تا پشت همه‌ی تصویرها قرار بگیرد. بعد قالب را با یک اسم ذخیره کن تا برای محصول‌های بعدی هم با یک کلیک اعمال شود.</p>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+              <label class="ghost mini" style="cursor:pointer">🎨 رنگ از تصویر نمونه<input type="file" id="st-gRefFile" accept="image/*" hidden></label>
+              <label class="ghost mini" style="cursor:pointer">🖼 پس‌زمینه‌ی دلخواه<input type="file" id="st-gBgFile" accept="image/*" hidden></label>
+              <button type="button" class="ghost mini" id="st-gBgClear">✕ حذف پس‌زمینه</button>
+              <label style="font-size:12.5px">شفافیت رنگ روی پس‌زمینه <input type="range" id="st-gBgAlpha" min="0" max="100" style="vertical-align:middle"></label>
+              <span id="st-gBgInfo" class="help"></span>
+            </div>
+            <div id="st-gPal" style="margin-top:6px"></div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px">
+              <input type="text" id="st-gTplName" placeholder="نام قالب (مثلاً: قالب لوکس من)" style="flex:1;min-width:160px">
+              <button type="button" class="ghost mini" id="st-gTplSave">💾 ذخیره‌ی قالب فعلی</button>
+              <button type="button" class="ghost mini" id="st-gTplExport">⬇ خروجی فایل</button>
+              <label class="ghost mini" style="cursor:pointer">⬆ وارد کردن<input type="file" id="st-gTplImportFile" accept="application/json" hidden></label>
+            </div>
+            <div id="st-gTpls" style="margin-top:6px"></div>
           </div>
           <div style="display:flex;gap:16px;flex-wrap:wrap;margin:8px 0;font-size:13px">
             <label><input type="checkbox" id="st-gFooter"> نوار پایین (نام فروشگاه)</label>
@@ -1790,7 +1810,7 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
             <button type="button" class="ghost mini" id="st-gNone">هیچ‌کدام</button>
             <button type="button" class="ghost mini" id="st-gEmpty">فقط خالی‌های این محصول</button></div>
           <div id="st-gSlots" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:4px;margin:6px 0 10px"></div>
-          <div style="font-size:13px"><b>پیش‌نمایش زنده:</b> <select id="st-gPrevSlot"></select></div>
+          <div style="font-size:13px"><b>پیش‌نمایش زنده (روی عکس بزن تا بزرگ شود):</b> <select id="st-gPrevSlot"></select> <label style="margin-inline-start:10px"><input type="checkbox" id="st-gMobile"> اندازه‌ی گوشی</label></div>
           <canvas id="st-gPrev" width="600" height="450" style="width:100%;max-width:600px;border:1px solid var(--rule);border-radius:8px;margin-top:6px"></canvas>
           <div style="margin-top:10px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
             <button type="button" class="ghost mini" id="st-btnGenImgs">🎨 ساخت تصویرهای انتخاب‌شده</button>
@@ -7297,7 +7317,9 @@ function toast(msg){
 function tokens(p, s){
   return String(s||"")
     .replaceAll("{W}", p.w).replaceAll("{H}", p.h).replaceAll("{D}", p.d)
-    .replaceAll("{NAME}", p.name).replaceAll("{CODE}", p.code);
+    .replaceAll("{NAME}", p.name).replaceAll("{CODE}", p.code)
+    .replaceAll("{KW}", (String(p.title||"").split("|")[0].trim() || p.name).slice(0,90))
+    .replaceAll("{TAGS}", String(p.tags||"").split(/[,\n]/).map(t=>t.trim()).filter(Boolean).slice(0,3).join(", "));
 }
 function slug(s){
   return String(s||"").trim().replace(/[^A-Za-z0-9]+/g,"-").replace(/^-+|-+$/g,"") || "product";
@@ -7309,29 +7331,29 @@ const altList = p => String(p.alt||"").split("\n").map(t=>t.trim()).filter(Boole
 /* ===================== ALT تصویرها: خودکار روی هر تصویر می‌شینه ===================== */
 // ALT پیش‌فرض هر اسلات (انگلیسی، چون اتسی برای جست‌وجو و دسترسی‌پذیری می‌خونه) — خط i ام = تصویر i ام (ترتیب IMG_SLOTS)
 const ALT_DEFAULTS = {
-  hero:     "{NAME} SVG cut file template, finished size {W}x{H}x{D} mm",
-  dims:     "Dimensions diagram of the {NAME} template, {W}x{H}x{D} mm",
-  template: "Cutting template layout of {NAME} in SVG, DXF and PDF",
-  formats:  "Included file formats for {NAME}: SVG, DXF, PDF, AI",
-  machines: "{NAME} template compatible with Cricut, Silhouette and laser cutters",
-  included: "What is included with {NAME}: digital cut files and assembly instructions",
-  finished: "Finished {NAME} gift box made from cardstock",
-  ideas:    "Ideas for using {NAME}: wedding favors, party gifts and packaging",
-  assembly: "Step by step assembly instructions for the {NAME} paper box",
-  promo:    "{NAME} digital download template, instant download",
-  box3d:      "3D preview of the assembled {NAME} box",
-  box3d_open: "3D view of the {NAME} box with a separate lid",
-  colors:     "{NAME} shown in four color options",
-  occasions:  "Occasions for the {NAME}: weddings, birthdays, baby showers, holidays",
-  materials:  "Materials that work with the {NAME} template: cardstock, kraft paper, chipboard",
-  download:   "How to download your {NAME} digital files from Etsy",
-  software:   "Software compatible with {NAME}: Cricut, Silhouette, Inkscape, Illustrator, LightBurn",
-  faq:        "Frequently asked questions about the {NAME} digital template",
-  sizes:      "Resize the {NAME} template to small, medium or large",
+  hero:       "{KW} — {NAME} SVG DXF PDF cut file template for Cricut and Silhouette, finished size {W}x{H}x{D} mm",
+  dims:       "{NAME} dimensions diagram, {W} x {H} x {D} mm finished size — {TAGS}",
+  template:   "{KW} cutting template with cut lines and fold lines, SVG DXF PDF files",
+  formats:    "Included file formats for {NAME}: SVG, DXF, PDF and instructions — {TAGS}",
+  machines:   "{NAME} template compatible with Cricut, Silhouette, Glowforge and laser cutters",
+  included:   "What is included with {NAME}: digital cut files and assembly instructions, instant download",
+  finished:   "{NAME} finished size {W}x{H}x{D} mm made from cardstock — {TAGS}",
+  ideas:      "Ideas for the {NAME}: wedding favors, party gifts, small business packaging, holiday gifts",
+  assembly:   "Step by step assembly of the {NAME} paper box: download, cut, fold, assemble",
+  promo:      "{KW} — instant digital download, SVG DXF PDF, {TAGS}",
+  box3d:      "3D preview of the assembled {NAME} box — {KW}",
+  box3d_open: "3D view of the open {NAME} box with lid — {TAGS}",
+  colors:     "{NAME} shown in four color options, cut from any cardstock — {TAGS}",
+  occasions:  "Occasions for the {NAME}: weddings, birthdays, baby showers, holidays, small business",
+  materials:  "Materials for the {NAME} template: cardstock, kraft paper, chipboard, wood, acrylic",
+  download:   "How to download the {NAME} digital files from Etsy in 3 steps",
+  software:   "Software compatible with {NAME}: Cricut Design Space, Silhouette Studio, Inkscape, Illustrator, LightBurn",
+  faq:        "Frequently asked questions about the {NAME} digital template — {TAGS}",
+  sizes:      "Resize the {NAME} template to small, medium or large — scalable SVG",
   thanks:     "Thank you for choosing the {NAME} digital template"
 };
 const altRaw = p => { const a = String(p.alt||"").split("\n").map(t=>t.trim()); return IMG_SLOTS.map((s,i) => a[i] || ""); };
-const altResolved = p => { const raw = altRaw(p); return IMG_SLOTS.map((s,i) => tokens(p, raw[i] || ALT_DEFAULTS[s.k])); };
+const altResolved = p => { const raw = altRaw(p); return IMG_SLOTS.map((s,i) => tokens(p, raw[i] || ALT_DEFAULTS[s.k]).replace(/\s+/g," ").replace(/[\s,—-]+$/,"").slice(0,250)); };
 function fillAlt(p, onlyEmpty){
   const raw = altRaw(p);
   p.alt = IMG_SLOTS.map((s,i) => (onlyEmpty && raw[i]) ? raw[i] : ALT_DEFAULTS[s.k]).join("\n");
@@ -7520,6 +7542,7 @@ function renderImages(){
         (v ? '<button class="ghost mini" data-x="1">برداشتن</button>' : '') +
       '</div>';
     const thumb = d.querySelector(".thumb");
+    if(v){ thumb.style.cursor = "zoom-in"; thumb.title = "برای بزرگنمایی کلیک کن"; thumb.addEventListener("click", () => giOpenSlotsViewer(s.k)); }
     if(v) blobGet(v.key).then(b => { if(b) d.querySelector("img").src = URL.createObjectURL(b); });
     d.querySelector('input[type=file]').onchange = e => pickFile("images", s.k, e.target.files[0]);
     const x = d.querySelector('[data-x]');
@@ -7789,10 +7812,10 @@ const GI_THEMES = {
 const GI = {W:2400, H:1800, bg:"#f6f1e7", ink:"#1e2a32", mute:"#5b6770", acc:"#d9480f", teal:"#0f766e", card:"#ffffff", line:"#e4dccb"};
 let GI_FONT = GI_FONTS.sans + GI_EMOJI;
 let GI_OPT = {theme:"cream", font:"sans", hero:"split", frame:"bar", align:"center", footer:true, logo:true};
-function giDefaults(){ const t = GI_THEMES.cream; return {theme:"cream", bg:t.bg, ink:t.ink, acc:t.acc, font:t.font, hero:"split", frame:"bar", align:"center", footer:true, logo:true, sel:null}; }
+function giDefaults(){ const t = GI_THEMES.cream; return {theme:"cream", bg:t.bg, ink:t.ink, acc:t.acc, font:t.font, hero:"combo", frame:"bar", align:"center", footer:true, logo:true, sel:null, boxStyle:"auto", bgAlpha:0.85, bgKey:null, teal:null}; }
 function giApply(o){
   const t = GI_THEMES[o.theme] || GI_THEMES.cream;
-  Object.assign(GI, {bg:o.bg||t.bg, ink:o.ink||t.ink, acc:o.acc||t.acc, mute:t.mute, teal:t.teal, card:t.card, line:t.line});
+  Object.assign(GI, {bg:o.bg||t.bg, ink:o.ink||t.ink, acc:o.acc||t.acc, mute:t.mute, teal:o.teal||t.teal, card:t.card, line:t.line});
   GI_FONT = (GI_FONTS[o.font||t.font] || GI_FONTS.sans) + GI_EMOJI;
   GI_OPT = o;
 }
@@ -7815,23 +7838,28 @@ function giPill(c,text,x,y,font,fg,bg){
 const giOnAcc = () => { const [r,g,b] = g3.hex(GI.acc); return (r*0.299+g*0.587+b*0.114) > 160 ? "#1a1a1a" : "#ffffff"; };
 const giOnTeal = () => { const [r,g,b] = g3.hex(GI.teal); return (r*0.299+g*0.587+b*0.114) > 160 ? "#1a1a1a" : "#ffffff"; };
 function giCard(c,x,y,w,h,r){ c.fillStyle=GI.card; giRR(c,x,y,w,h,r||36); c.fill(); c.strokeStyle=GI.line; c.lineWidth=4; c.stroke(); }
+let GI_BG = null;
 function giFrame(c,title,sub,shop,logo){
   const o = GI_OPT, left = o.align === "left", tx0 = left ? 140 : GI.W/2, al = left ? "left" : "center";
-  c.fillStyle = GI.bg; c.fillRect(0,0,GI.W,GI.H);
-  if(o.frame === "bar"){ c.fillStyle = GI.acc; c.fillRect(0,0,GI.W,24); }
+  if(GI_BG){
+    const k = Math.max(GI.W/GI_BG.width, GI.H/GI_BG.height), w = GI_BG.width*k, h = GI_BG.height*k;
+    c.drawImage(GI_BG, (GI.W-w)/2, (GI.H-h)/2, w, h);
+    c.globalAlpha = o.bgAlpha == null ? 0.85 : o.bgAlpha; c.fillStyle = GI.bg; c.fillRect(0,0,GI.W,GI.H); c.globalAlpha = 1;
+  } else { c.fillStyle = GI.bg; c.fillRect(0,0,GI.W,GI.H); }
+  if(o.frame === "bar"){ c.fillStyle = GI.acc; c.fillRect(0,0,GI.W,28); }
   else if(o.frame === "border"){ c.strokeStyle = GI.acc; c.lineWidth = 26; giRR(c,40,40,GI.W-80,GI.H-80,40); c.stroke(); }
   if(title){
-    c.fillStyle = GI.ink; c.font = "800 108px " + GI_FONT;
-    const y = giWrap(c,title,tx0,250,GI.W-300,124,2,al);
-    if(sub){ c.fillStyle = GI.mute; c.font = "500 54px " + GI_FONT; giWrap(c,sub,tx0,y+10,GI.W-400,66,2,al); }
+    c.fillStyle = GI.ink; c.font = "800 140px " + GI_FONT;
+    const y = giWrap(c,title,tx0,270,GI.W-300,156,2,al);
+    if(sub){ c.fillStyle = GI.mute; c.font = "600 72px " + GI_FONT; giWrap(c,sub,tx0,y+6,GI.W-300,84,1,al); }
   }
   if(o.footer){
-    c.fillStyle = GI.line; c.fillRect(120,GI.H-150,GI.W-240,3);
-    c.fillStyle = GI.mute; c.font = "600 46px " + GI_FONT; c.textAlign="left";
+    c.fillStyle = GI.line; c.fillRect(120,GI.H-170,GI.W-240,4);
+    c.fillStyle = GI.mute; c.font = "700 56px " + GI_FONT; c.textAlign="left";
     let tx = 120;
-    if(logo && o.logo){ const lh=84, lw=logo.width*lh/logo.height; c.drawImage(logo,120,GI.H-128,lw,lh); tx = 120+lw+24; }
-    c.fillText(shop, tx, GI.H-68);
-    c.textAlign="right"; c.fillStyle = GI.teal; c.fillText("Instant Digital Download", GI.W-120, GI.H-68);
+    if(logo && o.logo){ const lh=100, lw=logo.width*lh/logo.height; c.drawImage(logo,120,GI.H-150,lw,lh); tx = 120+lw+28; }
+    c.fillText(shop, tx, GI.H-85);
+    c.textAlign="right"; c.fillStyle = GI.teal; c.fillText("Instant Digital Download", GI.W-120, GI.H-85);
   }
 }
 function giPreviewCard(c,x,y,w,h,svgImg,p){
@@ -7936,158 +7964,228 @@ function giBox3dSimple(c,p,tw,th,cx,cy,hex,txtColor,scale){
 
 const GI_DRAW = {
   hero(c,p,L,svgImg){
-    const mode = GI_OPT.hero || "split";
+    const mode = GI_OPT.hero || "combo", pillF = "800 64px " + GI_FONT;
+    if(mode === "combo"){
+      let x = 140; L.fmts.slice(0,3).forEach(s => { x += giPill(c,s.k === "guide" ? "GUIDE" : s.t.toUpperCase(),x,140,pillF,giOnTeal(),GI.teal) + 24; });
+      c.fillStyle = GI.ink; c.font = "800 160px " + GI_FONT; c.textAlign = "left";
+      const y = giWrap(c,p.name,140,420,2100,176,2);
+      c.fillStyle = GI.mute; c.font = "600 76px " + GI_FONT; c.fillText((p.category || "Template") + " • " + L.dim, 140, y + 10);
+      giCard(c,140,y + 70,2120,GI.H - 170 - 60 - (y + 70),44);
+      const cardY = y + 70, cardH = GI.H - 170 - 60 - cardY;
+      giBox3dSimple(c,p,1300,cardH-120,860,cardY + cardH/2,GI.acc,giOnAcc());
+      const iw = 700, ih = Math.min(cardH-160, 560), ix = 2260 - iw - 60, iy = cardY + cardH - ih - 60;
+      giPreviewCard(c,ix,iy,iw,ih,svgImg,p);
+      giPill(c,"CUT FILE INCLUDED",ix + 40,iy - 100,"800 52px " + GI_FONT,giOnAcc(),GI.acc);
+      return;
+    }
     if(mode === "center"){
-      giPreviewCard(c,300,500,1800,760,svgImg,p);
-      c.font = "800 46px " + GI_FONT;
-      const pills = L.fmts.slice(0,4), widths = pills.map(s => c.measureText(s.t).width + 64 + 20), total = widths.reduce((a,b) => a+b,0) - 20;
-      let x = (GI.W-total)/2; pills.forEach((s,i) => { giPill(c,s.t,x,1330,"800 46px " + GI_FONT,giOnTeal(),GI.teal); x += widths[i]; });
-      c.fillStyle = GI.ink; c.font = "700 64px " + GI_FONT; c.textAlign = "center"; c.fillText(L.dim, GI.W/2, 1300);
+      giPreviewCard(c,300,520,1800,760,svgImg,p);
+      const pills = L.fmts.slice(0,3), widths = pills.map(s => { c.font = pillF; return c.measureText(s.k === "guide" ? "GUIDE" : s.t.toUpperCase()).width + 64 + 24; }), total = widths.reduce((a,b) => a+b,0) - 24;
+      let x = (GI.W-total)/2; pills.forEach((s,i) => { giPill(c,s.k === "guide" ? "GUIDE" : s.t.toUpperCase(),x,1340,pillF,giOnTeal(),GI.teal); x += widths[i]; });
+      c.fillStyle = GI.ink; c.font = "700 76px " + GI_FONT; c.textAlign = "center"; c.fillText(L.dim, GI.W/2, 1300);
       return;
     }
     if(mode === "3d"){ giCard(c,1180,330,1100,1180); giBox3dSimple(c,p,880,860,1730,920,GI.acc,giOnAcc()); }
     else giPreviewCard(c,1180,330,1100,1180,svgImg,p);
-    c.fillStyle = GI.acc; c.font="800 56px " + GI_FONT; c.textAlign="left"; c.fillText("DIGITAL DOWNLOAD", 140, 470);
-    c.fillStyle = GI.ink; c.font="800 128px " + GI_FONT; let y = giWrap(c,p.name,140,620,1000,148,3);
-    c.fillStyle = GI.mute; c.font="500 60px " + GI_FONT; y = giWrap(c,p.category||"Template",140,y+10,1000,76,2);
-    c.fillStyle = GI.ink; c.font="700 70px " + GI_FONT; c.fillText(L.dim, 140, y+80);
-    let x=140; const py=y+150; L.fmts.slice(0,4).forEach(s=>{ x += giPill(c,s.t,x,py,"800 46px " + GI_FONT,giOnTeal(),GI.teal)+20; });
+    c.fillStyle = GI.acc; c.font="800 68px " + GI_FONT; c.textAlign="left"; c.fillText("DIGITAL DOWNLOAD", 140, 470);
+    c.fillStyle = GI.ink; c.font="800 150px " + GI_FONT; let y = giWrap(c,p.name,140,630,1000,170,3);
+    c.fillStyle = GI.mute; c.font="600 72px " + GI_FONT; y = giWrap(c,p.category||"Template",140,y+10,1000,86,2);
+    c.fillStyle = GI.ink; c.font="700 84px " + GI_FONT; c.fillText(L.dim, 140, y+90);
+    let x=140; const py=y+160; L.fmts.slice(0,3).forEach(s=>{ x += giPill(c,s.k === "guide" ? "GUIDE" : s.t.toUpperCase(),x,py,pillF,giOnTeal(),GI.teal)+20; });
   },
   dims(c,p,L){
-    const bw=1300, bh=Math.max(350,Math.min(700,bw*(p.h||70)/(p.w||100))), bx=(GI.W-bw)/2, by=660;
-    c.fillStyle=GI.card; giRR(c,bx,by,bw,bh,28); c.fill(); c.strokeStyle=GI.ink; c.lineWidth=6; c.stroke();
-    c.strokeStyle=GI.acc; c.fillStyle=GI.acc; c.lineWidth=6; c.font="800 70px " + GI_FONT; c.textAlign="center";
-    c.beginPath(); c.moveTo(bx,by-60); c.lineTo(bx+bw,by-60); c.stroke(); c.fillText(p.w+" mm",GI.W/2,by-90);
-    c.save(); c.translate(bx+bw+130,by+bh/2); c.rotate(Math.PI/2); c.fillText(p.h+" mm",0,0); c.restore();
-    c.beginPath(); c.moveTo(bx+bw+60,by); c.lineTo(bx+bw+60,by+bh); c.stroke();
-    giPill(c,"Depth: "+p.d+" mm",GI.W/2-280,by+bh+90,"800 56px " + GI_FONT,giOnTeal(),GI.teal);
+    const bw=1500, bh=Math.max(380,Math.min(620,bw*(p.h||70)/(p.w||100))), bx=(GI.W-bw)/2, by=760;
+    c.fillStyle=GI.card; giRR(c,bx,by,bw,bh,28); c.fill(); c.strokeStyle=GI.ink; c.lineWidth=8; c.stroke();
+    c.strokeStyle=GI.acc; c.fillStyle=GI.acc; c.lineWidth=8; c.font="800 96px " + GI_FONT; c.textAlign="center";
+    c.beginPath(); c.moveTo(bx,by-70); c.lineTo(bx+bw,by-70); c.stroke(); c.fillText("Length " + p.w + " mm",GI.W/2,by-105);
+    c.save(); c.translate(bx+bw+170,by+bh/2); c.rotate(Math.PI/2); c.fillText("Width " + p.h + " mm",0,0); c.restore();
+    c.beginPath(); c.moveTo(bx+bw+80,by); c.lineTo(bx+bw+80,by+bh); c.stroke();
+    giPill(c,"Height " + p.d + " mm",GI.W/2-330,by+bh+90,"800 76px " + GI_FONT,giOnTeal(),GI.teal);
   },
   template(c,p,L,svgImg){
-    giPreviewCard(c,420,430,1560,880,svgImg,p);
-    c.font="700 52px " + GI_FONT; c.textAlign="left";
-    c.strokeStyle="#d92d20"; c.lineWidth=8; c.setLineDash([]); c.beginPath(); c.moveTo(560,1420); c.lineTo(700,1420); c.stroke(); c.fillStyle=GI.ink; c.fillText("Cut line",730,1438);
-    c.strokeStyle="#2563eb"; c.setLineDash([26,18]); c.beginPath(); c.moveTo(1200,1420); c.lineTo(1340,1420); c.stroke(); c.setLineDash([]); c.fillText("Score / fold line",1370,1438);
+    giPreviewCard(c,360,520,1680,940,svgImg,p);
+    c.font="700 68px " + GI_FONT; c.textAlign="left";
+    c.strokeStyle="#d92d20"; c.lineWidth=10; c.setLineDash([]); c.beginPath(); c.moveTo(420,1570); c.lineTo(560,1570); c.stroke(); c.fillStyle=GI.ink; c.fillText("Cut",590,1592);
+    c.strokeStyle="#2563eb"; c.setLineDash([30,20]); c.beginPath(); c.moveTo(960,1570); c.lineTo(1100,1570); c.stroke(); c.setLineDash([]); c.fillText("Score / fold",1130,1592);
   },
   formats(c,p,L){
-    const n=L.fmts.length, cols=Math.min(3,n), rows=Math.ceil(n/cols), cw=620, ch=380, gx=60, gy=60, x0=(GI.W-(cols*cw+(cols-1)*gx))/2, y0=480+(rows===1?120:0);
+    const n=L.fmts.length, cols=Math.min(2,n), rows=Math.ceil(n/cols), cw=900, ch=420, gx=60, gy=60, x0=(GI.W-(cols*cw+(cols-1)*gx))/2, y0=560+(rows===1?200:0);
     const desc = {svg:"Main cut file", dxf:"For laser cutters", pdf:"Print & preview", ai:"Editable version", guide:"Step-by-step guide", studio:"Silhouette file"};
-    L.fmts.forEach((s,i)=>{ const x=x0+(i%cols)*(cw+gx), y=y0+Math.floor(i/cols)*(ch+gy);
+    L.fmts.slice(0,4).forEach((s,i)=>{ const x=x0+(i%cols)*(cw+gx), y=y0+Math.floor(i/cols)*(ch+gy);
       giCard(c,x,y,cw,ch);
-      c.fillStyle=GI.acc; c.font="900 150px " + GI_FONT; c.textAlign="center"; c.fillText(s.k==="guide" ? "GUIDE" : s.t.toUpperCase().slice(0,6),x+cw/2,y+210);
-      c.fillStyle=GI.mute; c.font="500 48px " + GI_FONT; c.fillText(desc[s.k]||"",x+cw/2,y+300); });
+      c.fillStyle=GI.acc; c.font="900 190px " + GI_FONT; c.textAlign="center"; c.fillText(s.k==="guide" ? "GUIDE" : s.t.toUpperCase().slice(0,6),x+cw/2,y+250);
+      c.fillStyle=GI.mute; c.font="600 64px " + GI_FONT; c.fillText(desc[s.k]||"",x+cw/2,y+350); });
   },
   machines(c,p,L){
-    let x=300,y=560; const maxX=GI.W-300;
-    L.machines.forEach(m=>{ c.font="800 64px " + GI_FONT; const w=c.measureText(m).width+64; if(x+w>maxX){x=300;y+=170;} giPill(c,m,x,y,"800 64px " + GI_FONT,giOnTeal(),GI.teal); x+=w+30; });
-    c.fillStyle=GI.mute; c.font="500 56px " + GI_FONT; c.textAlign="center"; c.fillText("Works with any machine that opens SVG or DXF files",GI.W/2,y+360);
+    let x=240,y=620; const maxX=GI.W-240;
+    L.machines.slice(0,6).forEach(m=>{ c.font="800 88px " + GI_FONT; const w=c.measureText(m).width+64; if(x+w>maxX){x=240;y+=190;} giPill(c,m,x,y,"800 88px " + GI_FONT,giOnTeal(),GI.teal); x+=w+30; });
+    c.fillStyle=GI.mute; c.font="600 72px " + GI_FONT; giWrap(c,"Works with any machine that opens SVG or DXF files",GI.W/2,y+400,GI.W-500,90,2,"center");
   },
   included(c,p,L){
-    const items=[...L.fmts.map(s=>s.t+" file"),"Assembly instructions"].slice(0,8);
-    items.forEach((t,i)=>{ const y=520+i*130; c.fillStyle=GI.teal; c.beginPath(); c.arc(660,y,42,0,Math.PI*2); c.fill(); c.fillStyle=giOnTeal(); c.font="900 56px " + GI_FONT; c.textAlign="center"; c.fillText("✓",660,y+20);
-      c.fillStyle=GI.ink; c.font="700 68px " + GI_FONT; c.textAlign="left"; c.fillText(t,750,y+24); });
+    const items=[...L.fmts.map(s=>(s.k==="guide" ? "Instructions" : s.t.toUpperCase()+" file")),"Instant download"].slice(0,6);
+    items.forEach((t,i)=>{ const y=660+i*150; c.fillStyle=GI.teal; c.beginPath(); c.arc(560,y,58,0,Math.PI*2); c.fill(); c.fillStyle=giOnTeal(); c.font="900 80px " + GI_FONT; c.textAlign="center"; c.fillText("✓",560,y+28);
+      c.fillStyle=GI.ink; c.font="800 96px " + GI_FONT; c.textAlign="left"; c.fillText(t,680,y+34); });
   },
   finished(c,p,L){
-    c.textAlign="center"; c.fillStyle=GI.acc; c.font="900 190px " + GI_FONT; c.fillText(L.dim,GI.W/2,720);
-    c.fillStyle=GI.ink; c.font="700 78px " + GI_FONT; c.fillText("Finished size",GI.W/2,830);
-    c.fillStyle=GI.mute; c.font="600 70px " + GI_FONT; giWrap(c,"Material: "+(p.material||"Cardstock"),GI.W/2,1010,GI.W-500,90,2,"center");
+    c.textAlign="center"; c.fillStyle=GI.acc; c.font="900 220px " + GI_FONT; c.fillText(L.dim,GI.W/2,800);
+    c.fillStyle=GI.ink; c.font="800 96px " + GI_FONT; c.fillText("Finished size",GI.W/2,930);
+    c.fillStyle=GI.mute; c.font="700 84px " + GI_FONT; giWrap(c,(p.material||"Cardstock"),GI.W/2,1150,GI.W-400,104,2,"center");
   },
   ideas(c,p,L){
-    const cw=900, x0=(GI.W-(2*cw+60))/2; L.ideas.forEach((t,i)=>{ const x=x0+(i%2)*(cw+60), y=500+Math.floor(i/2)*190;
-      giCard(c,x,y,cw,150,30);
-      c.fillStyle=GI.acc; c.beginPath(); c.arc(x+70,y+75,22,0,Math.PI*2); c.fill();
-      c.fillStyle=GI.ink; c.font="700 54px " + GI_FONT; c.textAlign="left"; giWrap(c,t,x+120,y+70,cw-160,60,2); });
+    const cw=1000, ch=190, gap=50, x0=(GI.W-(2*cw+gap))/2; L.ideas.slice(0,6).forEach((t,i)=>{ const x=x0+(i%2)*(cw+gap), y=560+Math.floor(i/2)*(ch+gap);
+      giCard(c,x,y,cw,ch,30);
+      c.fillStyle=GI.acc; c.beginPath(); c.arc(x+70,y+ch/2,28,0,Math.PI*2); c.fill();
+      c.fillStyle=GI.ink; c.font="800 66px " + GI_FONT; c.textAlign="left"; giWrap(c,t,x+130,y+ch/2+22,cw-170,72,2); });
   },
   assembly(c,p,L){
-    const steps=[["1","Download","Instant access to your files"],["2","Cut","Upload the SVG and cut your material"],["3","Score & fold","Follow the dashed lines"],["4","Assemble","Glue or tuck the tabs in place"]];
-    const cw=490, gap=45, x0=(GI.W-(4*cw+3*gap))/2;
-    steps.forEach((s,i)=>{ const x=x0+i*(cw+gap), y=520; giCard(c,x,y,cw,700);
-      c.fillStyle=GI.acc; c.beginPath(); c.arc(x+cw/2,y+150,90,0,Math.PI*2); c.fill();
-      c.fillStyle=giOnAcc(); c.font="900 100px " + GI_FONT; c.textAlign="center"; c.fillText(s[0],x+cw/2,y+185);
-      c.fillStyle=GI.ink; c.font="800 64px " + GI_FONT; c.fillText(s[1],x+cw/2,y+370);
-      c.fillStyle=GI.mute; c.font="500 46px " + GI_FONT; giWrap(c,s[2],x+cw/2,y+450,cw-70,58,4,"center"); });
+    const steps=[["1","Download","Get your files instantly"],["2","Cut","Cut on cardstock"],["3","Fold","Score and fold the lines"],["4","Assemble","Glue and tuck the tabs"]];
+    const cw=1000, ch=470, gap=50, x0=(GI.W-(2*cw+gap))/2;
+    steps.forEach((s,i)=>{ const x=x0+(i%2)*(cw+gap), y=540+Math.floor(i/2)*(ch+gap); giCard(c,x,y,cw,ch);
+      c.fillStyle=GI.acc; c.beginPath(); c.arc(x+150,y+ch/2,95,0,Math.PI*2); c.fill();
+      c.fillStyle=giOnAcc(); c.font="900 120px " + GI_FONT; c.textAlign="center"; c.fillText(s[0],x+150,y+ch/2+42);
+      c.fillStyle=GI.ink; c.font="800 88px " + GI_FONT; c.textAlign="left"; c.fillText(s[1],x+300,y+ch/2-10);
+      c.fillStyle=GI.mute; c.font="600 60px " + GI_FONT; giWrap(c,s[2],x+300,y+ch/2+80,cw-340,72,2); });
   },
   promo(c,p,L){
-    c.textAlign="center"; c.fillStyle=GI.acc; c.font="900 190px " + GI_FONT; c.fillText("INSTANT",GI.W/2,620); c.fillText("DOWNLOAD",GI.W/2,830);
-    c.fillStyle=GI.ink; c.font="800 90px " + GI_FONT; giWrap(c,p.name,GI.W/2,1020,GI.W-400,104,2,"center");
-    c.fillStyle=GI.mute; c.font="600 60px " + GI_FONT; giWrap(c,"Digital file only — no physical item will be shipped",GI.W/2,1260,GI.W-500,76,2,"center");
+    c.textAlign="center"; c.fillStyle=GI.acc; c.font="900 230px " + GI_FONT; c.fillText("INSTANT",GI.W/2,700); c.fillText("DOWNLOAD",GI.W/2,930);
+    c.fillStyle=GI.ink; c.font="800 104px " + GI_FONT; giWrap(c,p.name,GI.W/2,1140,GI.W-400,120,2,"center");
+    c.fillStyle=GI.mute; c.font="700 70px " + GI_FONT; giWrap(c,"Digital files only — nothing is shipped",GI.W/2,1420,GI.W-500,84,2,"center");
   },
   /* ----- ۱۱ تا ۲۰ ----- */
-  box3d(c,p){ giBox3dSimple(c,p,1500,900,GI.W/2,1020,GI.acc,giOnAcc()); },
+  box3d(c,p){ giBox3dSimple(c,p,1700,980,GI.W/2,1070,GI.acc,giOnAcc()); },
   box3d_open(c,p){
-    const L = p.w, W = p.h, H = p.d, Hl = Math.max(8, H*0.4), gap = Math.max(H*1.3, 32);
-    const b1 = {L, W, H}, b2 = {L:L+4, W:W+4, H:Hl, t:[0, H+gap, -W*0.45]};
-    const o = g3Fit([b1,b2],1500,900,GI.W/2,1020,-0.62,0.52);
-    g3Open(c,b1,o,GI.acc);
-    g3Closed(c,b2,o,GI.teal,{top:g3Text(p.name||"Box",0.9,giOnTeal())});
+    const L = p.w, W = p.h, H = p.d, style = (GI_OPT.boxStyle && GI_OPT.boxStyle !== "auto") ? GI_OPT.boxStyle : (p.dzStyle === "tray_lid" ? "tray" : "tuck");
+    if(style === "tray"){
+      const Hl = Math.max(8, H*0.4), gap = Math.max(H*1.3, 32);
+      const b1 = {L, W, H}, b2 = {L:L+4, W:W+4, H:Hl, t:[0, H+gap, -W*0.45]};
+      const o = g3Fit([b1,b2],1700,980,GI.W/2,1070,-0.62,0.52);
+      g3Open(c,b1,o,GI.acc);
+      g3Closed(c,b2,o,GI.teal,{top:g3Text(p.name||"Box",0.9,giOnTeal())});
+    } else {
+      // جعبه‌ی تاشو با درب بازشده (flap)
+      const a = 0.35, fl = W*0.95, fy = Math.cos(a)*fl, fz = -Math.sin(a)*fl;
+      const bb = {L, W, H:H + fy};
+      const o = g3Fit([bb],1700,980,GI.W/2,1070,-0.62,0.52);
+      const rgb = g3.hex(GI.acc), flap = {n:[0,0.4,0.9], o:[-L/2,H+fy,-W/2+fz], u:[1,0,0], v:[0,-fy/fl,-fz/fl], fw:L, fh:fl};
+      flap.n = [0, Math.sin(a), Math.cos(a)];
+      g3Face(c,flap,rgb,o,g3Text(p.name||"Box",0.5,giOnAcc()));
+      g3Open(c,{L,W,H},o,GI.acc);
+    }
   },
   colors(c,p){
-    const slotW = 520, gap = 30, x0 = (GI.W - (4*slotW + 3*gap))/2;
+    const slotW = 540, gap = 30, x0 = (GI.W - (4*slotW + 3*gap))/2;
     GI_COLORWAYS.forEach(([hex,name],i) => {
-      const x = x0 + i*(slotW+gap); giCard(c,x,520,slotW,820,36);
+      const x = x0 + i*(slotW+gap); giCard(c,x,540,slotW,880,36);
       const [r,g,b] = g3.hex(hex), txt = (r*0.299+g*0.587+b*0.114) > 160 ? "#1a1a1a" : "#ffffff";
-      giBox3dSimple(c,p,slotW-70,520,x+slotW/2,860,hex,txt);
-      c.fillStyle = GI.ink; c.font = "700 54px " + GI_FONT; c.textAlign = "center"; c.fillText(name, x+slotW/2, 1250);
+      giBox3dSimple(c,p,slotW-70,560,x+slotW/2,900,hex,txt);
+      c.fillStyle = GI.ink; c.font = "800 66px " + GI_FONT; c.textAlign = "center"; c.fillText(name, x+slotW/2, 1330);
     });
-    c.fillStyle = GI.mute; c.font = "500 54px " + GI_FONT; c.textAlign = "center"; c.fillText("Cut it from any color of cardstock", GI.W/2, 1450);
+    c.fillStyle = GI.mute; c.font = "700 72px " + GI_FONT; c.textAlign = "center"; c.fillText("Any color of cardstock", GI.W/2, 1550);
   },
   occasions(c){
     const items = [["💍","Weddings"],["🎂","Birthdays"],["👶","Baby Showers"],["🎄","Holidays"],["🎓","Graduations"],["🛍️","Small Business"]];
-    const cw = 640, ch = 380, gap = 50, x0 = (GI.W-(3*cw+2*gap))/2;
-    items.forEach((it,i) => { const x = x0+(i%3)*(cw+gap), y = 500+Math.floor(i/3)*(ch+gap); giCard(c,x,y,cw,ch);
-      c.textAlign = "center"; c.fillStyle = GI.ink; c.font = "400 150px " + GI_FONT; c.fillText(it[0], x+cw/2, y+190);
-      c.font = "700 60px " + GI_FONT; c.fillText(it[1], x+cw/2, y+310); });
+    const cw = 680, ch = 460, gap = 50, x0 = (GI.W-(3*cw+2*gap))/2;
+    items.forEach((it,i) => { const x = x0+(i%3)*(cw+gap), y = 540+Math.floor(i/3)*(ch+gap); giCard(c,x,y,cw,ch);
+      c.textAlign = "center"; c.fillStyle = GI.ink; c.font = "400 200px " + GI_FONT; c.fillText(it[0], x+cw/2, y+260);
+      c.font = "800 78px " + GI_FONT; c.fillText(it[1], x+cw/2, y+400); });
   },
   materials(c,p){
-    const items = [[(p.material||"Cardstock 250-300 gsm").split(/[,;]/)[0],"Best for sturdy folding boxes"],["Kraft paper","Natural, eco-friendly look"],["Chipboard / greyboard","Extra rigid packaging"],["Thin wood or acrylic","For laser cutters"]];
-    const cw = 960, ch = 330, gap = 50, x0 = (GI.W-(2*cw+gap))/2;
-    items.forEach((it,i) => { const x = x0+(i%2)*(cw+gap), y = 500+Math.floor(i/2)*(ch+gap); giCard(c,x,y,cw,ch);
-      c.textAlign = "left"; c.fillStyle = GI.acc; c.font = "800 62px " + GI_FONT; giWrap(c,it[0],x+60,y+120,cw-120,70,2);
-      c.fillStyle = GI.mute; c.font = "500 48px " + GI_FONT; giWrap(c,it[1],x+60,y+230,cw-120,58,2); });
+    const items = [[(p.material||"Cardstock").split(/[,;]/)[0],"Sturdy folding boxes"],["Kraft paper","Natural, eco look"],["Chipboard","Extra rigid"],["Wood / acrylic","Laser cutters"]];
+    const cw = 1000, ch = 440, gap = 50, x0 = (GI.W-(2*cw+gap))/2;
+    items.forEach((it,i) => { const x = x0+(i%2)*(cw+gap), y = 540+Math.floor(i/2)*(ch+gap); giCard(c,x,y,cw,ch);
+      c.textAlign = "left"; c.fillStyle = GI.acc; c.font = "800 80px " + GI_FONT; giWrap(c,it[0],x+60,y+170,cw-120,92,2);
+      c.fillStyle = GI.mute; c.font = "600 62px " + GI_FONT; giWrap(c,it[1],x+60,y+330,cw-120,74,2); });
   },
   download(c){
-    const steps = [["1","Purchase","Complete your order on Etsy"],["2","Download","Etsy → Purchases and reviews → Download files"],["3","Open & cut","Open the SVG in your cutting software"]];
-    const cw = 680, gap = 50, x0 = (GI.W-(3*cw+2*gap))/2;
-    steps.forEach((s,i) => { const x = x0+i*(cw+gap); giCard(c,x,520,cw,720);
-      c.fillStyle = GI.acc; c.beginPath(); c.arc(x+cw/2,690,90,0,Math.PI*2); c.fill();
-      c.fillStyle = giOnAcc(); c.font = "900 100px " + GI_FONT; c.textAlign = "center"; c.fillText(s[0],x+cw/2,725);
-      c.fillStyle = GI.ink; c.font = "800 66px " + GI_FONT; c.fillText(s[1],x+cw/2,900);
-      c.fillStyle = GI.mute; c.font = "500 46px " + GI_FONT; giWrap(c,s[2],x+cw/2,985,cw-90,58,4,"center"); });
+    const steps = [["1","Buy","Order on Etsy"],["2","Download","Etsy › Purchases › Download files"],["3","Cut","Open the SVG and cut"]];
+    const cw = 700, gap = 50, x0 = (GI.W-(3*cw+2*gap))/2;
+    steps.forEach((s,i) => { const x = x0+i*(cw+gap); giCard(c,x,540,cw,980);
+      c.fillStyle = GI.acc; c.beginPath(); c.arc(x+cw/2,760,110,0,Math.PI*2); c.fill();
+      c.fillStyle = giOnAcc(); c.font = "900 130px " + GI_FONT; c.textAlign = "center"; c.fillText(s[0],x+cw/2,805);
+      c.fillStyle = GI.ink; c.font = "800 96px " + GI_FONT; c.fillText(s[1],x+cw/2,1010);
+      c.fillStyle = GI.mute; c.font = "600 62px " + GI_FONT; giWrap(c,s[2],x+cw/2,1100,cw-90,78,4,"center"); });
   },
   software(c){
-    const items = ["Cricut Design Space","Silhouette Studio","Inkscape","Adobe Illustrator","LightBurn","Glowforge","xTool Creative Space","Affinity Designer"];
-    let x = 260, y = 520; const maxX = GI.W-260;
-    items.forEach(m => { c.font = "800 58px " + GI_FONT; const w = c.measureText(m).width+64; if(x+w > maxX){ x = 260; y += 160; } giPill(c,m,x,y,"800 58px " + GI_FONT,giOnTeal(),GI.teal); x += w+28; });
-    c.fillStyle = GI.mute; c.font = "500 54px " + GI_FONT; c.textAlign = "center"; c.fillText("…and any program that opens SVG or DXF files", GI.W/2, y+330);
+    const items = ["Cricut Design Space","Silhouette Studio","Inkscape","Adobe Illustrator","LightBurn","Glowforge"];
+    let y = 600; items.forEach((m,i) => { c.font = "800 80px " + GI_FONT; const w = c.measureText(m).width + 90; giPill(c,m,(GI.W-w)/2,y,"800 80px " + GI_FONT,giOnTeal(),GI.teal); y += 170; });
+    c.fillStyle = GI.mute; c.font = "600 66px " + GI_FONT; c.textAlign = "center"; c.fillText("…or any SVG / DXF program", GI.W/2, y + 40);
   },
   faq(c,p,L){
-    const items = [["Is this a physical product?","No. You receive digital files only — nothing is shipped."],["Can I change the size?","Yes. The SVG is vector, so you can scale it in your software."],["Which files are included?",L.fmts.map(s=>s.t).join(", ")+"."],["Need help?","Message me anytime — I'm happy to help."]];
-    const cw = 960, ch = 360, gap = 50, x0 = (GI.W-(2*cw+gap))/2;
-    items.forEach((it,i) => { const x = x0+(i%2)*(cw+gap), y = 480+Math.floor(i/2)*(ch+gap); giCard(c,x,y,cw,ch);
-      c.textAlign = "left"; c.fillStyle = GI.acc; c.font = "800 54px " + GI_FONT; giWrap(c,it[0],x+60,y+100,cw-120,62,2);
-      c.fillStyle = GI.ink; c.font = "500 48px " + GI_FONT; giWrap(c,it[1],x+60,y+210,cw-120,60,3); });
+    const items = [["Physical item?","No — digital files only."],["Resizable?","Yes — vector SVG, any size."],["Which files?",L.fmts.map(s=>s.k==="guide"?"Guide":s.t).join(", ")],["Questions?","Message me anytime."]];
+    const cw = 1000, ch = 470, gap = 50, x0 = (GI.W-(2*cw+gap))/2;
+    items.forEach((it,i) => { const x = x0+(i%2)*(cw+gap), y = 540+Math.floor(i/2)*(ch+gap); giCard(c,x,y,cw,ch);
+      c.textAlign = "left"; c.fillStyle = GI.acc; c.font = "800 76px " + GI_FONT; giWrap(c,it[0],x+60,y+150,cw-120,88,2);
+      c.fillStyle = GI.ink; c.font = "600 66px " + GI_FONT; giWrap(c,it[1],x+60,y+290,cw-120,80,3); });
   },
   sizes(c,p){
     const scales = [[0.55,"Small"],[0.8,"Medium"],[1.1,"Large"]], slotW = 700, gap = 40, x0 = (GI.W-(3*slotW+2*gap))/2;
     const [r,g,b] = g3.hex(GI.teal), txt = (r*0.299+g*0.587+b*0.114) > 160 ? "#1a1a1a" : "#ffffff";
     const ref = g3Fit([{L:p.w*1.1, W:p.h*1.1, H:p.d*1.1}], slotW-80, 560, 0, 0, -0.62, 0.52).s;
-    scales.forEach(([k,name],i) => { const x = x0+i*(slotW+gap); giCard(c,x,520,slotW,780);
+    scales.forEach(([k,name],i) => { const x = x0+i*(slotW+gap); giCard(c,x,540,slotW,860);
       const bb = {L:p.w*k, W:p.h*k, H:p.d*k}, o = g3Fit([bb],0,0,x+slotW/2,900,-0.62,0.52,ref);
       g3Closed(c,bb,o,GI.teal,giBoxLabels(Object.assign({},p,{w:Math.round(p.w*k),h:Math.round(p.h*k),d:Math.round(p.d*k)}),txt));
-      c.fillStyle = GI.ink; c.font = "700 54px " + GI_FONT; c.textAlign = "center"; c.fillText(name + " — " + Math.round(p.w*k) + " mm", x+slotW/2, 1230);
+      c.fillStyle = GI.ink; c.font = "800 76px " + GI_FONT; c.textAlign = "center"; c.fillText(name, x+slotW/2, 1250);
+      c.fillStyle = GI.mute; c.font = "600 60px " + GI_FONT; c.fillText(Math.round(p.w*k) + " mm", x+slotW/2, 1340);
     });
-    c.fillStyle = GI.mute; c.font = "500 54px " + GI_FONT; c.textAlign = "center"; c.fillText("Scale the vector file to any size in your software", GI.W/2, 1450);
+    c.fillStyle = GI.mute; c.font = "700 70px " + GI_FONT; c.textAlign = "center"; c.fillText("Scale the vector file to any size", GI.W/2, 1550);
   },
   thanks(c,p,L,svg,shop,logo){
-    c.textAlign = "center"; c.fillStyle = GI.acc; c.font = "900 200px " + GI_FONT; c.fillText("THANK YOU", GI.W/2, 700);
-    c.fillStyle = GI.ink; c.font = "800 84px " + GI_FONT; giWrap(c,"for choosing " + (p.name||"this template"),GI.W/2,860,GI.W-400,100,2,"center");
-    if(logo){ const lh = 200, lw = logo.width*lh/logo.height; c.drawImage(logo,(GI.W-lw)/2,1000,lw,lh); }
-    c.fillStyle = GI.mute; c.font = "600 56px " + GI_FONT; giWrap(c,"A review helps other makers find this template" + (shop ? " — " + shop : ""),GI.W/2,logo ? 1300 : 1050,GI.W-500,72,2,"center");
+    c.textAlign = "center"; c.fillStyle = GI.acc; c.font = "900 260px " + GI_FONT; c.fillText("THANK YOU", GI.W/2, 760);
+    c.fillStyle = GI.ink; c.font = "800 96px " + GI_FONT; giWrap(c,"for choosing " + (p.name||"this template"),GI.W/2,930,GI.W-400,112,2,"center");
+    if(logo){ const lh = 220, lw = logo.width*lh/logo.height; c.drawImage(logo,(GI.W-lw)/2,1130,lw,lh); }
+    c.fillStyle = GI.mute; c.font = "700 70px " + GI_FONT; giWrap(c,"A review helps other makers find it",GI.W/2,logo ? 1480 : 1250,GI.W-500,84,2,"center");
   }
 };
+/* ---------- نمایشگر تصویر با بزرگنمایی (چرخ ماوس، دوبار کلیک، کشیدن، دو انگشت در موبایل) ---------- */
+function stOpenViewer(items, index){
+  const old = document.getElementById("st-viewer"); if(old) old.remove();
+  if(!items.length) return;
+  let i = Math.max(0, Math.min(index||0, items.length-1)), scale = 1, tx = 0, ty = 0, urls = {};
+  const ov = document.createElement("div"); ov.id = "st-viewer";
+  ov.style.cssText = "position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.93);display:flex;flex-direction:column;touch-action:none;user-select:none";
+  ov.innerHTML = "<div style='display:flex;gap:6px;align-items:center;padding:8px 10px;color:#fff;font-size:14px;direction:rtl;flex-wrap:wrap'><b data-t style='flex:1;min-width:140px'></b>" +
+    "<button data-a='prev' class='ghost mini' style='color:#fff'>›</button><span data-c style='min-width:48px;text-align:center'></span><button data-a='next' class='ghost mini' style='color:#fff'>‹</button>" +
+    "<button data-a='out' class='ghost mini' style='color:#fff'>－</button><button data-a='in' class='ghost mini' style='color:#fff'>＋</button><button data-a='fit' class='ghost mini' style='color:#fff'>⤢ جا‌شدن</button>" +
+    "<button data-a='full' class='ghost mini' style='color:#fff'>۱۰۰٪</button><button data-a='x' class='ghost mini' style='color:#fff'>✕ بستن</button></div>" +
+    "<div data-stage style='flex:1;position:relative;overflow:hidden;cursor:grab'><img data-img alt='' draggable='false' style='position:absolute;left:50%;top:50%;transform-origin:0 0;max-width:none'></div>";
+  document.body.appendChild(ov);
+  const stage = ov.querySelector("[data-stage]"), img = ov.querySelector("[data-img]");
+  let base = 1, nw = 0, nh = 0;
+  const apply = () => { img.style.transform = "translate(" + (tx - nw*base*scale/2) + "px," + (ty - nh*base*scale/2) + "px) scale(" + (base*scale) + ")"; };
+  const fit = () => { const r = stage.getBoundingClientRect(); base = Math.min(r.width/nw, r.height/nh); scale = 1; tx = 0; ty = 0; apply(); };
+  const clampZ = s => Math.max(1, Math.min(8, s));
+  const zoomAt = (ns, cx, cy) => { ns = clampZ(ns); const r = stage.getBoundingClientRect(), px = cx - r.left - r.width/2, py = cy - r.top - r.height/2, k = ns/scale; tx = px - (px - tx)*k; ty = py - (py - ty)*k; scale = ns; apply(); };
+  const show = async j => {
+    i = (j + items.length) % items.length; ov.querySelector("[data-t]").textContent = items[i].title || "";
+    ov.querySelector("[data-c]").textContent = (i+1) + " / " + items.length;
+    if(!urls[i]) urls[i] = await items[i].get();
+    img.onload = () => { nw = img.naturalWidth; nh = img.naturalHeight; fit(); };
+    img.src = urls[i];
+  };
+  const close = () => { ov.remove(); document.removeEventListener("keydown", onKey); };
+  const onKey = e => { if(e.key === "Escape") close(); else if(e.key === "ArrowLeft") show(i+1); else if(e.key === "ArrowRight") show(i-1); else if(e.key === "+" || e.key === "=") zoomAt(scale*1.3, innerWidth/2, innerHeight/2); else if(e.key === "-") zoomAt(scale/1.3, innerWidth/2, innerHeight/2); };
+  document.addEventListener("keydown", onKey);
+  ov.addEventListener("click", e => { const a = e.target.dataset && e.target.dataset.a; if(!a) return;
+    const r = stage.getBoundingClientRect(), cx = r.left + r.width/2, cy = r.top + r.height/2;
+    if(a === "x") close(); else if(a === "prev") show(i-1); else if(a === "next") show(i+1); else if(a === "in") zoomAt(scale*1.4,cx,cy); else if(a === "out") zoomAt(scale/1.4,cx,cy); else if(a === "fit") fit(); else if(a === "full") zoomAt(1/base, cx, cy); });
+  stage.addEventListener("wheel", e => { e.preventDefault(); zoomAt(scale*(e.deltaY < 0 ? 1.18 : 1/1.18), e.clientX, e.clientY); }, {passive:false});
+  stage.addEventListener("dblclick", e => { if(scale > 1.05) fit(); else zoomAt(2.5, e.clientX, e.clientY); });
+  const ptrs = new Map(); let lastDist = 0;
+  stage.addEventListener("pointerdown", e => { stage.setPointerCapture(e.pointerId); ptrs.set(e.pointerId,[e.clientX,e.clientY]); lastDist = 0; stage.style.cursor = "grabbing"; });
+  stage.addEventListener("pointermove", e => {
+    if(!ptrs.has(e.pointerId)) return; const prev = ptrs.get(e.pointerId); ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+    if(ptrs.size === 2){ const [a,b] = [...ptrs.values()], d = Math.hypot(a[0]-b[0],a[1]-b[1]); if(lastDist) zoomAt(scale*d/lastDist,(a[0]+b[0])/2,(a[1]+b[1])/2); lastDist = d; }
+    else if(ptrs.size === 1 && scale > 1){ tx += e.clientX-prev[0]; ty += e.clientY-prev[1]; apply(); }
+  });
+  const up = e => { ptrs.delete(e.pointerId); lastDist = 0; stage.style.cursor = "grab"; };
+  stage.addEventListener("pointerup", up); stage.addEventListener("pointercancel", up);
+  window.addEventListener("resize", () => { if(document.getElementById("st-viewer")) fit(); });
+  show(i);
+}
 const GI_TITLES = {
-  hero:null, dims:["Dimensions","Exact finished size"], template:["Cutting Template","Ready-to-cut layout"], formats:["File Formats Included","One download, every format"],
+  hero:null, dims:["Exact Dimensions","Finished size in mm"], template:["Cutting Template","Ready-to-cut layout"], formats:["File Formats Included","One download, every format"],
   machines:["Compatible Machines","Cricut • Silhouette • Laser"], included:["What's Included",""], finished:["Size & Material",""], ideas:["Perfect For",""], assembly:["Easy Assembly","4 simple steps"], promo:null,
-  box3d:["3D Preview","How it looks when assembled"], box3d_open:["Box + Lid","Two-piece 3D view"], colors:["Any Color You Like","Cut from any cardstock"], occasions:["Perfect For Every Occasion",""],
+  box3d:["3D Preview","How it looks when assembled"], box3d_open:["Open Box View","See the inside in 3D"], colors:["Any Color You Like","Cut from any cardstock"], occasions:["Perfect For Every Occasion",""],
   materials:["Works With Many Materials",""], download:["How It Works","Instant download in 3 steps"], software:["Compatible Software",""], faq:["Questions?",""], sizes:["Resize Freely","Small • Medium • Large"], thanks:null
 };
 async function giSvgImage(p){
@@ -8095,10 +8193,13 @@ async function giSvgImage(p){
   try{
     const b = await blobGet(v.key); if(!b) return null;
     let txt = await b.text();
+    const mm = txt.match(/width="([\d.]+)mm"\s+height="([\d.]+)mm"/);
     const vw = Number((txt.match(/viewBox="0 0 ([\d.]+)/)||[])[1]) || 200, sw = Math.max(0.5, vw/180);
     txt = txt.replace(/stroke-width="[\d.]+"/g, 'stroke-width="' + sw + '"').replace(/stroke-dasharray="[^"]*"/g, 'stroke-dasharray="' + (sw*6) + ' ' + (sw*4) + '"');
     const url = URL.createObjectURL(new Blob([txt],{type:"image/svg+xml"}));
-    return await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=url; });
+    const im = await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=url; });
+    if(mm) im.sheet = {w: Math.round(mm[1]), h: Math.round(mm[2])};
+    return im;
   }catch(e){ return null; }
 }
 async function giLogo(){ if(S.brandLogoDataUrl){ try{ return await loadImage(S.brandLogoDataUrl); }catch(e){} } return null; }
@@ -8120,14 +8221,18 @@ function giList(p){
 // یک اسلاید رو روی canvas می‌کشه (نیاز: giApply از قبل صدا زده شده)
 function giRender(c,p,slotKey,ctx){
   c.setLineDash([]); c.textBaseline = "alphabetic"; c.direction = "ltr"; c.setTransform(1,0,0,1,0,0);
+  GI_BG = ctx.bgImg || null;
   let t = GI_TITLES[slotKey];
+  if(slotKey === "template" && ctx.svgImg && ctx.svgImg.sheet) t = ["Cutting Template", "Sheet " + ctx.svgImg.sheet.w + " × " + ctx.svgImg.sheet.h + " mm"];
   if(slotKey === "hero" && GI_OPT.hero === "center") t = [p.name, p.category || ""];
   giFrame(c, t ? t[0] : "", t ? t[1] : "", ctx.shop, ctx.logo);
   GI_DRAW[slotKey](c,p,ctx.L,ctx.svgImg,ctx.shop,ctx.logo);
 }
 async function giContext(p){
   const shop = (typeof getShopName === "function" ? getShopName() : "") || "Shop";
-  return {shop, logo: await giLogo(), svgImg: await giSvgImage(p), L: giList(p)};
+  const gs = giGet(); let bgImg = null;
+  if(gs.bgKey){ try{ const bb = await blobGet(gs.bgKey); if(bb) bgImg = await loadImage(URL.createObjectURL(bb)); }catch(e){} }
+  return {shop, logo: await giLogo(), svgImg: await giSvgImage(p), L: giList(p), bgImg};
 }
 async function generateListingImages(opts){
   opts = opts || {};
@@ -8143,7 +8248,8 @@ async function generateListingImages(opts){
   for(const s of targets){
     giRender(c,p,s.k,ctx);
     const blob = await new Promise(r => cv.toBlob(r,"image/jpeg",0.92));
-    const file = new File([blob], s.f + ".jpg", {type:"image/jpeg"});
+    const kw = slug(tokens(p,"{KW}")).toLowerCase().slice(0,60);
+    const file = new File([blob], (kw ? kw + "-" : "") + s.f + ".jpg", {type:"image/jpeg"});
     const key = p.id + ":images:" + s.k;
     await blobPut(key, file);
     p.images[s.k] = {name:file.name, size:file.size, type:file.type, key};
@@ -8157,7 +8263,7 @@ async function generateListingImages(opts){
 
 /* ---------- رابط: انتخاب محصول، تم، چیدمان، اسلات‌ها و پیش‌نمایش زنده ---------- */
 function giGet(){ if(!state.imgGen) state.imgGen = giDefaults(); return state.imgGen; }
-let giSig = "", giTimer = null;
+let giSig = "", giTimer = null, giLastCanvas = null;
 function giProduct(){ const id = $("st-gProduct").value; return state.products.find(x => x.id === id) || cur(); }
 function giUiRefresh(){
   if(!$("st-gProduct")) return;
@@ -8174,6 +8280,7 @@ function giUiRefresh(){
   $("st-gBg").value = gs.bg; $("st-gAcc").value = gs.acc; $("st-gInk").value = gs.ink; $("st-gFont").value = gs.font;
   $("st-gHero").value = gs.hero; $("st-gFrame").value = gs.frame; $("st-gAlign").value = gs.align;
   $("st-gFooter").checked = gs.footer; $("st-gLogoOn").checked = gs.logo;
+  giUiRefresh2();
   giQueuePreview();
 }
 function giQueuePreview(){ clearTimeout(giTimer); giTimer = setTimeout(giDrawPreview, 120); }
@@ -8182,7 +8289,7 @@ async function giDrawPreview(){
   const gs = giGet(), p = giProduct(); if(!p) return;
   giApply(gs);
   const ctx = await giContext(p), cv = document.createElement("canvas"); cv.width = GI.W; cv.height = GI.H;
-  giRender(cv.getContext("2d"),p,$("st-gPrevSlot").value || "hero",ctx);
+  giRender(cv.getContext("2d"),p,$("st-gPrevSlot").value || "hero",ctx); giLastCanvas = cv;
   const pv = $("st-gPrev").getContext("2d"); pv.clearRect(0,0,600,450); pv.drawImage(cv,0,0,600,450);
   // گالری تم‌ها: کوچک‌شده‌ی تصویر اصلی با هر تم
   const sig = p.id + "|" + gs.hero + gs.frame + gs.align + "|" + p.w + p.h + p.d + p.name;
@@ -8194,7 +8301,7 @@ async function giDrawPreview(){
       const th = document.createElement("canvas"); th.width = 220; th.height = 165; th.getContext("2d").drawImage(c2,0,0,220,165); th.style.cssText = "width:100%;height:auto;border-radius:4px";
       const b = document.createElement("button"); b.type = "button"; b.className = "ghost mini"; b.style.cssText = "padding:4px;flex:0 0 auto;width:170px;display:flex;flex-direction:column;align-items:center;gap:4px;" + (gs.theme === key ? "outline:3px solid var(--cut,#d9480f)" : "");
       b.appendChild(th); b.appendChild(document.createTextNode(t.name));
-      b.onclick = () => { Object.assign(gs, {theme:key, bg:t.bg, ink:t.ink, acc:t.acc, font:t.font}); save(); giSig = ""; giUiRefresh(); };
+      b.onclick = () => { Object.assign(gs, {theme:key, bg:t.bg, ink:t.ink, acc:t.acc, font:t.font, teal:null}); save(); giSig = ""; giUiRefresh(); };
       box.appendChild(b);
     }
     giApply(gs);
@@ -8215,6 +8322,98 @@ function giBind(){
 }
 
 giBind();
+/* ---------- قالب طراحی من: رنگ از تصویر نمونه، پس‌زمینه‌ی دلخواه، ذخیره/بارگذاری/خروجی قالب ---------- */
+const giLum = hex => { const [r,g,b] = g3.hex(hex); return r*0.299 + g*0.587 + b*0.114; };
+const giSat = hex => { const [r,g,b] = g3.hex(hex), mx = Math.max(r,g,b), mn = Math.min(r,g,b); return mx ? (mx-mn)/mx : 0; };
+const giHexOf = rgb => "#" + rgb.map(v => Math.round(v).toString(16).padStart(2,"0")).join("");
+const giDist = (a,b) => { const x = g3.hex(a), y = g3.hex(b); return Math.hypot(x[0]-y[0], x[1]-y[1], x[2]-y[2]); };
+function giPaletteFromImage(img){
+  const cv = document.createElement("canvas"); cv.width = cv.height = 64;
+  const c = cv.getContext("2d"); c.drawImage(img,0,0,64,64);
+  const d = c.getImageData(0,0,64,64).data, bins = {};
+  for(let i = 0; i < d.length; i += 4){ if(d[i+3] < 200) continue; const k = (d[i]>>4) + "," + (d[i+1]>>4) + "," + (d[i+2]>>4); const b = bins[k] || (bins[k] = {n:0,r:0,g:0,b:0}); b.n++; b.r += d[i]; b.g += d[i+1]; b.b += d[i+2]; }
+  const cols = Object.values(bins).sort((a,b) => b.n-a.n).map(b => giHexOf([b.r/b.n, b.g/b.n, b.b/b.n]));
+  const picked = []; for(const h of cols){ if(picked.every(p => giDist(p,h) > 70)) picked.push(h); if(picked.length >= 6) break; }
+  if(!picked.length) return null;
+  const bg = picked[0];
+  const ink = picked.slice().sort((a,b) => Math.abs(giLum(b)-giLum(bg)) - Math.abs(giLum(a)-giLum(bg)))[0];
+  const rest = picked.filter(h => h !== bg && h !== ink).sort((a,b) => giSat(b)-giSat(a));
+  const acc = rest[0] || ink, teal = rest[1] || acc;
+  return {bg, ink: Math.abs(giLum(ink)-giLum(bg)) > 90 ? ink : (giLum(bg) > 128 ? "#1e2a32" : "#f5f5f5"), acc, teal, all: picked};
+}
+async function giImgFromBlob(b){ const u = URL.createObjectURL(b); try{ return await loadImage(u); } finally { /* آدرس را برای استفاده‌ی بعدی نگه می‌داریم */ } }
+function giBgKey(){ return "imggen-bg:" + (S.shopId || "x"); }
+async function giSetBg(file){
+  const gs = giGet(), key = giBgKey(); await blobPut(key, file); gs.bgKey = key; save(); giUiRefresh(); toast("پس‌زمینه‌ی دلخواه ثبت شد.");
+}
+async function giClearBg(){ const gs = giGet(); if(gs.bgKey) await blobDel(gs.bgKey); gs.bgKey = null; save(); giUiRefresh(); }
+async function giFromReference(file){
+  try{
+    const img = await giImgFromBlob(file), pal = giPaletteFromImage(img); if(!pal) return toast("رنگی از این تصویر استخراج نشد.");
+    const gs = giGet(), dark = giLum(pal.bg) < 120;
+    Object.assign(gs, {theme: dark ? "midnight" : "cream", bg: pal.bg, ink: pal.ink, acc: pal.acc, teal: pal.teal});
+    save(); giSig = ""; giUiRefresh();
+    $("st-gPal").innerHTML = pal.all.map(h => "<span title='" + h + "' style='display:inline-block;width:28px;height:28px;border-radius:6px;border:1px solid var(--rule);background:" + h + ";margin:2px'></span>").join("");
+    toast("رنگ‌ها از تصویر نمونه استخراج و اعمال شد.");
+  }catch(e){ toast("خواندن تصویر نمونه ممکن نشد."); }
+}
+function giTpls(){ if(!state.imgTpls) state.imgTpls = []; return state.imgTpls; }
+async function giSaveTpl(){
+  const name = $("st-gTplName").value.trim(); if(!name) return toast("اول یک اسم برای قالب بنویس.");
+  const gs = giGet(), id = uid(), opts = JSON.parse(JSON.stringify(gs)); delete opts.sel; delete opts.bgKey;
+  const t = {id, name, opts, hasBg: false};
+  if(gs.bgKey){ const b = await blobGet(gs.bgKey); if(b){ await blobPut("imgtpl:" + id, b); t.hasBg = true; } }
+  giTpls().push(t); save(); $("st-gTplName").value = ""; giUiRefresh(); toast("قالب «" + name + "» ذخیره شد.");
+}
+async function giApplyTpl(id){
+  const t = giTpls().find(x => x.id === id); if(!t) return; const gs = giGet();
+  const sel = gs.sel; Object.assign(gs, giDefaults(), JSON.parse(JSON.stringify(t.opts)), {sel, bgKey: null});
+  if(t.hasBg){ const b = await blobGet("imgtpl:" + id); if(b){ await blobPut(giBgKey(), b); gs.bgKey = giBgKey(); } }
+  save(); giSig = ""; giUiRefresh(); toast("قالب «" + t.name + "» اعمال شد.");
+}
+async function giDelTpl(id){
+  const i = giTpls().findIndex(x => x.id === id); if(i < 0) return; if(!confirm("این قالب حذف بشه؟")) return;
+  if(giTpls()[i].hasBg) await blobDel("imgtpl:" + id);
+  giTpls().splice(i,1); save(); giUiRefresh();
+}
+async function giExportTpl(){
+  const gs = giGet(), opts = JSON.parse(JSON.stringify(gs)); delete opts.sel; delete opts.bgKey;
+  let bg = null; if(gs.bgKey){ const b = await blobGet(gs.bgKey); if(b) bg = await new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); }); }
+  download(new Blob([JSON.stringify({kind:"etsyagent-image-template", opts, bg})],{type:"application/json"}), "image-template.json");
+}
+async function giImportTpl(file){
+  try{
+    const d = JSON.parse(await file.text()); if(d.kind !== "etsyagent-image-template") throw 0;
+    const gs = giGet(), sel = gs.sel; Object.assign(gs, giDefaults(), d.opts, {sel, bgKey: null});
+    if(d.bg){ const b = await (await fetch(d.bg)).blob(); await blobPut(giBgKey(), b); gs.bgKey = giBgKey(); }
+    save(); giSig = ""; giUiRefresh(); toast("قالب وارد شد.");
+  }catch(e){ toast("این فایل قالب معتبر نیست."); }
+}
+function giUiRefresh2(){
+  const gs = giGet();
+  $("st-gBoxStyle").value = gs.boxStyle || "auto"; $("st-gBgAlpha").value = Math.round((gs.bgAlpha == null ? 0.85 : gs.bgAlpha)*100);
+  $("st-gBgInfo").textContent = gs.bgKey ? "پس‌زمینه‌ی دلخواه فعال است." : "";
+  $("st-gTpls").innerHTML = giTpls().map(t => "<div style='display:flex;gap:6px;align-items:center;margin:4px 0;font-size:13px'><b style='flex:1'>" + dzEsc(t.name) + (t.hasBg ? " 🖼" : "") + "</b><button type='button' class='ghost mini' data-tpl-use='" + t.id + "'>اعمال</button><button type='button' class='ghost mini' data-tpl-del='" + t.id + "'>حذف</button></div>").join("") || "<div class='help'>هنوز قالبی ذخیره نشده.</div>";
+}
+function giBind2(){
+  $("st-gBoxStyle").onchange = () => { giGet().boxStyle = $("st-gBoxStyle").value; save(); giQueuePreview(); };
+  $("st-gBgAlpha").oninput = () => { giGet().bgAlpha = Number($("st-gBgAlpha").value)/100; save(); giQueuePreview(); };
+  $("st-gRefFile").onchange = e => { if(e.target.files[0]) giFromReference(e.target.files[0]); e.target.value = ""; };
+  $("st-gBgFile").onchange = e => { if(e.target.files[0]) giSetBg(e.target.files[0]); e.target.value = ""; };
+  $("st-gBgClear").onclick = giClearBg;
+  $("st-gTplSave").onclick = giSaveTpl; $("st-gTplExport").onclick = giExportTpl;
+  $("st-gTplImportFile").onchange = e => { if(e.target.files[0]) giImportTpl(e.target.files[0]); e.target.value = ""; };
+  $("st-gTpls").onclick = e => { const u = e.target.dataset.tplUse, d = e.target.dataset.tplDel; if(u) giApplyTpl(u); else if(d) giDelTpl(d); };
+  $("st-gMobile").onchange = () => { $("st-gPrev").style.maxWidth = $("st-gMobile").checked ? "190px" : "600px"; };
+  $("st-gPrev").style.cursor = "zoom-in";
+  $("st-gPrev").onclick = () => { if(!giLastCanvas) return; stOpenViewer([{title: "پیش‌نمایش — " + ($("st-gPrevSlot").selectedOptions[0] || {}).textContent, get: () => new Promise(r => giLastCanvas.toBlob(b => r(URL.createObjectURL(b)),"image/jpeg",0.92))}], 0); };
+}
+function giOpenSlotsViewer(slotKey){
+  const p = cur(), list = IMG_SLOTS.map((s,i) => ({s,i})).filter(x => p.images[x.s.k]);
+  const items = list.map(x => ({title: fa(x.i+1) + ". " + x.s.t, get: async () => URL.createObjectURL(await blobGet(p.images[x.s.k].key))}));
+  stOpenViewer(items, Math.max(0, list.findIndex(x => x.s.k === slotKey)));
+}
+giBind2();
 /* ===================== طراحی جعبه با Claude: سؤال ← طرح ← فایل‌های SVG/DXF/PDF ← ارسال به Etsy ===================== */
 // ── کتابخانه‌ی دای‌لاین (دقیق، با کد) — Claude نوع و اندازه رو انتخاب می‌کنه؛ هندسه رو کد می‌سازه
 const DL_MM = 72/25.4;
@@ -8406,6 +8605,7 @@ async function dzApply(){
   p.w = Math.round(dlNum(s.length,10,400,100)); p.h = Math.round(dlNum(s.width,10,400,70)); p.d = Math.round(dlNum(s.height,8,300,30));
   p.category = s.category || "Packaging Template"; p.material = s.material || p.material;
   p.machines = (s.machines || []).join(" / ") || p.machines;
+  p.dzStyle = s.style;
   p.title = limitTitle(sanitizeEtsyTitle(l.title || p.name));
   p.description = normalizeDescription(l.description || "");
   p.tags = (l.tags || []).map(t => String(t).replace(/_/g," ").trim()).filter(t => t && t.length <= 20).slice(0,13).join(", ");
