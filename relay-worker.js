@@ -10,7 +10,8 @@ const ALLOWED_HOSTS = [
   'api.pinterest.com',
   'generativelanguage.googleapis.com',
   'api.telegram.org',
-  'api.etsy.com', // اتسی درخواست‌های سمت‌سرور از IP هاست ایران رو به‌خاطر تحریم بلاک می‌کنه
+  'api.etsy.com', // اتسی درخواست‌های سمت‌سرور از IP هاست ایران رو به‌خاطر تحریم بلاک می‌کنه (تبادل/تمدید توکن OAuth)
+  'openapi.etsy.com', // ساخت/ویرایش لیستینگ (POST/PATCH) از مرورگر
 ];
 
 // این رو با یه رشته‌ی تصادفی طولانی عوض کن، و همون رو توی config.php به‌عنوان RELAY_SECRET بذار
