@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.12.0 -->
+<!-- APP_VERSION: 1.12.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v120</div>
+        <div class="logo-badge">v121</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -4436,7 +4436,7 @@ function buildProductDetailHTML(p){
   <div style="font-size:12px;color:var(--green);margin-bottom:14px;background:var(--green-light);padding:8px;border-radius:8px">💡 ${escHtml(p.why_sellable||'')}</div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
     <button class="btn btn-primary btn-sm" onclick="copyDetailField('all')">📋 کپی همه با هم</button>
-    ${p.status==='approved'&&S.dailyProducts.includes(p)?`<button class="btn btn-secondary btn-sm" onclick="sendDailyToEtsy(${S.dailyProducts.indexOf(p)})">📤 ارسال به Etsy (پیش‌نویس)</button>`:''}
+    ${p.status==='approved'?`<button class="btn btn-secondary btn-sm" onclick="sendDetailToEtsy()">${p.etsyListingId?'✔ پیش‌نویس ساخته شد — دوباره؟':'📤 ارسال به Etsy (پیش‌نویس)'}</button>`:''}
   </div>
   <div style="font-size:11px;color:var(--text3)">وضعیت: ${statusText[p.status]||p.status||''}</div>`;
 }
@@ -5340,12 +5340,23 @@ async function etsyCreateDraftListing(item, _isRetry){
     return false;
   }catch(e){ log('✗ خطای ارسال به Etsy: '+e.message,'err'); return false; }
 }
-async function sendDailyToEtsy(i){
-  const p=S.dailyProducts[i]; if(!p) return;
-  if(p.etsyListingId && !confirm('این پیشنهاد قبلاً به Etsy فرستاده شده. دوباره پیش‌نویس جدید ساخته بشه؟')) return;
-  if(!confirm(`پیش‌نویس این محصول روی Etsy ساخته بشه؟\n(منتشر نمی‌شه؛ فایل و عکس‌ها رو بعداً خودت اضافه می‌کنی)\n\n${p.title}`)) return;
+async function sendDetailToEtsy(){
+  const p=currentDetailItem; if(!p) return;
+  const ok=await sendItemToEtsy(p);
+  if(ok) document.getElementById('dailyModalContent').innerHTML=buildProductDetailHTML(p);
+}
+function sendDailyToEtsy(i){ return sendItemToEtsy(S.dailyProducts[i]); }
+async function sendItemToEtsy(p){
+  if(!p) return false;
+  if(p.etsyListingId && !confirm('این پیشنهاد قبلاً به Etsy فرستاده شده. دوباره پیش‌نویس جدید ساخته بشه؟')) return false;
+  if(!confirm(`پیش‌نویس این محصول روی Etsy ساخته بشه؟\n(منتشر نمی‌شه؛ فایل و عکس‌ها رو بعداً خودت اضافه می‌کنی)\n\n${p.title}`)) return false;
   const ok=await etsyCreateDraftListing(p);
+  if(ok&&p.id){ // علامت رو روی نسخه‌ی کارت و نسخه‌ی آرشیو هر دو بذار
+    [...S.dailyProducts,...S.dailyArchive].filter(x=>x.id===p.id).forEach(x=>{x.etsyListingId=p.etsyListingId;x.etsyDraftAt=p.etsyDraftAt;});
+    saveCurrentShop(); renderDailyProducts();
+  }
   if(ok) alert('✅ پیش‌نویس روی Etsy ساخته شد.\nدر Etsy → Shop Manager → Listings → Drafts فایل دیجیتال و عکس‌ها رو اضافه و منتشر کن.');
+  return ok;
 }
 
 async function applyOpt(){
