@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.12.4 -->
+<!-- APP_VERSION: 1.12.5 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v124</div>
+        <div class="logo-badge">v125</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -6742,20 +6742,16 @@ async function checkOAuthCallback(){
   try{
     // نکته: api.etsy.com/v3/public/oauth/token هدر CORS برای فراخوانی مستقیم از
     // مرورگر نمی‌فرسته، پس این تبادل از طریق etsy_oauth_token.php (سمت سرور، همون دامنه) انجام می‌شه.
-    const res=await fetch('etsy_oauth_token.php',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        client_id:key,
-        redirect_uri:redirectUri,
-        code:code,
-        code_verifier:verifier
-      })
+    const tr=await etsyTokenRequest({
+      grant_type:'authorization_code',
+      client_id:key,
+      redirect_uri:redirectUri,
+      code:code,
+      code_verifier:verifier
     });
-    const rawText=await res.text();
-    let d;
-    try{ d=JSON.parse(rawText); }
-    catch{
+    const res={status:tr.status}, rawText=tr.rawText;
+    const d=tr.d;
+    if(!d){
       setOAuthStatus(`❌ پاسخ نامعتبر از سرور (status ${res.status}): ${rawText.slice(0,200)||'(خالی)'}`,'err');
       return;
     }
@@ -6780,17 +6776,33 @@ async function checkOAuthCallback(){
 
 // توکن دسترسی Etsy فقط ~۱ ساعت اعتباره — این تابع با refresh_token ذخیره‌شده
 // یه توکن تازه می‌گیره، بدون نیاز به اتصال مجدد دستی
+// درخواست توکن Etsy (تبادل کد / تمدید): اول از رله‌ی خودِ اپ (همونی که PATCH/POST لیستینگ ازش رد می‌شه)،
+// اگه نبود یا جواب توکن نداد، از etsy_oauth_token.php روی سرور
+async function etsyTokenRequest(payload){
+  if(S.apiRelayUrl){
+    try{
+      const form=new URLSearchParams(payload).toString();
+      const res=await fetch(S.apiRelayUrl.replace(/\/$/,''),{
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-Relay-Secret':S.apiRelaySecret||''},
+        body:JSON.stringify({url:'https://api.etsy.com/v3/public/oauth/token', method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:form})
+      });
+      const rawText=await res.text(); let d=null; try{ d=JSON.parse(rawText); }catch{}
+      if(d&&d.access_token) return {d,rawText,status:res.status};
+      log('ℹ️ دریافت/تمدید توکن از رله‌ی اپ جواب نداد ('+(d?String(d.error_description||d.error||'').slice(0,80):rawText.slice(0,80))+') — مسیر سرور امتحان می‌شه','warn');
+    }catch(e){ log('ℹ️ رله‌ی اپ برای توکن در دسترس نبود: '+e.message,'warn'); }
+  }
+  const res=await fetch('etsy_oauth_token.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const rawText=await res.text(); let d=null; try{ d=JSON.parse(rawText); }catch{}
+  return {d,rawText,status:res.status};
+}
 async function refreshEtsyOAuthToken(){
   if(!S.etsyRefreshToken){ log('✗ تمدید ممکن نیست: Refresh Token ذخیره نشده (توکن دستی وارد شده؟). از تنظیمات → Etsy روی «اتصال به Etsy» (OAuth) بزن تا توکن و Refresh Token تازه گرفته شود.','err'); return false; }
   if(!S.etsyApiKey) return false;
   try{
-    const res=await fetch('etsy_oauth_token.php',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({grant_type:'refresh_token',client_id:S.etsyApiKey,refresh_token:S.etsyRefreshToken})
-    });
-    const rawText=await res.text();
-    let d; try{ d=JSON.parse(rawText); }catch{ log('✗ تمدید توکن: پاسخ etsy_oauth_token.php قابل‌خوندن نبود — '+rawText.slice(0,120),'err'); return false; }
+    const tr=await etsyTokenRequest({grant_type:'refresh_token',client_id:S.etsyApiKey,refresh_token:S.etsyRefreshToken});
+    const d=tr.d;
+    if(!d){ log('✗ تمدید توکن: پاسخ قابل‌خوندن نبود — '+tr.rawText.slice(0,120),'err'); return false; }
     if(!d.access_token){ log('✗ تمدید توکن رد شد: '+String(d.error_description||d.error||JSON.stringify(d)).slice(0,200)+' — از تنظیمات → Etsy دوباره «اتصال به Etsy» (OAuth) را انجام بده.','err'); return false; }
     S.etsyOAuthToken=d.access_token;
     if(d.refresh_token) S.etsyRefreshToken=d.refresh_token;
