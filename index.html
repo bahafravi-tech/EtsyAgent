@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.12.2 -->
+<!-- APP_VERSION: 1.12.3 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v122</div>
+        <div class="logo-badge">v123</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -6613,19 +6613,34 @@ async function findEtsyTaxonomy(){
     const flatten=(nodes,path,acc)=>{ (nodes||[]).forEach(n=>{ const p=[...path,n.name]; acc[n.id]={path:p.join(' › '),leaf:!(n.children&&n.children.length)}; flatten(n.children,p,acc); }); return acc; };
     const tree=await etsyApiGet('https://openapi.etsy.com/v3/application/seller-taxonomy/nodes');
     const map=flatten(tree.results,[],{});
-    const counts={};
+    const counts={}, titleWords={};
     try{
       const shopId=await resolveEtsyShopId();
       const d=await etsyApiGet(`https://openapi.etsy.com/v3/application/shops/${shopId}/listings/active?limit=100`);
-      (d.results||[]).forEach(l=>{ if(l.taxonomy_id) counts[l.taxonomy_id]=(counts[l.taxonomy_id]||0)+1; });
+      (d.results||[]).forEach(l=>{
+        if(l.taxonomy_id) counts[l.taxonomy_id]=(counts[l.taxonomy_id]||0)+1;
+        String(l.title||'').toLowerCase().split(/[^a-z]+/).filter(w=>w.length>=4).forEach(w=>{ titleWords[w]=(titleWords[w]||0)+1; });
+      });
     }catch(e){ log('⚠ لیستینگ‌های فروشگاه خوانده نشد: '+e.message,'warn'); }
-    const chip=(id,label,extra)=>`<div style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;direction:ltr;text-align:left" onclick="document.getElementById('etsyTaxonomyIdInput').value='${id}'">${escHtml(label)} — <b>${id}</b>${extra||''}</div>`;
-    const mine=Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([id,n])=>chip(id,(map[id]&&map[id].path)||'(unknown)',` · ${n} listing`));
-    const re=/template|pattern|svg|clip ?art|printable|digital|cut file|laser/i;
-    const sugg=Object.entries(map).filter(([id,v])=>v.leaf&&re.test(v.path)).slice(0,25).map(([id,v])=>chip(id,v.path));
-    out.innerHTML=`${mine.length?`<div style="font-weight:700;margin-bottom:6px">دسته‌های لیستینگ‌های خودت (روی یکی بزن تا پر شود):</div>${mine.join('')}`:'<div>لیستینگ فعالی با دسته پیدا نشد.</div>'}
-      <div style="font-weight:700;margin:10px 0 6px">دسته‌های پیشنهادی مرتبط با محصول دیجیتال:</div>${sugg.join('')||'—'}
-      <div style="color:var(--text3);margin-top:6px">بعد از انتخاب، دکمه‌ی «ذخیره» Etsy را بزن.</div>`;
+    // امتیازدهی: دسته‌ی لیستینگ‌های خودت (هرچه بیشتر، بهتر) + هم‌خوانی مسیر دسته با کلمات پرتکرار عنوان محصولاتت + کلمات مرتبط با محصول دیجیتال
+    const topWords=Object.entries(titleWords).sort((a,b)=>b[1]-a[1]).slice(0,10).map(e=>e[0]);
+    const digitalRe=[[/template/i,3],[/pattern/i,2],[/svg|cut file|laser/i,2],[/clip ?art|printable|digital/i,2]];
+    const score=(id,v)=>{
+      let s=(counts[id]||0)*10;
+      const path=v.path.toLowerCase();
+      topWords.forEach(w=>{ if(path.includes(w)) s+=4; });
+      digitalRe.forEach(([re,w])=>{ if(re.test(v.path)) s+=w; });
+      return s;
+    };
+    const ids=new Set([...Object.keys(counts), ...Object.entries(map).filter(([id,v])=>v.leaf&&/template|pattern|svg|clip ?art|printable|digital|cut file|laser/i.test(v.path)).map(e=>e[0])]);
+    const ranked=[...ids].map(id=>({id,v:map[id]||{path:'(unknown)'},s:score(id,map[id]||{path:''})})).sort((a,b)=>b.s-a.s).slice(0,12);
+    if(!ranked.length){ out.innerHTML='<div>دسته‌ی مناسبی پیدا نشد — آیدی را دستی وارد کن.</div>'; return; }
+    const best=ranked[0];
+    document.getElementById('etsyTaxonomyIdInput').value=best.id;
+    const chip=(r,isBest)=>`<div style="padding:6px 8px;border:1px solid ${isBest?'var(--green)':'var(--border)'};background:${isBest?'var(--green-light)':'transparent'};border-radius:8px;margin-bottom:6px;cursor:pointer;direction:ltr;text-align:left" onclick="document.getElementById('etsyTaxonomyIdInput').value='${r.id}'">${isBest?'⭐ ':''}${escHtml(r.v.path)} — <b>${r.id}</b>${counts[r.id]?` · ${counts[r.id]} of your listings`:''}</div>`;
+    out.innerHTML=`<div style="font-weight:700;margin-bottom:6px;color:var(--green)">✅ بهترین گزینه برای محصولات تو انتخاب و در فیلد گذاشته شد:</div>${chip(best,true)}
+      ${ranked.length>1?`<div style="font-weight:700;margin:10px 0 6px">گزینه‌های دیگر (روی هرکدام بزنی جایگزین می‌شود):</div>${ranked.slice(1).map(r=>chip(r,false)).join('')}`:''}
+      <div style="color:var(--text3);margin-top:6px">حالا دکمه‌ی «ذخیره» Etsy را بزن.</div>`;
   }catch(e){ out.innerHTML=`<span style="color:var(--red)">خطا: ${escHtml(e.message)}</span>`; }
 }
 function onBrandLogoSelected(evt){
