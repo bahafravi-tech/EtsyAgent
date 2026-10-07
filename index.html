@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.11.2 -->
+<!-- APP_VERSION: 1.12.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v118</div>
+        <div class="logo-badge">v120</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -3080,7 +3080,7 @@ function renderDailyProducts() {
     const statusText={pending:'⏳ منتظر تأیید',approved:'✅ تأیید شده',rejected:'❌ رد شده'};
     const r = p.research;
     const d=document.createElement('div'); d.className='daily-card';
-    d.innerHTML=`<div class="daily-card-top"><div class="daily-card-label">🔎 پیشنهاد ${i+1} — ${p.created}</div><div class="daily-status" style="padding:14px 14px 0"><span class="badge ${statusMap[p.status]}">${statusText[p.status]}</span><span style="font-size:13px;font-weight:700;color:var(--orange)">$${p.price}</span></div></div><div class="daily-body"><div class="daily-title">${escHtml(p.title)}</div>${r?`<div style="font-size:11.5px;color:var(--text2);background:var(--surface3);border-radius:8px;padding:8px;margin-bottom:8px">📊 ${r.listingCount} رقیب فعال · میانگین قیمت ${r.avgPrice!=null?'$'+r.avgPrice:'?'} · محبوب‌ترین رقیب ${r.topFavorers??'?'} علاقه‌مندی</div>`:''}<div class="daily-reason">💡 ${escHtml(p.why_sellable||'')}</div><div style="margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px">تگ‌ها (${(p.tags||[]).length}/13)</div><div class="tags">${(p.tags||[]).slice(0,5).map(t=>`<span class="tag tag-new">${escHtml(t)}</span>`).join('')}<span class="tag">+${Math.max(0,(p.tags||[]).length-5)}</span></div></div><div class="daily-actions"><button class="btn btn-secondary btn-sm" onclick="showDailyDetail(${i})">📋 اطلاعات کامل</button>${p.status==='pending'?`<button class="btn btn-red btn-sm" onclick="setDailyStatus(${i},'rejected')">رد</button><button class="btn btn-green btn-sm" onclick="setDailyStatus(${i},'approved')">✅ تأیید</button>`:''}</div></div>`;
+    d.innerHTML=`<div class="daily-card-top"><div class="daily-card-label">🔎 پیشنهاد ${i+1} — ${p.created}</div><div class="daily-status" style="padding:14px 14px 0"><span class="badge ${statusMap[p.status]}">${statusText[p.status]}</span><span style="font-size:13px;font-weight:700;color:var(--orange)">$${p.price}</span></div></div><div class="daily-body"><div class="daily-title">${escHtml(p.title)}</div>${r?`<div style="font-size:11.5px;color:var(--text2);background:var(--surface3);border-radius:8px;padding:8px;margin-bottom:8px">📊 ${r.listingCount} رقیب فعال · میانگین قیمت ${r.avgPrice!=null?'$'+r.avgPrice:'?'} · محبوب‌ترین رقیب ${r.topFavorers??'?'} علاقه‌مندی</div>`:''}<div class="daily-reason">💡 ${escHtml(p.why_sellable||'')}</div><div style="margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px">تگ‌ها (${(p.tags||[]).length}/13)</div><div class="tags">${(p.tags||[]).slice(0,5).map(t=>`<span class="tag tag-new">${escHtml(t)}</span>`).join('')}<span class="tag">+${Math.max(0,(p.tags||[]).length-5)}</span></div></div><div class="daily-actions"><button class="btn btn-secondary btn-sm" onclick="showDailyDetail(${i})">📋 اطلاعات کامل</button>${p.status==='approved'?`<button class="btn btn-primary btn-sm" onclick="sendDailyToEtsy(${i})">${p.etsyListingId?'✔ پیش‌نویس ساخته شد — دوباره؟':'📤 ارسال به Etsy (پیش‌نویس)'}</button>`:''}${p.status==='pending'?`<button class="btn btn-red btn-sm" onclick="setDailyStatus(${i},'rejected')">رد</button><button class="btn btn-green btn-sm" onclick="setDailyStatus(${i},'approved')">✅ تأیید</button>`:''}</div></div>`;
     g.appendChild(d);
   });
 }
@@ -4436,6 +4436,7 @@ function buildProductDetailHTML(p){
   <div style="font-size:12px;color:var(--green);margin-bottom:14px;background:var(--green-light);padding:8px;border-radius:8px">💡 ${escHtml(p.why_sellable||'')}</div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
     <button class="btn btn-primary btn-sm" onclick="copyDetailField('all')">📋 کپی همه با هم</button>
+    ${p.status==='approved'&&S.dailyProducts.includes(p)?`<button class="btn btn-secondary btn-sm" onclick="sendDailyToEtsy(${S.dailyProducts.indexOf(p)})">📤 ارسال به Etsy (پیش‌نویس)</button>`:''}
   </div>
   <div style="font-size:11px;color:var(--text3)">وضعیت: ${statusText[p.status]||p.status||''}</div>`;
 }
@@ -5273,6 +5274,78 @@ async function etsyUpdateListing(product, _isRetry){
     log('✗ خطای Etsy: '+friendly,'err');
     return false;
   }catch(e){log('✗ خطای آپلود: '+e.message,'err');return false;}
+}
+
+// ── ارسال پیشنهاد تأییدشده به Etsy به‌صورت «پیش‌نویس» (Draft) — منتشر نمی‌شه؛ فایل و عکس‌ها رو خودت اون‌جا اضافه می‌کنی
+async function etsyCreateDraftListing(item, _isRetry){
+  if(!S.etsyApiKey||!S.etsyOAuthToken){
+    alert('برای ارسال به Etsy، API Key و اتصال OAuth لازم است (تنظیمات → Etsy).'); nav('settings'); return false;
+  }
+  const taxonomyId=parseInt(S.etsyTaxonomyId,10);
+  if(!taxonomyId){
+    alert('Taxonomy ID (دسته‌بندی محصول) توی تنظیمات Etsy وارد نشده — برای ساخت لیستینگ الزامیه.'); nav('settings'); return false;
+  }
+  const price=parseFloat(String(item.price).replace(/[^0-9.]/g,''));
+  if(!(price>0)){ alert('قیمت پیشنهاد معتبر نیست.'); return false; }
+  const tags=(item.tags||[])
+    .map(t=>String(t).replace(/_/g,' ').trim())
+    .filter(t=>t.length>=1&&t.length<=20)
+    .filter((t,i,a)=>a.findIndex(x=>x.toLowerCase()===t.toLowerCase())===i)
+    .slice(0,13);
+  const body={
+    title:limitTitle(sanitizeEtsyTitle(item.title)),
+    description:normalizeDescription(item.description),
+    price,
+    quantity:999,
+    who_made:'i_did',
+    when_made:'made_to_order',
+    taxonomy_id:taxonomyId,
+    type:'download',
+    is_supply:false,
+    tags
+  };
+  const mats=sanitizeMaterials(item.materials,[]);
+  if(mats.length) body.materials=mats;
+  log(`📤 در حال ساخت پیش‌نویس "${body.title}" روی Etsy...`,'info');
+  try{
+    const shopId=await resolveEtsyShopId();
+    const url=`https://openapi.etsy.com/v3/application/shops/${shopId}/listings`;
+    const headers={'x-api-key':etsyApiKeyHeader(),'Authorization':`Bearer ${S.etsyOAuthToken}`,'Content-Type':'application/json'};
+    let d;
+    if(S.apiRelayUrl){
+      const res=await fetch(S.apiRelayUrl.replace(/\/$/,''),{
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-Relay-Secret':S.apiRelaySecret||''},
+        body:JSON.stringify({url, method:'POST', headers, body})
+      });
+      const text=await res.text();
+      try{ d=JSON.parse(text); }catch(e){ throw new Error('پاسخ رله قابل‌خوندن نبود: '+text.slice(0,150)); }
+    } else {
+      const res=await fetch(url,{method:'POST', headers, body:JSON.stringify(body)});
+      d=await res.json();
+    }
+    if(d.listing_id){
+      item.etsyListingId=d.listing_id;
+      item.etsyDraftAt=new Date().toLocaleDateString('fa-IR');
+      saveCurrentShop();
+      log(`✅ پیش‌نویس روی Etsy ساخته شد (ID: ${d.listing_id}) — Etsy → Shop Manager → Listings → Drafts رو ببین و فایل و عکس‌ها رو اضافه کن`,'ok');
+      renderDailyProducts();
+      return true;
+    }
+    if(!_isRetry && (d.error==='invalid_token'||d.error_description==='invalid_token')){
+      log('🔄 توکن منقضی شده — در حال تمدید خودکار...','warn');
+      if(await refreshEtsyOAuthToken()) return await etsyCreateDraftListing(item,true);
+    }
+    log('✗ خطای Etsy: '+String(d.error||d.error_description||JSON.stringify(d)).slice(0,300),'err');
+    return false;
+  }catch(e){ log('✗ خطای ارسال به Etsy: '+e.message,'err'); return false; }
+}
+async function sendDailyToEtsy(i){
+  const p=S.dailyProducts[i]; if(!p) return;
+  if(p.etsyListingId && !confirm('این پیشنهاد قبلاً به Etsy فرستاده شده. دوباره پیش‌نویس جدید ساخته بشه؟')) return;
+  if(!confirm(`پیش‌نویس این محصول روی Etsy ساخته بشه؟\n(منتشر نمی‌شه؛ فایل و عکس‌ها رو بعداً خودت اضافه می‌کنی)\n\n${p.title}`)) return;
+  const ok=await etsyCreateDraftListing(p);
+  if(ok) alert('✅ پیش‌نویس روی Etsy ساخته شد.\nدر Etsy → Shop Manager → Listings → Drafts فایل دیجیتال و عکس‌ها رو اضافه و منتشر کن.');
 }
 
 async function applyOpt(){
