@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.15.0 -->
+<!-- APP_VERSION: 1.16.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v128</div>
+        <div class="logo-badge">v129</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1798,6 +1798,12 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
           </div>
         </div>
         <div class="slots img" id="st-imgSlots"></div>
+      </div>
+      <div class="block" id="st-vidBlock">
+        <h3>🎬 ویدیوهای لیستینگ (۲ ویدیو)</h3>
+        <p class="help">ویدیوها داخل همین مرورگر ساخته می‌شوند (رایگان). موقع ضبط این تب را باز و جلوی چشم نگه دار. خروجی MP4 است (در Chrome/Edge جدید). Etsy معمولاً ویدیوی حدود ۵ تا ۱۵ ثانیه‌ای و تا ۱۰۰ مگابایت می‌پذیرد؛ اگر ردش کرد، دلیلش در «لاگ فعالیت» نوشته می‌شود. ویدیو بر پایه‌ی تم و رنگ‌های انتخاب‌شده در بخش ساخت تصویرها ساخته می‌شود.</p>
+        <label class="fld" style="max-width:220px"><span>مدت هر ویدیو</span><select id="st-vDur"><option value="8">۸ ثانیه</option><option value="10" selected>۱۰ ثانیه</option><option value="12">۱۲ ثانیه</option><option value="15">۱۵ ثانیه</option></select></label>
+        <div id="st-vSlots" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:10px"></div>
       </div>
       <div class="block">
         <h3>متن جایگزین تصویرها</h3>
@@ -7494,6 +7500,7 @@ function renderFiles(){
 }
 
 function renderImages(){
+  if(typeof renderVideos === "function") renderVideos();
   if(typeof giUiRefresh === "function" && $("st-p-images").classList.contains("on")) giUiRefresh();
   const p = cur(), box = $("st-imgSlots"); box.innerHTML = "";
   IMG_SLOTS.forEach((s,i) => {
@@ -7622,6 +7629,7 @@ function renderChecks(){
     "│   └── " + base + ".zip\n" +
     "├── Listing/\n" +
     IMG_SLOTS.map(s2 => "│   ├── " + s2.f + ".jpg").join("\n") + "\n" +
+    "│   └── Videos/ (" + VID_SLOTS.map(s2 => s2.f).join(", ") + ")\n" +
     "└── Etsy-Listing.txt";
 }
 function renderDiag(){
@@ -7681,6 +7689,11 @@ async function exportPackage(){
     // ALT همین تصویر داخل خودِ فایل (JPG/PNG) جاسازی می‌شه
     entries.push({path: base + "/Listing/" + s.f + "." + ext(v.name), data: embedAlt(await bytes(b), alts[i])});
   }
+  for(const s of VID_SLOTS){
+    const v = vids(p)[s.k]; if(!v) continue;
+    const b = await blobGet(v.key); if(!b) continue;
+    entries.push({path: base + "/Listing/Videos/" + s.f + "." + ext(v.name), data: await bytes(b)});
+  }
   entries.push({path: base + "/Etsy-Listing.txt", data: enc.encode("\uFEFF" + listingText(p))});
   if(entries.length === 1) return toast("هنوز نه فایلی انتخاب شده و نه تصویری.");
   download(makeZip(entries), base + "-etsy-package.zip");
@@ -7726,7 +7739,7 @@ $("st-btnDel").onclick = async () => {
   const p = cur();
   if(state.products.length === 1) return toast("دست‌کم یک محصول باید بماند.");
   if(!confirm("حذف «" + p.name + "» و همه فایل‌های پیوستش؟")) return;
-  for(const kind of ["files","images"])
+  for(const kind of ["files","images","videos"])
     for(const k in p[kind]) await blobDel(p[kind][k].key);
   state.products = state.products.filter(x => x.id !== p.id);
   state.active = state.products[0].id;
@@ -7960,7 +7973,7 @@ const GI_DRAW = {
     const desc = {svg:"Main cut file", dxf:"For laser cutters", pdf:"Print & preview", ai:"Editable version", guide:"Step-by-step guide", studio:"Silhouette file"};
     L.fmts.forEach((s,i)=>{ const x=x0+(i%cols)*(cw+gx), y=y0+Math.floor(i/cols)*(ch+gy);
       giCard(c,x,y,cw,ch);
-      c.fillStyle=GI.acc; c.font="900 150px " + GI_FONT; c.textAlign="center"; c.fillText(s.t.toUpperCase().slice(0,6),x+cw/2,y+210);
+      c.fillStyle=GI.acc; c.font="900 150px " + GI_FONT; c.textAlign="center"; c.fillText(s.k==="guide" ? "GUIDE" : s.t.toUpperCase().slice(0,6),x+cw/2,y+210);
       c.fillStyle=GI.mute; c.font="500 48px " + GI_FONT; c.fillText(desc[s.k]||"",x+cw/2,y+300); });
   },
   machines(c,p,L){
@@ -8420,7 +8433,8 @@ async function studioSendToEtsy(){
   if(!(price > 0)){ price = parseFloat(prompt("قیمت لیستینگ (USD):", "4.5")); if(!(price > 0)) return; }
   p.price = price; save();
   const files = FILE_SLOTS.filter(s => p.files[s.k]), imgs = IMG_SLOTS.filter(s => p.images[s.k]);
-  if(!confirm("«" + p.title + "»\nقیمت: $" + price + "\n" + files.length + " فایل و " + imgs.length + " تصویر به‌صورت پیش‌نویس (Draft) روی Etsy ساخته بشه؟\n(منتشر نمی‌شود؛ خودت در Etsy بررسی و Publish می‌کنی.)")) return;
+  const vidList = VID_SLOTS.filter(s => vids(p)[s.k]);
+  if(!confirm("«" + p.title + "»\nقیمت: $" + price + "\n" + files.length + " فایل، " + imgs.length + " تصویر و " + vidList.length + " ویدیو به‌صورت پیش‌نویس (Draft) روی Etsy ساخته بشه؟\n(منتشر نمی‌شود؛ خودت در Etsy بررسی و Publish می‌کنی.)")) return;
   const item = {title: p.title, tags: tagList(p), description: p.description, price, materials: matList(p)};
   toast("⏳ در حال ساخت پیش‌نویس روی Etsy...");
   const ok = await etsyCreateDraftListing(item);
@@ -8441,14 +8455,139 @@ async function studioSendToEtsy(){
       iOk++; toast("🖼 تصویر " + fa(iOk) + "/" + fa(imgs.length) + " آپلود شد");
     }catch(e){ errs.push(s.t + ": " + e.message); }
   }
-  log("📦 Etsy (ID " + lid + "): " + fOk + "/" + files.length + " فایل و " + iOk + "/" + imgs.length + " تصویر آپلود شد" + (errs.length ? " — خطاها: " + errs.join(" | ") : ""), errs.length ? "warn" : "ok");
-  alert("✅ پیش‌نویس روی Etsy ساخته شد (ID " + lid + ")\nفایل‌ها: " + fOk + "/" + files.length + " · تصویرها: " + iOk + "/" + imgs.length +
+  let vOk = 0;
+  for(const s of vidList){
+    try{
+      const v = vids(p)[s.k], b = await blobGet(v.key);
+      toast("🎬 در حال آپلود ویدیو " + fa(vOk+1) + "/" + fa(vidList.length) + " (ممکن است کمی طول بکشد)...");
+      await etsyMultipartPost("listings/" + lid + "/videos", {name: v.name}, "video", b, v.name);
+      vOk++;
+    }catch(e){ errs.push(s.t + ": " + e.message); }
+  }
+  log("📦 Etsy (ID " + lid + "): " + fOk + "/" + files.length + " فایل، " + iOk + "/" + imgs.length + " تصویر و " + vOk + "/" + vidList.length + " ویدیو آپلود شد" + (errs.length ? " — خطاها: " + errs.join(" | ") : ""), errs.length ? "warn" : "ok");
+  alert("✅ پیش‌نویس روی Etsy ساخته شد (ID " + lid + ")\nفایل‌ها: " + fOk + "/" + files.length + " · تصویرها: " + iOk + "/" + imgs.length + " · ویدیوها: " + vOk + "/" + vidList.length +
     (errs.length ? "\n\n⚠ بعضی آپلودها خطا داد:\n" + errs.slice(0,3).join("\n") : "") +
     "\n\nحالا در Etsy → Shop Manager → Listings → Drafts بازش کن، بررسی کن و Publish بزن.");
 }
 if($("st-dzAsk")) $("st-dzAsk").onclick = dzAsk;
 if($("st-dzSkip")) $("st-dzSkip").onclick = () => { const b = $("st-dzBrief").value.trim(); if(!b) return toast("اول ایده‌ی محصول رو بنویس."); dzState.brief = b; dzState.qa = []; $("st-dzQs").innerHTML = ""; dzDesign(""); };
 if($("st-btnSendEtsy")) $("st-btnSendEtsy").onclick = studioSendToEtsy;
+/* ===================== ویدیوهای لیستینگ (۲ ویدیو، ساخته‌شده در مرورگر با Canvas + MediaRecorder) ===================== */
+const VID_SLOTS = [
+  {k:"vid3d",   t:"ویدیو چرخش ۳بعدی",   f:"Video-01-Turntable",  d:"جعبه‌ی ۳بعدی که با رنگ‌های مختلف ۳۶۰ درجه می‌چرخد"},
+  {k:"vidtour", t:"ویدیو معرفی و مراحل", f:"Video-02-Walkthrough", d:"تصویر اصلی ← جعبه ۳بعدی ← الگو ← فرمت‌ها ← مونتاژ ← دانلود فوری"}
+];
+const vids = p => (p.videos = p.videos || {});
+const vidMime = () => ["video/mp4;codecs=avc1.42E01E","video/mp4","video/webm;codecs=vp9","video/webm"].find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || "";
+const vidExt = type => /mp4/.test(type) ? "mp4" : "webm";
+async function vidRecord(drawFrame, seconds, onProgress){
+  const mime = vidMime(); if(!mime) throw new Error("این مرورگر ضبط ویدیو را پشتیبانی نمی‌کند (Chrome یا Edge جدید لازم است)");
+  const cv = document.createElement("canvas"); cv.width = 1920; cv.height = 1080;
+  const c = cv.getContext("2d"), chunks = [];
+  const rec = new MediaRecorder(cv.captureStream(30), {mimeType: mime, videoBitsPerSecond: 8e6});
+  rec.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); };
+  const stopped = new Promise(r => rec.onstop = r);
+  drawFrame(c, 0, 0); rec.start(500);
+  const t0 = performance.now();
+  await new Promise(res => { (function loop(){
+    const t = (performance.now() - t0) / 1000;
+    if(t >= seconds){ res(); return; }
+    drawFrame(c, t/seconds, t); if(onProgress) onProgress(t/seconds);
+    setTimeout(loop, 16);
+  })(); });
+  drawFrame(c, 1, seconds); await new Promise(r => setTimeout(r, 250)); rec.stop(); await stopped;
+  return new Blob(chunks, {type: mime.split(";")[0]});
+}
+const vidMix = (h1, h2, k) => { const a = g3.hex(h1), b = g3.hex(h2); return "#" + a.map((v,i) => Math.round(v + (b[i]-v)*k).toString(16).padStart(2,"0")).join(""); };
+const vidEase = k => k < 0.5 ? 2*k*k : 1 - Math.pow(-2*k+2, 2)/2;
+function vidPrepText(c, p, shop, u){
+  const fade = Math.min(1, u*8);
+  c.fillStyle = GI.bg; c.fillRect(0,0,1920,1080);
+  if(GI_OPT.frame === "bar"){ c.fillStyle = GI.acc; c.fillRect(0,0,1920,18); }
+  else if(GI_OPT.frame === "border"){ c.strokeStyle = GI.acc; c.lineWidth = 20; giRR(c,30,30,1860,1020,32); c.stroke(); }
+  c.globalAlpha = fade;
+  c.textAlign = "left"; c.fillStyle = GI.acc; c.font = "800 44px " + GI_FONT; c.fillText("DIGITAL DOWNLOAD", 110, 330);
+  c.fillStyle = GI.ink; c.font = "800 100px " + GI_FONT; const y = giWrap(c, p.name, 110, 450, 800, 116, 3);
+  c.fillStyle = GI.mute; c.font = "500 50px " + GI_FONT; c.fillText(p.category || "Template", 110, y + 20);
+  c.fillStyle = GI.ink; c.font = "700 56px " + GI_FONT; c.fillText(p.w + " × " + p.h + " × " + p.d + " mm", 110, y + 100);
+  c.fillStyle = GI.mute; c.font = "600 38px " + GI_FONT; c.fillText(shop, 110, 1010);
+  c.textAlign = "right"; c.fillStyle = GI.teal; c.fillText("Instant Digital Download", 1810, 1010);
+  c.globalAlpha = 1;
+}
+async function vidBuild3d(p, seconds, onProgress){
+  const gs = giGet(); giApply(gs);
+  const shop = (typeof getShopName === "function" ? getShopName() : "") || "Shop";
+  const b = {L:p.w, W:p.h, H:p.d}, pitch = 0.45;
+  // مقیاس ثابت: کوچک‌ترین مقیاسی که در همه‌ی زاویه‌های چرخش جا می‌شود
+  let sMin = 1e9; for(let a = 0; a < 12; a++) sMin = Math.min(sMin, g3Fit([b],760,640,0,0,a*Math.PI/6,pitch).s);
+  const colors = [GI.acc].concat(GI_COLORWAYS.map(x => x[0]).filter(x => x.toLowerCase() !== GI.acc.toLowerCase())).slice(0,4);
+  const draw = (c, u, t) => {
+    vidPrepText(c, p, shop, u);
+    const yaw = -0.62 + u*Math.PI*2, seg = u*colors.length, i = Math.min(colors.length-1, Math.floor(seg)), f = vidEase(Math.max(0, Math.min(1, (seg - i - 0.7)/0.3)));
+    const hex = vidMix(colors[i], colors[(i+1) % colors.length], i === colors.length-1 ? 0 : f);
+    const o = {yaw, pitch, s: sMin, cx: 1380, cy: 540 + sMin*(b.H/2)*Math.cos(pitch)};
+    const [r,g,bb] = g3.hex(hex), txt = (r*0.299 + g*0.587 + bb*0.114) > 160 ? "#1a1a1a" : "#ffffff";
+    c.fillStyle = GI.card; giRR(c,960,150,860,780,40); c.fill(); c.strokeStyle = GI.line; c.lineWidth = 4; c.stroke();
+    c.save(); giRR(c,960,150,860,780,40); c.clip(); g3Closed(c, b, o, hex, giBoxLabels(p, txt)); c.restore();
+  };
+  return vidRecord(draw, seconds, onProgress);
+}
+async function vidBuildTour(p, seconds, onProgress){
+  const gs = giGet(); giApply(gs);
+  const ctx = await giContext(p), keys = ["hero","box3d","template","formats","assembly","promo"];
+  const slides = keys.map(k => { const cv = document.createElement("canvas"); cv.width = GI.W; cv.height = GI.H; giRender(cv.getContext("2d"), p, k, ctx); return cv; });
+  const n = slides.length, seg = seconds / n, bg = GI.bg;
+  const drawSlide = (c, cv, alpha, local) => {
+    const sc = 1 + 0.05*local, h = 1080*sc, w = h*cv.width/cv.height;
+    c.globalAlpha = alpha; c.drawImage(cv, (1920-w)/2, (1080-h)/2, w, h); c.globalAlpha = 1;
+  };
+  const draw = (c, u, t) => {
+    c.fillStyle = bg; c.fillRect(0,0,1920,1080);
+    const i = Math.min(n-1, Math.floor(t/seg)), local = Math.min(1, (t - i*seg)/seg), fadeIn = Math.min(1, (t - i*seg)/0.4);
+    if(i > 0 && fadeIn < 1) drawSlide(c, slides[i-1], 1, 1);
+    drawSlide(c, slides[i], i === 0 ? 1 : fadeIn, local);
+  };
+  return vidRecord(draw, seconds, onProgress);
+}
+async function vidMake(slot){
+  const p = cur(), dur = Number($("st-vDur").value) || 10, btn = document.querySelector("[data-vmake='" + slot + "']");
+  const old = btn ? btn.textContent : "";
+  try{
+    toast("⏳ ضبط ویدیو شروع شد — این تب را باز نگه دار (" + fa(dur) + " ثانیه)");
+    const prog = u => { if(btn) btn.textContent = "⏳ " + fa(Math.round(u*100)) + "٪"; };
+    const blob = slot === "vid3d" ? await vidBuild3d(p, dur, prog) : await vidBuildTour(p, dur, prog);
+    const s = VID_SLOTS.find(x => x.k === slot), name = s.f + "." + vidExt(blob.type), key = p.id + ":videos:" + slot;
+    if(vids(p)[slot]) await blobDel(vids(p)[slot].key);
+    await blobPut(key, blob); vids(p)[slot] = {name, size: blob.size, type: blob.type, key};
+    save(); renderVideos();
+    toast("✅ " + s.t + " ساخته شد (" + kb(blob.size) + ")" + (/mp4/.test(blob.type) ? "" : " — فرمت WebM است؛ اگر Etsy نپذیرفت از Chrome/Edge جدید استفاده کن یا با مبدل به MP4 تبدیلش کن."));
+  }catch(e){ toast("خطا در ساخت ویدیو: " + (e && e.message ? e.message : e)); if(btn) btn.textContent = old; }
+}
+async function vidPick(slot, file){
+  if(!file) return; const p = cur(), key = p.id + ":videos:" + slot;
+  if(vids(p)[slot]) await blobDel(vids(p)[slot].key);
+  await blobPut(key, file); vids(p)[slot] = {name: file.name, size: file.size, type: file.type, key};
+  save(); renderVideos();
+}
+async function vidDrop(slot){ const p = cur(), v = vids(p)[slot]; if(v) await blobDel(v.key); delete vids(p)[slot]; save(); renderVideos(); }
+function renderVideos(){
+  const box = $("st-vSlots"); if(!box) return;
+  const p = cur(); box.innerHTML = "";
+  VID_SLOTS.forEach(s => {
+    const v = vids(p)[s.k], d = document.createElement("div");
+    d.style.cssText = "border:1px solid var(--rule);border-radius:10px;padding:10px;flex:1;min-width:260px";
+    d.innerHTML = "<b>" + s.t + "</b><div class='help' style='margin:4px 0'>" + s.d + "</div>" +
+      (v ? "<video controls playsinline style='width:100%;border-radius:8px;background:#000;max-height:260px'></video><div class='meta' style='margin:4px 0'>" + dzEsc(v.name) + " · " + kb(v.size) + "</div>" : "<div class='help'>هنوز ویدیویی نیست.</div>") +
+      "<div style='display:flex;gap:6px;flex-wrap:wrap;margin-top:6px'><button type='button' class='ghost mini' data-vmake='" + s.k + "'>🎬 ساخت خودکار</button>" +
+      "<label class='pick ghost mini' tabindex='0'>انتخاب فایل<input type='file' accept='video/*' hidden></label>" +
+      (v ? "<button type='button' class='ghost mini' data-vx='" + s.k + "'>برداشتن</button>" : "") + "</div>";
+    if(v) blobGet(v.key).then(b => { if(b) d.querySelector("video").src = URL.createObjectURL(b); });
+    d.querySelector("[data-vmake]").onclick = () => vidMake(s.k);
+    d.querySelector("input[type=file]").onchange = e => vidPick(s.k, e.target.files[0]);
+    const x = d.querySelector("[data-vx]"); if(x) x.onclick = () => vidDrop(s.k);
+    box.appendChild(d);
+  });
+}
 $("st-btnTxt").onclick = async () => {
   const txt = listingText(cur());
   try{ await navigator.clipboard.writeText(txt); toast("متن لیستینگ کپی شد."); }
@@ -8465,10 +8604,10 @@ $("st-btnReset").onclick = async () => {
   const usedElsewhere = new Set();
   Object.keys(localStorage).filter(k => (k === LS || k.startsWith(LS + ".")) && k !== curKey).forEach(k => {
     const st = readState(k); if(!st) return;
-    st.products.forEach(p => ["files","images"].forEach(kind => Object.values(p[kind]||{}).forEach(f => { if(f && f.key) usedElsewhere.add(f.key); })));
+    st.products.forEach(p => ["files","images","videos"].forEach(kind => Object.values(p[kind]||{}).forEach(f => { if(f && f.key) usedElsewhere.add(f.key); })));
   });
   for(const p of state.products)
-    for(const kind of ["files","images"])
+    for(const kind of ["files","images","videos"])
       for(const k in p[kind]) if(!usedElsewhere.has(p[kind][k].key)) await blobDel(p[kind][k].key);
   const b = blankProduct();
   state = {products:[b], active:b.id};
