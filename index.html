@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.13.0 -->
+<!-- APP_VERSION: 1.15.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v126</div>
+        <div class="logo-badge">v128</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1660,12 +1660,28 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
 
     <div class="tabs">
       <button class="tab on" data-p="st-p-daily">🔎 پیشنهاد محصول</button>
+      <button class="tab" data-p="st-p-design">🧰 طراحی با Claude</button>
       <button class="tab" data-p="st-p-product">مشخصات</button>
       <button class="tab" data-p="st-p-files">فایل‌ها</button>
       <button class="tab" data-p="st-p-images">تصویرها</button>
       <button class="tab" data-p="st-p-seo">سئو اتسی</button>
       <button class="tab" data-p="st-p-check">آمادگی انتشار</button>
     </div>
+
+    <!-- طراحی با Claude -->
+    <section class="panel" id="st-p-design">
+      <div class="block">
+        <h3>🧰 طراحی جعبه و ساخت فایل‌ها با Claude</h3>
+        <p class="help">ایده‌ات را بنویس. Claude چند سؤال کوتاه می‌پرسد، جعبه را طراحی می‌کند و فایل‌های <b>SVG، DXF، PDF و راهنمای مونتاژ</b> را می‌سازد؛ عنوان، تگ، توضیحات، قیمت و ۱۰ تصویر هم خودکار پر می‌شود. در آخر فقط «ارسال کامل به Etsy» را می‌زنی.</p>
+        <label class="fld"><span>ایده‌ی محصول</span><textarea id="st-dzBrief" style="min-height:90px" placeholder="مثلاً: یک جعبه‌ی هدیه‌ی کوچک برای جواهرات دست‌ساز، مناسب Cricut و لیزر"></textarea></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <button type="button" class="ghost mini" id="st-dzAsk">❓ Claude سؤال بپرسد</button>
+          <button type="button" class="ghost mini" id="st-dzSkip">⚡ بدون سؤال، خودت تصمیم بگیر</button>
+        </div>
+        <div id="st-dzQs"></div>
+        <div id="st-dzOut"></div>
+      </div>
+    </section>
 
     <!-- مشخصات -->
     <section class="panel on" id="st-p-daily">
@@ -1748,9 +1764,39 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
     <!-- تصویرها -->
     <section class="panel" id="st-p-images">
       <div class="block">
-        <h3>ده تصویر لیستینگ</h3>
+        <h3>تصویرهای لیستینگ (تا ۲۰ تصویر)</h3>
         <p class="help">ترتیب همان ترتیبی است که در اتسی دیده می‌شود. می‌توانید تصویر را روی کادر رها کنید. هر تصویر هنگام خروجی با شماره و نام استاندارد ذخیره می‌شود.</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button type="button" class="ghost mini" id="st-btnGenImgs">🎨 ساخت خودکار تصویرهای خالی از روی مشخصات محصول</button><button type="button" class="ghost mini" id="st-btnGenImgsAll">♻️ ساخت دوباره‌ی همه</button></div>
+        <div id="st-genBlock" style="border:1px solid var(--rule);border-radius:10px;padding:12px;margin-bottom:14px">
+          <h3 style="margin:0 0 6px">🎨 ساخت خودکار تصویرها (تا ۲۰ تصویر، با تم و جعبه‌ی ۳بعدی)</h3>
+          <label class="fld"><span>ساخت تصویر برای کدام محصول؟</span><select id="st-gProduct"></select></label>
+          <div style="margin-top:8px;font-size:13px"><b>تم (روی یکی بزن):</b></div>
+          <div id="st-gThemes" style="display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px"></div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+            <label class="fld"><span>رنگ پس‌زمینه</span><input type="color" id="st-gBg"></label>
+            <label class="fld"><span>رنگ اصلی (تأکید)</span><input type="color" id="st-gAcc"></label>
+            <label class="fld"><span>رنگ متن</span><input type="color" id="st-gInk"></label>
+            <label class="fld"><span>فونت</span><select id="st-gFont"><option value="sans">ساده (Sans)</option><option value="serif">کلاسیک (Serif)</option><option value="round">گرد</option></select></label>
+            <label class="fld"><span>چیدمان تصویر اصلی</span><select id="st-gHero"><option value="split">متن چپ + طرح برش راست</option><option value="center">طرح برش بزرگ وسط</option><option value="3d">متن + جعبه‌ی ۳بعدی</option></select></label>
+            <label class="fld"><span>قاب تصویر</span><select id="st-gFrame"><option value="bar">نوار رنگی بالا</option><option value="border">کادر دورتادور</option><option value="none">بدون قاب</option></select></label>
+            <label class="fld"><span>تراز عنوان</span><select id="st-gAlign"><option value="center">وسط</option><option value="left">چپ</option></select></label>
+          </div>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;margin:8px 0;font-size:13px">
+            <label><input type="checkbox" id="st-gFooter"> نوار پایین (نام فروشگاه)</label>
+            <label><input type="checkbox" id="st-gLogoOn"> لوگوی برند</label>
+            <button type="button" class="ghost mini" id="st-gReset">↺ بازنشانی تنظیمات</button>
+          </div>
+          <div style="margin-top:6px;font-size:13px"><b>کدام تصویرها ساخته شود؟</b>
+            <button type="button" class="ghost mini" id="st-gAll">همه</button>
+            <button type="button" class="ghost mini" id="st-gNone">هیچ‌کدام</button>
+            <button type="button" class="ghost mini" id="st-gEmpty">فقط خالی‌های این محصول</button></div>
+          <div id="st-gSlots" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:4px;margin:6px 0 10px"></div>
+          <div style="font-size:13px"><b>پیش‌نمایش زنده:</b> <select id="st-gPrevSlot"></select></div>
+          <canvas id="st-gPrev" width="600" height="450" style="width:100%;max-width:600px;border:1px solid var(--rule);border-radius:8px;margin-top:6px"></canvas>
+          <div style="margin-top:10px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+            <button type="button" class="ghost mini" id="st-btnGenImgs">🎨 ساخت تصویرهای انتخاب‌شده</button>
+            <label style="font-size:13px"><input type="checkbox" id="st-gOver"> جایگزینی تصویرهای موجود</label>
+          </div>
+        </div>
         <div class="slots img" id="st-imgSlots"></div>
       </div>
       <div class="block">
@@ -1796,6 +1842,8 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
         <h3>آمادگی انتشار</h3>
         <p class="help">تا وقتی موردی باز است، بسته ساخته می‌شود اما ناقص خواهد بود.</p>
         <div id="st-checks"></div>
+        <div style="margin-top:12px"><button type="button" class="ghost mini" id="st-btnSendEtsy">📤 ارسال کامل به Etsy (پیش‌نویس + فایل‌ها + تصویرها)</button>
+        <p class="help" style="margin-top:6px">منتشر نمی‌شود؛ فقط پیش‌نویس ساخته می‌شود تا خودت در Etsy بررسی و Publish کنی. آپلود فایل/تصویر نیاز دارد که رله‌ی Cloudflare آخرین نسخه‌ی <code>relay-worker.js</code> باشد.</p></div>
       </div>
       <div class="block">
         <h3>ساختار بسته خروجی</h3>
@@ -5362,6 +5410,34 @@ async function sendItemToEtsy(p){
   return ok;
 }
 
+// ── آپلود فایل/تصویر به لیستینگ Etsy (multipart) از طریق رله. رله باید bodyBase64 رو پشتیبانی کنه (relay-worker.js جدید)
+function u8ToB64(u8){ let s=''; const CH=0x8000; for(let i=0;i<u8.length;i+=CH) s+=String.fromCharCode.apply(null,u8.subarray(i,i+CH)); return btoa(s); }
+async function etsyMultipartPost(path, fields, fileField, blob, filename, _isRetry){
+  if(!S.apiRelayUrl) throw new Error('آپلود فایل/تصویر فقط از طریق رله ممکنه — آدرس رله را در تنظیمات وارد کن');
+  const shopId=await resolveEtsyShopId();
+  const url='https://openapi.etsy.com/v3/application/shops/'+shopId+'/'+path;
+  const boundary='----eap'+Math.random().toString(16).slice(2)+Date.now().toString(16);
+  const enc=new TextEncoder(), parts=[];
+  for(const [k,v] of Object.entries(fields)) parts.push(enc.encode('--'+boundary+'\r\nContent-Disposition: form-data; name="'+k+'"\r\n\r\n'+v+'\r\n'));
+  parts.push(enc.encode('--'+boundary+'\r\nContent-Disposition: form-data; name="'+fileField+'"; filename="'+String(filename).replace(/[^\w.\- ]/g,'_')+'"\r\nContent-Type: '+(blob.type||'application/octet-stream')+'\r\n\r\n'));
+  parts.push(new Uint8Array(await blob.arrayBuffer()));
+  parts.push(enc.encode('\r\n--'+boundary+'--\r\n'));
+  const total=parts.reduce((a,p)=>a+p.length,0), all=new Uint8Array(total); let off=0; parts.forEach(p=>{ all.set(p,off); off+=p.length; });
+  const headers={'x-api-key':etsyApiKeyHeader(),'Authorization':'Bearer '+S.etsyOAuthToken,'Content-Type':'multipart/form-data; boundary='+boundary};
+  const res=await fetch(S.apiRelayUrl.replace(/\/$/,''),{
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-Relay-Secret':S.apiRelaySecret||''},
+    body:JSON.stringify({url, method:'POST', headers, bodyBase64:u8ToB64(all)})
+  });
+  const text=await res.text(); let d; try{ d=JSON.parse(text); }catch(e){ throw new Error('پاسخ رله قابل‌خوندن نبود: '+text.slice(0,120)); }
+  if(!_isRetry && (d.error==='invalid_token'||d.error_description==='invalid_token') && await refreshEtsyOAuthToken()) return etsyMultipartPost(path,fields,fileField,blob,filename,true);
+  if(d.error || d.error_description){
+    const m=String(d.error||d.error_description);
+    throw new Error(m.slice(0,160)+(/body|multipart|content-type|boundary|invalid|required/i.test(m)?' (اگر رله‌ی Cloudflare هنوز آپدیت نشده، relay-worker.js جدید را Deploy کن)':''));
+  }
+  return d;
+}
+
 async function applyOpt(){
   if(S.currentOpt===null||!S.pendingOpt)return;
   const idx=S.currentOpt;
@@ -7059,7 +7135,17 @@ const IMG_SLOTS = [
   {k:"finished", t:"محصول ساخته‌شده",    f:"07-Finished"},
   {k:"ideas",    t:"ایده‌های کاربرد",     f:"08-Ideas"},
   {k:"assembly", t:"مراحل مونتاژ",       f:"09-Assembly"},
-  {k:"promo",    t:"تصویر پایانی",       f:"10-Promo"}
+  {k:"promo",    t:"تصویر پایانی",       f:"10-Promo"},
+  {k:"box3d",      t:"جعبه ۳بعدی",          f:"11-3D-Box"},
+  {k:"box3d_open", t:"۳بعدی باز + درب",     f:"12-3D-Open"},
+  {k:"colors",     t:"رنگ‌بندی‌ها",          f:"13-Colors"},
+  {k:"occasions",  t:"مناسبت‌ها",            f:"14-Occasions"},
+  {k:"materials",  t:"متریال مناسب",        f:"15-Materials"},
+  {k:"download",   t:"روش دانلود",          f:"16-Download"},
+  {k:"software",   t:"نرم‌افزارها",          f:"17-Software"},
+  {k:"faq",        t:"سؤالات رایج",         f:"18-FAQ"},
+  {k:"sizes",      t:"تغییر اندازه",        f:"19-Sizes"},
+  {k:"thanks",     t:"تشکر",                f:"20-Thanks"}
 ];
 const LS = "beguchee.studio.v2";
 
@@ -7226,7 +7312,17 @@ const ALT_DEFAULTS = {
   finished: "Finished {NAME} gift box made from cardstock",
   ideas:    "Ideas for using {NAME}: wedding favors, party gifts and packaging",
   assembly: "Step by step assembly instructions for the {NAME} paper box",
-  promo:    "{NAME} digital download template, instant download"
+  promo:    "{NAME} digital download template, instant download",
+  box3d:      "3D preview of the assembled {NAME} box",
+  box3d_open: "3D view of the {NAME} box with a separate lid",
+  colors:     "{NAME} shown in four color options",
+  occasions:  "Occasions for the {NAME}: weddings, birthdays, baby showers, holidays",
+  materials:  "Materials that work with the {NAME} template: cardstock, kraft paper, chipboard",
+  download:   "How to download your {NAME} digital files from Etsy",
+  software:   "Software compatible with {NAME}: Cricut, Silhouette, Inkscape, Illustrator, LightBurn",
+  faq:        "Frequently asked questions about the {NAME} digital template",
+  sizes:      "Resize the {NAME} template to small, medium or large",
+  thanks:     "Thank you for choosing the {NAME} digital template"
 };
 const altRaw = p => { const a = String(p.alt||"").split("\n").map(t=>t.trim()); return IMG_SLOTS.map((s,i) => a[i] || ""); };
 const altResolved = p => { const raw = altRaw(p); return IMG_SLOTS.map((s,i) => tokens(p, raw[i] || ALT_DEFAULTS[s.k])); };
@@ -7398,6 +7494,7 @@ function renderFiles(){
 }
 
 function renderImages(){
+  if(typeof giUiRefresh === "function" && $("st-p-images").classList.contains("on")) giUiRefresh();
   const p = cur(), box = $("st-imgSlots"); box.innerHTML = "";
   IMG_SLOTS.forEach((s,i) => {
     const v = p.images[s.k];
@@ -7464,7 +7561,7 @@ function score(p){
     a.length >= 10
   ];
   const seoDone = seo.filter(Boolean).length;
-  const pct = Math.round((f/FILE_SLOTS.length*30 + i/IMG_SLOTS.length*35 + seoDone/5*35));
+  const pct = Math.round((f/FILE_SLOTS.length*30 + Math.min(i,10)/10*35 + seoDone/5*35));
   return {f, i, seo, seoDone, pct};
 }
 function renderHero(){
@@ -7477,7 +7574,7 @@ function renderHero(){
   $("st-hMaster").hidden = !p.master;
 
   seg("sgFiles", s.f, FILE_SLOTS.length, fa(s.f) + "/" + fa(6));
-  seg("sgImgs",  s.i, IMG_SLOTS.length,  fa(s.i) + "/" + fa(10));
+  seg("sgImgs",  Math.min(s.i,10), 10,  fa(s.i) + "/" + fa(IMG_SLOTS.length));
   seg("sgSeo",   s.seoDone, 5,           fa(s.seoDone) + "/" + fa(5));
   seg("sgAll",   s.pct, 100,             fa(s.pct) + "٪");
 }
@@ -7505,7 +7602,7 @@ function renderChecks(){
   const p = cur(), s = score(p), t = tagList(p);
   const items = [
     ["شش فایل محصول", s.f === FILE_SLOTS.length, fa(s.f) + " فایل انتخاب شده"],
-    ["ده تصویر لیستینگ", s.i === IMG_SLOTS.length, fa(s.i) + " تصویر انتخاب شده"],
+    ["حداقل ده تصویر لیستینگ (تا ۲۰)", s.i >= 10, fa(s.i) + " تصویر انتخاب شده"],
     ["عنوان زیر ۱۴۰ کاراکتر", !!p.title && p.title.length <= 140, fa(p.title.length) + " کاراکتر"],
     ["سیزده تگ معتبر", t.length === 13 && t.every(x => x.length <= 20), fa(t.length) + " تگ"],
     ["توضیحات کامل", p.description.length >= 120, fa(p.description.length) + " کاراکتر"],
@@ -7594,6 +7691,7 @@ async function exportPackage(){
 document.querySelectorAll("#page-studio .tab").forEach(t => t.onclick = () => {
   document.querySelectorAll("#page-studio .tab").forEach(x => x.classList.toggle("on", x === t));
   document.querySelectorAll("#page-studio .panel").forEach(x => x.classList.toggle("on", x.id === t.dataset.p));
+  if(t.dataset.p === "st-p-images" && typeof giUiRefresh === "function") giUiRefresh();
 });
 document.addEventListener("input", e => {
   const k = e.target.dataset && e.target.dataset.k;
@@ -7659,9 +7757,32 @@ $("st-btnAutoAlt").onclick = () => {
   save(); renderAll();
   toast(before >= IMG_SLOTS.length ? "همه‌ی ALTها از قبل پر بودن." : fa(IMG_SLOTS.length - before) + " ALT خالی خودکار پر شد.");
 };
-/* ===================== ساخت خودکار تصویرهای لیستینگ (Canvas، بدون API و بدون هزینه) ===================== */
+/* ===================== ساخت خودکار تصویرهای لیستینگ (Canvas، بدون API و بدون هزینه): تم، چیدمان، ۳بعدی، تا ۲۰ تصویر ===================== */
+const GI_FONTS = {
+  sans:  "'Segoe UI',Arial,sans-serif",
+  serif: "Georgia,'Times New Roman',serif",
+  round: "'Trebuchet MS','Segoe UI',sans-serif"
+};
+const GI_EMOJI = ",'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji'";
+const GI_THEMES = {
+  cream:    {name:"کرم گرم",     bg:"#f6f1e7", ink:"#1e2a32", mute:"#5b6770", acc:"#d9480f", teal:"#0f766e", card:"#ffffff", line:"#e4dccb", font:"sans"},
+  midnight: {name:"شب",           bg:"#111827", ink:"#f9fafb", mute:"#9ca3af", acc:"#fbbf24", teal:"#14b8a6", card:"#1f2937", line:"#374151", font:"sans"},
+  kraft:    {name:"کرافت",        bg:"#dcc7a3", ink:"#3b2a1a", mute:"#6b5233", acc:"#b45309", teal:"#166534", card:"#f4e8d2", line:"#c3a874", font:"round"},
+  blush:    {name:"صورتی ملایم",  bg:"#fdf2f8", ink:"#3b0a2a", mute:"#7a4a66", acc:"#db2777", teal:"#7c3aed", card:"#ffffff", line:"#fbcfe8", font:"round"},
+  mint:     {name:"نعنایی",       bg:"#ecfdf5", ink:"#064e3b", mute:"#3f7a68", acc:"#059669", teal:"#0f766e", card:"#ffffff", line:"#a7f3d0", font:"sans"},
+  ocean:    {name:"اقیانوس",      bg:"#eff6ff", ink:"#1e3a8a", mute:"#4b6bb5", acc:"#2563eb", teal:"#0ea5e9", card:"#ffffff", line:"#bfdbfe", font:"sans"},
+  luxury:   {name:"لوکس مشکی-طلایی", bg:"#0b0b0b", ink:"#f5f0e6", mute:"#b9ae96", acc:"#d4af37", teal:"#b8912a", card:"#17120a", line:"#3a3220", font:"serif"}
+};
 const GI = {W:2400, H:1800, bg:"#f6f1e7", ink:"#1e2a32", mute:"#5b6770", acc:"#d9480f", teal:"#0f766e", card:"#ffffff", line:"#e4dccb"};
-const GI_FONT = "'Segoe UI',Arial,sans-serif";
+let GI_FONT = GI_FONTS.sans + GI_EMOJI;
+let GI_OPT = {theme:"cream", font:"sans", hero:"split", frame:"bar", align:"center", footer:true, logo:true};
+function giDefaults(){ const t = GI_THEMES.cream; return {theme:"cream", bg:t.bg, ink:t.ink, acc:t.acc, font:t.font, hero:"split", frame:"bar", align:"center", footer:true, logo:true, sel:null}; }
+function giApply(o){
+  const t = GI_THEMES[o.theme] || GI_THEMES.cream;
+  Object.assign(GI, {bg:o.bg||t.bg, ink:o.ink||t.ink, acc:o.acc||t.acc, mute:t.mute, teal:t.teal, card:t.card, line:t.line});
+  GI_FONT = (GI_FONTS[o.font||t.font] || GI_FONTS.sans) + GI_EMOJI;
+  GI_OPT = o;
+}
 function giRR(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
 function giWrap(c,text,x,y,maxW,lh,maxLines,align){
   const words = String(text||"").split(/\s+/).filter(Boolean); let line="", lines=[];
@@ -7678,25 +7799,33 @@ function giPill(c,text,x,y,font,fg,bg){
   c.fillStyle = fg; c.textAlign="left"; c.textBaseline="middle"; c.fillText(text,x+32,y+h/2+2); c.textBaseline="alphabetic";
   return w;
 }
+const giOnAcc = () => { const [r,g,b] = g3.hex(GI.acc); return (r*0.299+g*0.587+b*0.114) > 160 ? "#1a1a1a" : "#ffffff"; };
+const giOnTeal = () => { const [r,g,b] = g3.hex(GI.teal); return (r*0.299+g*0.587+b*0.114) > 160 ? "#1a1a1a" : "#ffffff"; };
+function giCard(c,x,y,w,h,r){ c.fillStyle=GI.card; giRR(c,x,y,w,h,r||36); c.fill(); c.strokeStyle=GI.line; c.lineWidth=4; c.stroke(); }
 function giFrame(c,title,sub,shop,logo){
+  const o = GI_OPT, left = o.align === "left", tx0 = left ? 140 : GI.W/2, al = left ? "left" : "center";
   c.fillStyle = GI.bg; c.fillRect(0,0,GI.W,GI.H);
-  c.fillStyle = GI.acc; c.fillRect(0,0,GI.W,24);
+  if(o.frame === "bar"){ c.fillStyle = GI.acc; c.fillRect(0,0,GI.W,24); }
+  else if(o.frame === "border"){ c.strokeStyle = GI.acc; c.lineWidth = 26; giRR(c,40,40,GI.W-80,GI.H-80,40); c.stroke(); }
   if(title){
-    c.fillStyle = GI.ink; c.font = "800 108px " + GI_FONT; c.textAlign="center";
-    const y = giWrap(c,title,GI.W/2,250,GI.W-300,124,2,"center");
-    if(sub){ c.fillStyle = GI.mute; c.font = "500 54px " + GI_FONT; giWrap(c,sub,GI.W/2,y+10,GI.W-400,66,2,"center"); }
+    c.fillStyle = GI.ink; c.font = "800 108px " + GI_FONT;
+    const y = giWrap(c,title,tx0,250,GI.W-300,124,2,al);
+    if(sub){ c.fillStyle = GI.mute; c.font = "500 54px " + GI_FONT; giWrap(c,sub,tx0,y+10,GI.W-400,66,2,al); }
   }
-  c.fillStyle = GI.line; c.fillRect(120,GI.H-150,GI.W-240,3);
-  c.fillStyle = GI.mute; c.font = "600 46px " + GI_FONT; c.textAlign="left";
-  let tx = 120;
-  if(logo){ const lh=84, lw=logo.width*lh/logo.height; c.drawImage(logo,120,GI.H-128,lw,lh); tx = 120+lw+24; }
-  c.fillText(shop, tx, GI.H-68);
-  c.textAlign="right"; c.fillStyle = GI.teal; c.fillText("Instant Digital Download", GI.W-120, GI.H-68);
+  if(o.footer){
+    c.fillStyle = GI.line; c.fillRect(120,GI.H-150,GI.W-240,3);
+    c.fillStyle = GI.mute; c.font = "600 46px " + GI_FONT; c.textAlign="left";
+    let tx = 120;
+    if(logo && o.logo){ const lh=84, lw=logo.width*lh/logo.height; c.drawImage(logo,120,GI.H-128,lw,lh); tx = 120+lw+24; }
+    c.fillText(shop, tx, GI.H-68);
+    c.textAlign="right"; c.fillStyle = GI.teal; c.fillText("Instant Digital Download", GI.W-120, GI.H-68);
+  }
 }
 function giPreviewCard(c,x,y,w,h,svgImg,p){
-  c.fillStyle = GI.card; giRR(c,x,y,w,h,36); c.fill(); c.strokeStyle = GI.line; c.lineWidth=4; c.stroke();
+  giCard(c,x,y,w,h);
   if(svgImg){
     const iw = svgImg.naturalWidth||svgImg.width||800, ih = svgImg.naturalHeight||svgImg.height||600, k = Math.min((w-120)/iw,(h-120)/ih);
+    c.save(); c.fillStyle = "#fff"; giRR(c,x+10,y+10,w-20,h-20,30); c.fill(); c.restore();
     c.drawImage(svgImg, x+(w-iw*k)/2, y+(h-ih*k)/2, iw*k, ih*k);
   } else { // طرح نمادین الگوی برش (وقتی فایل SVG هنوز آپلود نشده)
     const bw = w-300, bh = Math.min(h-300, bw*Math.max(.35,Math.min(1,(p.h||70)/(p.w||100)))), bx = x+(w-bw)/2, by = y+(h-bh)/2;
@@ -7706,6 +7835,260 @@ function giPreviewCard(c,x,y,w,h,svgImg,p){
     c.beginPath(); c.moveTo(bx,by+bh/2); c.lineTo(bx+bw,by+bh/2); c.stroke(); c.setLineDash([]);
   }
 }
+
+/* ---------- موتور ۳بعدی ساده (تصویر موازی، سایه‌روشن، متن روی وجه‌ها) ---------- */
+const g3 = {
+  hex(h){ h = String(h).replace("#",""); if(h.length === 3) h = h.split("").map(x => x+x).join(""); return [0,2,4].map(i => parseInt(h.substr(i,2),16) || 0); },
+  css(rgb,f){ return "rgb(" + rgb.map(v => Math.max(0,Math.min(255,Math.round(v*f)))).join(",") + ")"; }
+};
+const G3_LIGHT = (() => { const l = [-0.35,0.9,0.55], m = Math.hypot(l[0],l[1],l[2]); return l.map(x => x/m); })();
+function g3P(v,o){
+  const cy=Math.cos(o.yaw), sy=Math.sin(o.yaw), cx=Math.cos(o.pitch), sx=Math.sin(o.pitch);
+  const x = v[0]*cy + v[2]*sy, z = -v[0]*sy + v[2]*cy, y = v[1];
+  return [o.cx + o.s*x, o.cy - o.s*(y*cx - z*sx), y*sx + z*cx];
+}
+function g3NZ(n,o){
+  const cy=Math.cos(o.yaw), sy=Math.sin(o.yaw), cx=Math.cos(o.pitch), sx=Math.sin(o.pitch);
+  const z = -n[0]*sy + n[2]*cy; return n[1]*sx + z*cx;
+}
+function g3Faces(L,W,H){
+  return {
+    top:   {n:[0,1,0],  o:[-L/2,H,-W/2], u:[1,0,0],  v:[0,0,1],  fw:L, fh:W},
+    front: {n:[0,0,1],  o:[-L/2,H,W/2],  u:[1,0,0],  v:[0,-1,0], fw:L, fh:H},
+    right: {n:[1,0,0],  o:[L/2,H,W/2],   u:[0,0,-1], v:[0,-1,0], fw:W, fh:H},
+    left:  {n:[-1,0,0], o:[-L/2,H,-W/2], u:[0,0,1],  v:[0,-1,0], fw:W, fh:H},
+    back:  {n:[0,0,-1], o:[L/2,H,-W/2],  u:[-1,0,0], v:[0,-1,0], fw:L, fh:H},
+    bottom:{n:[0,-1,0], o:[-L/2,0,W/2],  u:[1,0,0],  v:[0,0,-1], fw:L, fh:W}
+  };
+}
+function g3Corners(f){
+  const pt = (a,b) => [f.o[0]+f.u[0]*a+f.v[0]*b, f.o[1]+f.u[1]*a+f.v[1]*b, f.o[2]+f.u[2]*a+f.v[2]*b];
+  return [pt(0,0), pt(f.fw,0), pt(f.fw,f.fh), pt(0,f.fh)];
+}
+function g3Face(c,f,rgb,o,label,inner){
+  const T = o.t || [0,0,0], add = v => [v[0]+T[0], v[1]+T[1], v[2]+T[2]];
+  const pts = g3Corners(f).map(v => g3P(add(v),o));
+  const dot = Math.max(0, f.n[0]*G3_LIGHT[0] + f.n[1]*G3_LIGHT[1] + f.n[2]*G3_LIGHT[2]);
+  const k = (inner ? 0.45 : 0.55) + 0.45*dot;
+  c.beginPath(); pts.forEach((q,i) => i ? c.lineTo(q[0],q[1]) : c.moveTo(q[0],q[1])); c.closePath();
+  c.fillStyle = g3.css(rgb,k); c.fill();
+  if(label){
+    const P0 = g3P(add(f.o),o), Pu = g3P(add([f.o[0]+f.u[0], f.o[1]+f.u[1], f.o[2]+f.u[2]]),o), Pv = g3P(add([f.o[0]+f.v[0], f.o[1]+f.v[1], f.o[2]+f.v[2]]),o);
+    c.save(); c.clip(); c.setTransform(Pu[0]-P0[0], Pu[1]-P0[1], Pv[0]-P0[0], Pv[1]-P0[1], P0[0], P0[1]); label(c,f.fw,f.fh,k); c.restore();
+  }
+  c.lineJoin = "round"; c.lineWidth = 3; c.strokeStyle = g3.css(rgb,0.5);
+  c.beginPath(); pts.forEach((q,i) => i ? c.lineTo(q[0],q[1]) : c.moveTo(q[0],q[1])); c.closePath(); c.stroke();
+}
+function g3Fit(boxes,tw,th,cx,cy,yaw,pitch,fixedS){
+  const o = {yaw, pitch, s:1, cx:0, cy:0}; let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  boxes.forEach(b => { const T = b.t || [0,0,0];
+    for(const X of [-1,1]) for(const Y of [0,1]) for(const Z of [-1,1]){
+      const q = g3P([X*b.L/2+T[0], Y*b.H+T[1], Z*b.W/2+T[2]], o);
+      x0 = Math.min(x0,q[0]); x1 = Math.max(x1,q[0]); y0 = Math.min(y0,q[1]); y1 = Math.max(y1,q[1]);
+    } });
+  const s = fixedS || Math.min(tw/(x1-x0), th/(y1-y0));
+  return {yaw, pitch, s, cx: cx - s*(x0+x1)/2, cy: cy - s*(y0+y1)/2};
+}
+const g3Text = (text, scale, color) => (c,fw,fh) => {
+  c.fillStyle = color; c.textAlign = "center"; c.textBaseline = "middle";
+  const size = Math.min(fh*0.3*(scale||1), fw/(Math.max(4,String(text).length)*0.56));
+  c.font = "800 " + size + "px " + GI_FONT; c.fillText(text, fw/2, fh/2);
+};
+function g3Closed(c,b,o,hex,labels){
+  const rgb = g3.hex(hex), F = g3Faces(b.L,b.W,b.H), oo = Object.assign({}, o, {t:b.t});
+  const T = b.t || [0,0,0];
+  Object.keys(F).filter(k => g3NZ(F[k].n,o) > 0.01).map(k => {
+    const q = g3Corners(F[k]).map(v => g3P([v[0]+T[0],v[1]+T[1],v[2]+T[2]],o)); return {k, z:q.reduce((a,p) => a+p[2],0)/4};
+  }).sort((a,b2) => a.z-b2.z).forEach(it => g3Face(c,F[it.k],rgb,oo,labels && labels[it.k]));
+}
+function g3Open(c,b,o,hex){
+  const rgb = g3.hex(hex), L = b.L, W = b.W, H = b.H, F = g3Faces(L,W,H);
+  g3Face(c,{n:[0,1,0], o:[-L/2,0,-W/2], u:[1,0,0], v:[0,0,1], fw:L, fh:W}, rgb, o, null, true);
+  g3Face(c,{n:[0,0,1], o:[-L/2,H,-W/2], u:[1,0,0], v:[0,-1,0], fw:L, fh:H}, rgb, o, null, true);
+  g3Face(c,{n:[1,0,0], o:[-L/2,H,W/2], u:[0,0,-1], v:[0,-1,0], fw:W, fh:H}, rgb, o, null, true);
+  g3Face(c,F.front,rgb,o,null); g3Face(c,F.right,rgb,o,null);
+}
+const GI_COLORWAYS = [["#d9480f","Terracotta"],["#0f766e","Teal"],["#7c3aed","Violet"],["#be185d","Rose"]];
+function giBoxLabels(p,txtColor){
+  return {
+    top:   g3Text(p.name || "Box", 1.0, txtColor),
+    front: g3Text(((typeof getShopName === "function" ? getShopName() : "") || "Handmade"), 0.6, txtColor),
+    right: g3Text(p.w + " x " + p.h + " x " + p.d + " mm", 0.55, txtColor)
+  };
+}
+function giBox3dSimple(c,p,tw,th,cx,cy,hex,txtColor,scale){
+  const b = {L:p.w*(scale||1), W:p.h*(scale||1), H:p.d*(scale||1)}, o = g3Fit([b],tw,th,cx,cy,-0.62,0.52);
+  g3Closed(c,b,o,hex,giBoxLabels(p,txtColor));
+}
+
+const GI_DRAW = {
+  hero(c,p,L,svgImg){
+    const mode = GI_OPT.hero || "split";
+    if(mode === "center"){
+      giPreviewCard(c,300,500,1800,760,svgImg,p);
+      c.font = "800 46px " + GI_FONT;
+      const pills = L.fmts.slice(0,4), widths = pills.map(s => c.measureText(s.t).width + 64 + 20), total = widths.reduce((a,b) => a+b,0) - 20;
+      let x = (GI.W-total)/2; pills.forEach((s,i) => { giPill(c,s.t,x,1330,"800 46px " + GI_FONT,giOnTeal(),GI.teal); x += widths[i]; });
+      c.fillStyle = GI.ink; c.font = "700 64px " + GI_FONT; c.textAlign = "center"; c.fillText(L.dim, GI.W/2, 1300);
+      return;
+    }
+    if(mode === "3d"){ giCard(c,1180,330,1100,1180); giBox3dSimple(c,p,880,860,1730,920,GI.acc,giOnAcc()); }
+    else giPreviewCard(c,1180,330,1100,1180,svgImg,p);
+    c.fillStyle = GI.acc; c.font="800 56px " + GI_FONT; c.textAlign="left"; c.fillText("DIGITAL DOWNLOAD", 140, 470);
+    c.fillStyle = GI.ink; c.font="800 128px " + GI_FONT; let y = giWrap(c,p.name,140,620,1000,148,3);
+    c.fillStyle = GI.mute; c.font="500 60px " + GI_FONT; y = giWrap(c,p.category||"Template",140,y+10,1000,76,2);
+    c.fillStyle = GI.ink; c.font="700 70px " + GI_FONT; c.fillText(L.dim, 140, y+80);
+    let x=140; const py=y+150; L.fmts.slice(0,4).forEach(s=>{ x += giPill(c,s.t,x,py,"800 46px " + GI_FONT,giOnTeal(),GI.teal)+20; });
+  },
+  dims(c,p,L){
+    const bw=1300, bh=Math.max(350,Math.min(700,bw*(p.h||70)/(p.w||100))), bx=(GI.W-bw)/2, by=660;
+    c.fillStyle=GI.card; giRR(c,bx,by,bw,bh,28); c.fill(); c.strokeStyle=GI.ink; c.lineWidth=6; c.stroke();
+    c.strokeStyle=GI.acc; c.fillStyle=GI.acc; c.lineWidth=6; c.font="800 70px " + GI_FONT; c.textAlign="center";
+    c.beginPath(); c.moveTo(bx,by-60); c.lineTo(bx+bw,by-60); c.stroke(); c.fillText(p.w+" mm",GI.W/2,by-90);
+    c.save(); c.translate(bx+bw+130,by+bh/2); c.rotate(Math.PI/2); c.fillText(p.h+" mm",0,0); c.restore();
+    c.beginPath(); c.moveTo(bx+bw+60,by); c.lineTo(bx+bw+60,by+bh); c.stroke();
+    giPill(c,"Depth: "+p.d+" mm",GI.W/2-280,by+bh+90,"800 56px " + GI_FONT,giOnTeal(),GI.teal);
+  },
+  template(c,p,L,svgImg){
+    giPreviewCard(c,420,430,1560,880,svgImg,p);
+    c.font="700 52px " + GI_FONT; c.textAlign="left";
+    c.strokeStyle="#d92d20"; c.lineWidth=8; c.setLineDash([]); c.beginPath(); c.moveTo(560,1420); c.lineTo(700,1420); c.stroke(); c.fillStyle=GI.ink; c.fillText("Cut line",730,1438);
+    c.strokeStyle="#2563eb"; c.setLineDash([26,18]); c.beginPath(); c.moveTo(1200,1420); c.lineTo(1340,1420); c.stroke(); c.setLineDash([]); c.fillText("Score / fold line",1370,1438);
+  },
+  formats(c,p,L){
+    const n=L.fmts.length, cols=Math.min(3,n), rows=Math.ceil(n/cols), cw=620, ch=380, gx=60, gy=60, x0=(GI.W-(cols*cw+(cols-1)*gx))/2, y0=480+(rows===1?120:0);
+    const desc = {svg:"Main cut file", dxf:"For laser cutters", pdf:"Print & preview", ai:"Editable version", guide:"Step-by-step guide", studio:"Silhouette file"};
+    L.fmts.forEach((s,i)=>{ const x=x0+(i%cols)*(cw+gx), y=y0+Math.floor(i/cols)*(ch+gy);
+      giCard(c,x,y,cw,ch);
+      c.fillStyle=GI.acc; c.font="900 150px " + GI_FONT; c.textAlign="center"; c.fillText(s.t.toUpperCase().slice(0,6),x+cw/2,y+210);
+      c.fillStyle=GI.mute; c.font="500 48px " + GI_FONT; c.fillText(desc[s.k]||"",x+cw/2,y+300); });
+  },
+  machines(c,p,L){
+    let x=300,y=560; const maxX=GI.W-300;
+    L.machines.forEach(m=>{ c.font="800 64px " + GI_FONT; const w=c.measureText(m).width+64; if(x+w>maxX){x=300;y+=170;} giPill(c,m,x,y,"800 64px " + GI_FONT,giOnTeal(),GI.teal); x+=w+30; });
+    c.fillStyle=GI.mute; c.font="500 56px " + GI_FONT; c.textAlign="center"; c.fillText("Works with any machine that opens SVG or DXF files",GI.W/2,y+360);
+  },
+  included(c,p,L){
+    const items=[...L.fmts.map(s=>s.t+" file"),"Assembly instructions"].slice(0,8);
+    items.forEach((t,i)=>{ const y=520+i*130; c.fillStyle=GI.teal; c.beginPath(); c.arc(660,y,42,0,Math.PI*2); c.fill(); c.fillStyle=giOnTeal(); c.font="900 56px " + GI_FONT; c.textAlign="center"; c.fillText("✓",660,y+20);
+      c.fillStyle=GI.ink; c.font="700 68px " + GI_FONT; c.textAlign="left"; c.fillText(t,750,y+24); });
+  },
+  finished(c,p,L){
+    c.textAlign="center"; c.fillStyle=GI.acc; c.font="900 190px " + GI_FONT; c.fillText(L.dim,GI.W/2,720);
+    c.fillStyle=GI.ink; c.font="700 78px " + GI_FONT; c.fillText("Finished size",GI.W/2,830);
+    c.fillStyle=GI.mute; c.font="600 70px " + GI_FONT; giWrap(c,"Material: "+(p.material||"Cardstock"),GI.W/2,1010,GI.W-500,90,2,"center");
+  },
+  ideas(c,p,L){
+    const cw=900, x0=(GI.W-(2*cw+60))/2; L.ideas.forEach((t,i)=>{ const x=x0+(i%2)*(cw+60), y=500+Math.floor(i/2)*190;
+      giCard(c,x,y,cw,150,30);
+      c.fillStyle=GI.acc; c.beginPath(); c.arc(x+70,y+75,22,0,Math.PI*2); c.fill();
+      c.fillStyle=GI.ink; c.font="700 54px " + GI_FONT; c.textAlign="left"; giWrap(c,t,x+120,y+70,cw-160,60,2); });
+  },
+  assembly(c,p,L){
+    const steps=[["1","Download","Instant access to your files"],["2","Cut","Upload the SVG and cut your material"],["3","Score & fold","Follow the dashed lines"],["4","Assemble","Glue or tuck the tabs in place"]];
+    const cw=490, gap=45, x0=(GI.W-(4*cw+3*gap))/2;
+    steps.forEach((s,i)=>{ const x=x0+i*(cw+gap), y=520; giCard(c,x,y,cw,700);
+      c.fillStyle=GI.acc; c.beginPath(); c.arc(x+cw/2,y+150,90,0,Math.PI*2); c.fill();
+      c.fillStyle=giOnAcc(); c.font="900 100px " + GI_FONT; c.textAlign="center"; c.fillText(s[0],x+cw/2,y+185);
+      c.fillStyle=GI.ink; c.font="800 64px " + GI_FONT; c.fillText(s[1],x+cw/2,y+370);
+      c.fillStyle=GI.mute; c.font="500 46px " + GI_FONT; giWrap(c,s[2],x+cw/2,y+450,cw-70,58,4,"center"); });
+  },
+  promo(c,p,L){
+    c.textAlign="center"; c.fillStyle=GI.acc; c.font="900 190px " + GI_FONT; c.fillText("INSTANT",GI.W/2,620); c.fillText("DOWNLOAD",GI.W/2,830);
+    c.fillStyle=GI.ink; c.font="800 90px " + GI_FONT; giWrap(c,p.name,GI.W/2,1020,GI.W-400,104,2,"center");
+    c.fillStyle=GI.mute; c.font="600 60px " + GI_FONT; giWrap(c,"Digital file only — no physical item will be shipped",GI.W/2,1260,GI.W-500,76,2,"center");
+  },
+  /* ----- ۱۱ تا ۲۰ ----- */
+  box3d(c,p){ giBox3dSimple(c,p,1500,900,GI.W/2,1020,GI.acc,giOnAcc()); },
+  box3d_open(c,p){
+    const L = p.w, W = p.h, H = p.d, Hl = Math.max(8, H*0.4), gap = Math.max(H*1.3, 32);
+    const b1 = {L, W, H}, b2 = {L:L+4, W:W+4, H:Hl, t:[0, H+gap, -W*0.45]};
+    const o = g3Fit([b1,b2],1500,900,GI.W/2,1020,-0.62,0.52);
+    g3Open(c,b1,o,GI.acc);
+    g3Closed(c,b2,o,GI.teal,{top:g3Text(p.name||"Box",0.9,giOnTeal())});
+  },
+  colors(c,p){
+    const slotW = 520, gap = 30, x0 = (GI.W - (4*slotW + 3*gap))/2;
+    GI_COLORWAYS.forEach(([hex,name],i) => {
+      const x = x0 + i*(slotW+gap); giCard(c,x,520,slotW,820,36);
+      const [r,g,b] = g3.hex(hex), txt = (r*0.299+g*0.587+b*0.114) > 160 ? "#1a1a1a" : "#ffffff";
+      giBox3dSimple(c,p,slotW-70,520,x+slotW/2,860,hex,txt);
+      c.fillStyle = GI.ink; c.font = "700 54px " + GI_FONT; c.textAlign = "center"; c.fillText(name, x+slotW/2, 1250);
+    });
+    c.fillStyle = GI.mute; c.font = "500 54px " + GI_FONT; c.textAlign = "center"; c.fillText("Cut it from any color of cardstock", GI.W/2, 1450);
+  },
+  occasions(c){
+    const items = [["💍","Weddings"],["🎂","Birthdays"],["👶","Baby Showers"],["🎄","Holidays"],["🎓","Graduations"],["🛍️","Small Business"]];
+    const cw = 640, ch = 380, gap = 50, x0 = (GI.W-(3*cw+2*gap))/2;
+    items.forEach((it,i) => { const x = x0+(i%3)*(cw+gap), y = 500+Math.floor(i/3)*(ch+gap); giCard(c,x,y,cw,ch);
+      c.textAlign = "center"; c.fillStyle = GI.ink; c.font = "400 150px " + GI_FONT; c.fillText(it[0], x+cw/2, y+190);
+      c.font = "700 60px " + GI_FONT; c.fillText(it[1], x+cw/2, y+310); });
+  },
+  materials(c,p){
+    const items = [[(p.material||"Cardstock 250-300 gsm").split(/[,;]/)[0],"Best for sturdy folding boxes"],["Kraft paper","Natural, eco-friendly look"],["Chipboard / greyboard","Extra rigid packaging"],["Thin wood or acrylic","For laser cutters"]];
+    const cw = 960, ch = 330, gap = 50, x0 = (GI.W-(2*cw+gap))/2;
+    items.forEach((it,i) => { const x = x0+(i%2)*(cw+gap), y = 500+Math.floor(i/2)*(ch+gap); giCard(c,x,y,cw,ch);
+      c.textAlign = "left"; c.fillStyle = GI.acc; c.font = "800 62px " + GI_FONT; giWrap(c,it[0],x+60,y+120,cw-120,70,2);
+      c.fillStyle = GI.mute; c.font = "500 48px " + GI_FONT; giWrap(c,it[1],x+60,y+230,cw-120,58,2); });
+  },
+  download(c){
+    const steps = [["1","Purchase","Complete your order on Etsy"],["2","Download","Etsy → Purchases and reviews → Download files"],["3","Open & cut","Open the SVG in your cutting software"]];
+    const cw = 680, gap = 50, x0 = (GI.W-(3*cw+2*gap))/2;
+    steps.forEach((s,i) => { const x = x0+i*(cw+gap); giCard(c,x,520,cw,720);
+      c.fillStyle = GI.acc; c.beginPath(); c.arc(x+cw/2,690,90,0,Math.PI*2); c.fill();
+      c.fillStyle = giOnAcc(); c.font = "900 100px " + GI_FONT; c.textAlign = "center"; c.fillText(s[0],x+cw/2,725);
+      c.fillStyle = GI.ink; c.font = "800 66px " + GI_FONT; c.fillText(s[1],x+cw/2,900);
+      c.fillStyle = GI.mute; c.font = "500 46px " + GI_FONT; giWrap(c,s[2],x+cw/2,985,cw-90,58,4,"center"); });
+  },
+  software(c){
+    const items = ["Cricut Design Space","Silhouette Studio","Inkscape","Adobe Illustrator","LightBurn","Glowforge","xTool Creative Space","Affinity Designer"];
+    let x = 260, y = 520; const maxX = GI.W-260;
+    items.forEach(m => { c.font = "800 58px " + GI_FONT; const w = c.measureText(m).width+64; if(x+w > maxX){ x = 260; y += 160; } giPill(c,m,x,y,"800 58px " + GI_FONT,giOnTeal(),GI.teal); x += w+28; });
+    c.fillStyle = GI.mute; c.font = "500 54px " + GI_FONT; c.textAlign = "center"; c.fillText("…and any program that opens SVG or DXF files", GI.W/2, y+330);
+  },
+  faq(c,p,L){
+    const items = [["Is this a physical product?","No. You receive digital files only — nothing is shipped."],["Can I change the size?","Yes. The SVG is vector, so you can scale it in your software."],["Which files are included?",L.fmts.map(s=>s.t).join(", ")+"."],["Need help?","Message me anytime — I'm happy to help."]];
+    const cw = 960, ch = 360, gap = 50, x0 = (GI.W-(2*cw+gap))/2;
+    items.forEach((it,i) => { const x = x0+(i%2)*(cw+gap), y = 480+Math.floor(i/2)*(ch+gap); giCard(c,x,y,cw,ch);
+      c.textAlign = "left"; c.fillStyle = GI.acc; c.font = "800 54px " + GI_FONT; giWrap(c,it[0],x+60,y+100,cw-120,62,2);
+      c.fillStyle = GI.ink; c.font = "500 48px " + GI_FONT; giWrap(c,it[1],x+60,y+210,cw-120,60,3); });
+  },
+  sizes(c,p){
+    const scales = [[0.55,"Small"],[0.8,"Medium"],[1.1,"Large"]], slotW = 700, gap = 40, x0 = (GI.W-(3*slotW+2*gap))/2;
+    const [r,g,b] = g3.hex(GI.teal), txt = (r*0.299+g*0.587+b*0.114) > 160 ? "#1a1a1a" : "#ffffff";
+    const ref = g3Fit([{L:p.w*1.1, W:p.h*1.1, H:p.d*1.1}], slotW-80, 560, 0, 0, -0.62, 0.52).s;
+    scales.forEach(([k,name],i) => { const x = x0+i*(slotW+gap); giCard(c,x,520,slotW,780);
+      const bb = {L:p.w*k, W:p.h*k, H:p.d*k}, o = g3Fit([bb],0,0,x+slotW/2,900,-0.62,0.52,ref);
+      g3Closed(c,bb,o,GI.teal,giBoxLabels(Object.assign({},p,{w:Math.round(p.w*k),h:Math.round(p.h*k),d:Math.round(p.d*k)}),txt));
+      c.fillStyle = GI.ink; c.font = "700 54px " + GI_FONT; c.textAlign = "center"; c.fillText(name + " — " + Math.round(p.w*k) + " mm", x+slotW/2, 1230);
+    });
+    c.fillStyle = GI.mute; c.font = "500 54px " + GI_FONT; c.textAlign = "center"; c.fillText("Scale the vector file to any size in your software", GI.W/2, 1450);
+  },
+  thanks(c,p,L,svg,shop,logo){
+    c.textAlign = "center"; c.fillStyle = GI.acc; c.font = "900 200px " + GI_FONT; c.fillText("THANK YOU", GI.W/2, 700);
+    c.fillStyle = GI.ink; c.font = "800 84px " + GI_FONT; giWrap(c,"for choosing " + (p.name||"this template"),GI.W/2,860,GI.W-400,100,2,"center");
+    if(logo){ const lh = 200, lw = logo.width*lh/logo.height; c.drawImage(logo,(GI.W-lw)/2,1000,lw,lh); }
+    c.fillStyle = GI.mute; c.font = "600 56px " + GI_FONT; giWrap(c,"A review helps other makers find this template" + (shop ? " — " + shop : ""),GI.W/2,logo ? 1300 : 1050,GI.W-500,72,2,"center");
+  }
+};
+const GI_TITLES = {
+  hero:null, dims:["Dimensions","Exact finished size"], template:["Cutting Template","Ready-to-cut layout"], formats:["File Formats Included","One download, every format"],
+  machines:["Compatible Machines","Cricut • Silhouette • Laser"], included:["What's Included",""], finished:["Size & Material",""], ideas:["Perfect For",""], assembly:["Easy Assembly","4 simple steps"], promo:null,
+  box3d:["3D Preview","How it looks when assembled"], box3d_open:["Box + Lid","Two-piece 3D view"], colors:["Any Color You Like","Cut from any cardstock"], occasions:["Perfect For Every Occasion",""],
+  materials:["Works With Many Materials",""], download:["How It Works","Instant download in 3 steps"], software:["Compatible Software",""], faq:["Questions?",""], sizes:["Resize Freely","Small • Medium • Large"], thanks:null
+};
+async function giSvgImage(p){
+  const v = p.files && p.files.svg; if(!v) return null;
+  try{
+    const b = await blobGet(v.key); if(!b) return null;
+    let txt = await b.text();
+    const vw = Number((txt.match(/viewBox="0 0 ([\d.]+)/)||[])[1]) || 200, sw = Math.max(0.5, vw/180);
+    txt = txt.replace(/stroke-width="[\d.]+"/g, 'stroke-width="' + sw + '"').replace(/stroke-dasharray="[^"]*"/g, 'stroke-dasharray="' + (sw*6) + ' ' + (sw*4) + '"');
+    const url = URL.createObjectURL(new Blob([txt],{type:"image/svg+xml"}));
+    return await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=url; });
+  }catch(e){ return null; }
+}
+async function giLogo(){ if(S.brandLogoDataUrl){ try{ return await loadImage(S.brandLogoDataUrl); }catch(e){} } return null; }
 function giList(p){
   const dim = p.w + " × " + p.h + " × " + p.d + " mm";
   const upl = FILE_SLOTS.filter(s=>p.files[s.k]);
@@ -7721,102 +8104,31 @@ function giList(p){
   if(ideas.length < 4) ideas = ["Wedding favors","Party gifts","Small business packaging","Holiday gift boxes","Product launches","Handmade shop packaging"];
   return { dim, fmts, machines: machines.length ? machines : ["Cricut","Silhouette","Glowforge","Laser cutter"], ideas: ideas.slice(0,8) };
 }
-const GI_DRAW = {
-  hero(c,p,L,svgImg){
-    giPreviewCard(c,1180,330,1100,1180,svgImg,p);
-    c.fillStyle = GI.acc; c.font="800 56px " + GI_FONT; c.textAlign="left"; c.fillText("DIGITAL DOWNLOAD", 140, 470);
-    c.fillStyle = GI.ink; c.font="800 128px " + GI_FONT; let y = giWrap(c,p.name,140,620,1000,148,3);
-    c.fillStyle = GI.mute; c.font="500 60px " + GI_FONT; y = giWrap(c,p.category||"Template",140,y+10,1000,76,2);
-    c.fillStyle = GI.ink; c.font="700 70px " + GI_FONT; c.fillText(L.dim, 140, y+80);
-    let x=140; const py=y+150; L.fmts.slice(0,4).forEach(s=>{ x += giPill(c,s.t,x,py,"800 46px " + GI_FONT,"#fff",GI.teal)+20; });
-  },
-  dims(c,p,L){
-    const bw=1300, bh=Math.max(350,Math.min(700,bw*(p.h||70)/(p.w||100))), bx=(GI.W-bw)/2, by=660;
-    c.fillStyle=GI.card; giRR(c,bx,by,bw,bh,28); c.fill(); c.strokeStyle=GI.ink; c.lineWidth=6; c.stroke();
-    c.strokeStyle=GI.acc; c.fillStyle=GI.acc; c.lineWidth=6; c.font="800 70px " + GI_FONT; c.textAlign="center";
-    c.beginPath(); c.moveTo(bx,by-60); c.lineTo(bx+bw,by-60); c.stroke(); c.fillText(p.w+" mm",GI.W/2,by-90);
-    c.save(); c.translate(bx+bw+130,by+bh/2); c.rotate(Math.PI/2); c.fillText(p.h+" mm",0,0); c.restore();
-    c.beginPath(); c.moveTo(bx+bw+60,by); c.lineTo(bx+bw+60,by+bh); c.stroke();
-    giPill(c,"Depth: "+p.d+" mm",GI.W/2-280,by+bh+90,"800 56px " + GI_FONT,"#fff",GI.teal);
-  },
-  template(c,p,L,svgImg){
-    giPreviewCard(c,420,430,1560,880,svgImg,p);
-    c.font="700 52px " + GI_FONT; c.textAlign="left";
-    c.strokeStyle="#d92d20"; c.lineWidth=8; c.setLineDash([]); c.beginPath(); c.moveTo(560,1420); c.lineTo(700,1420); c.stroke(); c.fillStyle=GI.ink; c.fillText("Cut line",730,1438);
-    c.strokeStyle="#2563eb"; c.setLineDash([26,18]); c.beginPath(); c.moveTo(1200,1420); c.lineTo(1340,1420); c.stroke(); c.setLineDash([]); c.fillText("Score / fold line",1370,1438);
-  },
-  formats(c,p,L){
-    const n=L.fmts.length, cols=Math.min(3,n), rows=Math.ceil(n/cols), cw=620, ch=380, gx=60, gy=60, x0=(GI.W-(cols*cw+(cols-1)*gx))/2, y0=480+(rows===1?120:0);
-    const desc = {svg:"Main cut file", dxf:"For laser cutters", pdf:"Print & preview", ai:"Editable version", guide:"Step-by-step guide", studio:"Silhouette file"};
-    L.fmts.forEach((s,i)=>{ const x=x0+(i%cols)*(cw+gx), y=y0+Math.floor(i/cols)*(ch+gy);
-      c.fillStyle=GI.card; giRR(c,x,y,cw,ch,36); c.fill(); c.strokeStyle=GI.line; c.lineWidth=4; c.stroke();
-      c.fillStyle=GI.teal; c.font="900 150px " + GI_FONT; c.textAlign="center"; c.fillText(s.t.toUpperCase().slice(0,6),x+cw/2,y+210);
-      c.fillStyle=GI.mute; c.font="500 48px " + GI_FONT; c.fillText(desc[s.k]||"",x+cw/2,y+300); });
-  },
-  machines(c,p,L){
-    let x=300,y=560; const maxX=GI.W-300;
-    L.machines.forEach(m=>{ c.font="800 64px " + GI_FONT; const w=c.measureText(m).width+64; if(x+w>maxX){x=300;y+=170;} giPill(c,m,x,y,"800 64px " + GI_FONT,"#fff",GI.teal); x+=w+30; });
-    c.fillStyle=GI.mute; c.font="500 56px " + GI_FONT; c.textAlign="center"; c.fillText("Works with any machine that opens SVG or DXF files",GI.W/2,y+360);
-  },
-  included(c,p,L){
-    const items=[...L.fmts.map(s=>s.t+" file"),"Assembly instructions"].slice(0,8);
-    items.forEach((t,i)=>{ const y=520+i*130; c.fillStyle=GI.teal; c.beginPath(); c.arc(660,y,42,0,Math.PI*2); c.fill(); c.fillStyle="#fff"; c.font="900 56px " + GI_FONT; c.textAlign="center"; c.fillText("✓",660,y+20);
-      c.fillStyle=GI.ink; c.font="700 68px " + GI_FONT; c.textAlign="left"; c.fillText(t,750,y+24); });
-  },
-  finished(c,p,L){
-    c.textAlign="center"; c.fillStyle=GI.acc; c.font="900 190px " + GI_FONT; c.fillText(L.dim,GI.W/2,720);
-    c.fillStyle=GI.ink; c.font="700 78px " + GI_FONT; c.fillText("Finished size",GI.W/2,830);
-    c.fillStyle=GI.mute; c.font="600 70px " + GI_FONT; giWrap(c,"Material: "+(p.material||"Cardstock"),GI.W/2,1010,GI.W-500,90,2,"center");
-  },
-  ideas(c,p,L){
-    const cw=900, x0=(GI.W-(2*cw+60))/2; L.ideas.forEach((t,i)=>{ const x=x0+(i%2)*(cw+60), y=500+Math.floor(i/2)*190;
-      c.fillStyle=GI.card; giRR(c,x,y,cw,150,30); c.fill(); c.strokeStyle=GI.line; c.lineWidth=4; c.stroke();
-      c.fillStyle=GI.acc; c.beginPath(); c.arc(x+70,y+75,22,0,Math.PI*2); c.fill();
-      c.fillStyle=GI.ink; c.font="700 54px " + GI_FONT; c.textAlign="left"; giWrap(c,t,x+120,y+70,cw-160,60,2); });
-  },
-  assembly(c,p,L){
-    const steps=[["1","Download","Instant access to your files"],["2","Cut","Upload the SVG and cut your material"],["3","Score & fold","Follow the dashed lines"],["4","Assemble","Glue or tuck the tabs in place"]];
-    const cw=490, gap=45, x0=(GI.W-(4*cw+3*gap))/2;
-    steps.forEach((s,i)=>{ const x=x0+i*(cw+gap), y=520; c.fillStyle=GI.card; giRR(c,x,y,cw,700,36); c.fill(); c.strokeStyle=GI.line; c.lineWidth=4; c.stroke();
-      c.fillStyle=GI.acc; c.beginPath(); c.arc(x+cw/2,y+150,90,0,Math.PI*2); c.fill();
-      c.fillStyle="#fff"; c.font="900 100px " + GI_FONT; c.textAlign="center"; c.fillText(s[0],x+cw/2,y+185);
-      c.fillStyle=GI.ink; c.font="800 64px " + GI_FONT; c.fillText(s[1],x+cw/2,y+370);
-      c.fillStyle=GI.mute; c.font="500 46px " + GI_FONT; giWrap(c,s[2],x+cw/2,y+450,cw-70,58,4,"center"); });
-  },
-  promo(c,p,L){
-    c.textAlign="center"; c.fillStyle=GI.acc; c.font="900 190px " + GI_FONT; c.fillText("INSTANT",GI.W/2,620); c.fillText("DOWNLOAD",GI.W/2,830);
-    c.fillStyle=GI.ink; c.font="800 90px " + GI_FONT; giWrap(c,p.name,GI.W/2,1020,GI.W-400,104,2,"center");
-    c.fillStyle=GI.mute; c.font="600 60px " + GI_FONT; giWrap(c,"Digital file only — no physical item will be shipped",GI.W/2,1260,GI.W-500,76,2,"center");
-  }
-};
-const GI_TITLES = {
-  hero:null, dims:["Dimensions","Exact finished size"], template:["Cutting Template","Ready-to-cut layout"], formats:["File Formats Included","One download, every format"],
-  machines:["Compatible Machines","Cricut • Silhouette • Laser"], included:["What's Included",""], finished:["Size & Material",""], ideas:["Perfect For",""], assembly:["Easy Assembly","4 simple steps"], promo:null
-};
-async function giSvgImage(p){
-  const v = p.files && p.files.svg; if(!v) return null;
-  try{
-    const b = await blobGet(v.key); if(!b) return null;
-    const url = URL.createObjectURL(new Blob([b],{type:"image/svg+xml"}));
-    return await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=url; });
-  }catch(e){ return null; }
+// یک اسلاید رو روی canvas می‌کشه (نیاز: giApply از قبل صدا زده شده)
+function giRender(c,p,slotKey,ctx){
+  c.setLineDash([]); c.textBaseline = "alphabetic"; c.direction = "ltr"; c.setTransform(1,0,0,1,0,0);
+  let t = GI_TITLES[slotKey];
+  if(slotKey === "hero" && GI_OPT.hero === "center") t = [p.name, p.category || ""];
+  giFrame(c, t ? t[0] : "", t ? t[1] : "", ctx.shop, ctx.logo);
+  GI_DRAW[slotKey](c,p,ctx.L,ctx.svgImg,ctx.shop,ctx.logo);
 }
-async function generateListingImages(overwrite){
-  const p = cur(); if(!p) return;
-  const targets = IMG_SLOTS.filter(s => overwrite || !p.images[s.k]);
-  if(!targets.length) return toast("همه‌ی ۱۰ تصویر پر هستند — برای جایگزینی از «ساخت دوباره‌ی همه» استفاده کن.");
-  if(overwrite && !confirm("تصویرهای فعلی همه‌ی اسلات‌ها با تصویرهای خودکار جایگزین بشن؟")) return;
-  toast("⏳ در حال ساخت تصویرها...");
+async function giContext(p){
   const shop = (typeof getShopName === "function" ? getShopName() : "") || "Shop";
-  let logo = null; if(S.brandLogoDataUrl){ try{ logo = await loadImage(S.brandLogoDataUrl); }catch(e){} }
-  const svgImg = await giSvgImage(p), L = giList(p), cv = document.createElement("canvas"); cv.width = GI.W; cv.height = GI.H;
-  const c = cv.getContext("2d"); c.direction = "ltr";
+  return {shop, logo: await giLogo(), svgImg: await giSvgImage(p), L: giList(p)};
+}
+async function generateListingImages(opts){
+  opts = opts || {};
+  const p = opts.product || cur(); if(!p) return;
+  const gs = giGet(), keys = opts.slots || gs.sel || IMG_SLOTS.map(s => s.k);
+  const targets = IMG_SLOTS.filter(s => keys.includes(s.k) && (opts.overwrite || !p.images[s.k]));
+  if(!targets.length) return toast("اسلات‌های انتخاب‌شده همه پر هستند — تیک «جایگزینی تصویرهای موجود» را بزن یا اسلات دیگری انتخاب کن.");
+  toast("⏳ در حال ساخت " + fa(targets.length) + " تصویر...");
+  giApply(gs);
+  const ctx = await giContext(p), cv = document.createElement("canvas"); cv.width = GI.W; cv.height = GI.H;
+  const c = cv.getContext("2d");
   let n = 0;
   for(const s of targets){
-    c.setLineDash([]); c.textBaseline = "alphabetic";
-    const t = GI_TITLES[s.k];
-    giFrame(c, t ? t[0] : "", t ? t[1] : "", shop, logo);
-    GI_DRAW[s.k](c,p,L,svgImg);
+    giRender(c,p,s.k,ctx);
     const blob = await new Promise(r => cv.toBlob(r,"image/jpeg",0.92));
     const file = new File([blob], s.f + ".jpg", {type:"image/jpeg"});
     const key = p.id + ":images:" + s.k;
@@ -7827,10 +8139,316 @@ async function generateListingImages(overwrite){
     n++;
   }
   save(); renderAll();
-  toast("✅ " + fa(n) + " تصویر ساخته شد" + (svgImg ? "" : " — با آپلود فایل SVG، پیش‌نمایش واقعی طرح هم داخل تصویرها می‌آید") + ".");
+  toast("✅ " + fa(n) + " تصویر ساخته شد" + (ctx.svgImg ? "" : " — با آپلود فایل SVG، پیش‌نمایش واقعی طرح هم داخل تصویرها می‌آید") + ".");
 }
-$("st-btnGenImgs").onclick = () => generateListingImages(false);
-$("st-btnGenImgsAll").onclick = () => generateListingImages(true);
+
+/* ---------- رابط: انتخاب محصول، تم، چیدمان، اسلات‌ها و پیش‌نمایش زنده ---------- */
+function giGet(){ if(!state.imgGen) state.imgGen = giDefaults(); return state.imgGen; }
+let giSig = "", giTimer = null;
+function giProduct(){ const id = $("st-gProduct").value; return state.products.find(x => x.id === id) || cur(); }
+function giUiRefresh(){
+  if(!$("st-gProduct")) return;
+  const gs = giGet(), sel = $("st-gProduct"), prev = sel.value || cur().id;
+  sel.innerHTML = state.products.map(x => "<option value='" + x.id + "'>" + dzEsc(x.name + " (" + x.code + ")") + "</option>").join("");
+  sel.value = state.products.some(x => x.id === prev) ? prev : cur().id;
+  if(!$("st-gSlots").children.length){
+    $("st-gSlots").innerHTML = IMG_SLOTS.map((s,i) => "<label style='font-size:12.5px;display:flex;gap:4px;align-items:center'><input type='checkbox' data-gs='" + s.k + "'> " + fa(i+1) + ". " + s.t + "</label>").join("");
+    $("st-gPrevSlot").innerHTML = IMG_SLOTS.map((s,i) => "<option value='" + s.k + "'>" + fa(i+1) + ". " + s.t + "</option>").join("");
+    $("st-gSlots").onchange = () => { gs.sel = [...document.querySelectorAll("#st-gSlots [data-gs]")].filter(x => x.checked).map(x => x.dataset.gs); save(); };
+  }
+  const chosen = gs.sel || IMG_SLOTS.map(s => s.k);
+  document.querySelectorAll("#st-gSlots [data-gs]").forEach(x => x.checked = chosen.includes(x.dataset.gs));
+  $("st-gBg").value = gs.bg; $("st-gAcc").value = gs.acc; $("st-gInk").value = gs.ink; $("st-gFont").value = gs.font;
+  $("st-gHero").value = gs.hero; $("st-gFrame").value = gs.frame; $("st-gAlign").value = gs.align;
+  $("st-gFooter").checked = gs.footer; $("st-gLogoOn").checked = gs.logo;
+  giQueuePreview();
+}
+function giQueuePreview(){ clearTimeout(giTimer); giTimer = setTimeout(giDrawPreview, 120); }
+async function giDrawPreview(){
+  if(!$("st-gPrev")) return;
+  const gs = giGet(), p = giProduct(); if(!p) return;
+  giApply(gs);
+  const ctx = await giContext(p), cv = document.createElement("canvas"); cv.width = GI.W; cv.height = GI.H;
+  giRender(cv.getContext("2d"),p,$("st-gPrevSlot").value || "hero",ctx);
+  const pv = $("st-gPrev").getContext("2d"); pv.clearRect(0,0,600,450); pv.drawImage(cv,0,0,600,450);
+  // گالری تم‌ها: کوچک‌شده‌ی تصویر اصلی با هر تم
+  const sig = p.id + "|" + gs.hero + gs.frame + gs.align + "|" + p.w + p.h + p.d + p.name;
+  if(sig !== giSig){
+    giSig = sig; const box = $("st-gThemes"); box.innerHTML = "";
+    for(const [key,t] of Object.entries(GI_THEMES)){
+      giApply(Object.assign({}, gs, {theme:key, bg:t.bg, ink:t.ink, acc:t.acc, font:t.font}));
+      const c2 = document.createElement("canvas"); c2.width = GI.W; c2.height = GI.H; giRender(c2.getContext("2d"),p,"hero",ctx);
+      const th = document.createElement("canvas"); th.width = 220; th.height = 165; th.getContext("2d").drawImage(c2,0,0,220,165); th.style.cssText = "width:100%;height:auto;border-radius:4px";
+      const b = document.createElement("button"); b.type = "button"; b.className = "ghost mini"; b.style.cssText = "padding:4px;flex:0 0 auto;width:170px;display:flex;flex-direction:column;align-items:center;gap:4px;" + (gs.theme === key ? "outline:3px solid var(--cut,#d9480f)" : "");
+      b.appendChild(th); b.appendChild(document.createTextNode(t.name));
+      b.onclick = () => { Object.assign(gs, {theme:key, bg:t.bg, ink:t.ink, acc:t.acc, font:t.font}); save(); giSig = ""; giUiRefresh(); };
+      box.appendChild(b);
+    }
+    giApply(gs);
+  }
+}
+function giBind(){
+  const upd = (k, el, isCheck) => { el.onchange = el.oninput = () => { giGet()[k] = isCheck ? el.checked : el.value; save(); if(k === "hero" || k === "frame" || k === "align") giSig = ""; giQueuePreview(); }; };
+  upd("bg",$("st-gBg")); upd("acc",$("st-gAcc")); upd("ink",$("st-gInk")); upd("font",$("st-gFont")); upd("hero",$("st-gHero")); upd("frame",$("st-gFrame")); upd("align",$("st-gAlign"));
+  upd("footer",$("st-gFooter"),true); upd("logo",$("st-gLogoOn"),true);
+  $("st-gProduct").onchange = () => { giSig = ""; giQueuePreview(); };
+  $("st-gPrevSlot").onchange = giQueuePreview;
+  const setSel = keys => { giGet().sel = keys; save(); giUiRefresh(); };
+  $("st-gAll").onclick = () => setSel(IMG_SLOTS.map(s => s.k));
+  $("st-gNone").onclick = () => setSel([]);
+  $("st-gEmpty").onclick = () => { const p = giProduct(); setSel(IMG_SLOTS.filter(s => !p.images[s.k]).map(s => s.k)); };
+  $("st-gReset").onclick = () => { const sel = giGet().sel; state.imgGen = Object.assign(giDefaults(), {sel}); save(); giSig = ""; giUiRefresh(); };
+  $("st-btnGenImgs").onclick = () => generateListingImages({product: giProduct(), overwrite: $("st-gOver").checked});
+}
+
+giBind();
+/* ===================== طراحی جعبه با Claude: سؤال ← طرح ← فایل‌های SVG/DXF/PDF ← ارسال به Etsy ===================== */
+// ── کتابخانه‌ی دای‌لاین (دقیق، با کد) — Claude نوع و اندازه رو انتخاب می‌کنه؛ هندسه رو کد می‌سازه
+const DL_MM = 72/25.4;
+function dlTuckEnd(L, Wd, Ht, g){
+  g = g || 12;
+  const tuckH = Math.max(10, Wd*0.95), dustH = Math.min(tuckH-2, Wd*0.5), tr = Math.min(6, L/6), tp = Math.min(6, g/2+2), Y0 = tuckH, Yb = tuckH + Ht;
+  const xF=g, xS1=g+L, xB=g+L+Wd, xS2=g+2*L+Wd, R=g+2*L+2*Wd, T=Yb+tuckH;
+  const out = [[0,Y0+tp],[g,Y0],
+    [g+1.5,Y0],[g+1.5,tr],[g+1.5+tr,0],[xS1-1.5-tr,0],[xS1-1.5,tr],[xS1-1.5,Y0],[xS1,Y0],
+    [xS1+4,Y0-dustH],[xB-4,Y0-dustH],[xB,Y0],
+    [xS2,Y0],[xS2+4,Y0-dustH],[R-4,Y0-dustH],[R,Y0],
+    [R,Yb],[R-4,Yb+dustH],[xS2+4,Yb+dustH],[xS2,Yb],
+    [xB,Yb],[xB-4,Yb+dustH],[xS1+4,Yb+dustH],[xS1,Yb],
+    [xS1-1.5,Yb],[xS1-1.5,T-tr],[xS1-1.5-tr,T],[g+1.5+tr,T],[g+1.5,T-tr],[g+1.5,Yb],[g,Yb],[0,Yb-tp]];
+  const paths = [{t:"cut", pts:out, closed:true}];
+  [xF,xS1,xB,xS2].forEach(x => paths.push({t:"score", pts:[[x,Y0],[x,Yb]]}));
+  paths.push({t:"score", pts:[[xF,Y0],[xS1,Y0]]}, {t:"score", pts:[[xS1,Y0],[xB,Y0]]}, {t:"score", pts:[[xS2,Y0],[R,Y0]]});
+  paths.push({t:"score", pts:[[xF,Yb],[xS1,Yb]]}, {t:"score", pts:[[xS1,Yb],[xB,Yb]]}, {t:"score", pts:[[xS2,Yb],[R,Yb]]});
+  return paths;
+}
+function dlTray(L, Wd, Ht){
+  const a=0.12*Ht, b=0.3*Ht, X2=Ht+L, X3=L+2*Ht, Y2=Ht+Wd, Y3=Wd+2*Ht;
+  const out = [[Ht,0],[X2,0],[X2,Ht],[X2+a,b],[X3-a,b],[X3,Ht],[X3,Y2],[X3-a,Y2+Ht-b],[X2+a,Y2+Ht-b],[X2,Y2],
+    [X2,Y3],[Ht,Y3],[Ht,Y2],[Ht-a,Y2+Ht-b],[a,Y2+Ht-b],[0,Y2],[0,Ht],[a,b],[Ht-a,b],[Ht,Ht]];
+  const paths = [{t:"cut", pts:out, closed:true},
+    {t:"score", pts:[[Ht,Ht],[X2,Ht],[X2,Y2],[Ht,Y2]], closed:true},
+    {t:"score", pts:[[0,Ht],[Ht,Ht]]}, {t:"score", pts:[[X2,Ht],[X3,Ht]]},
+    {t:"score", pts:[[0,Y2],[Ht,Y2]]}, {t:"score", pts:[[X2,Y2],[X3,Y2]]}];
+  return {paths, w:X3, h:Y3};
+}
+function dlShift(paths, dx, dy){ return paths.map(p => ({t:p.t, closed:p.closed, pts:p.pts.map(q => [q[0]+dx, q[1]+dy])})); }
+const dlNum = (v, lo, hi, d) => { v = Number(v); return isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d; };
+function dlBuild(spec){
+  const L = dlNum(spec.length, 10, 400, 100), Wd = dlNum(spec.width, 10, 400, 70), Ht = dlNum(spec.height, 8, 300, 30), thk = dlNum(spec.thickness, 0.1, 3, 0.3);
+  let paths;
+  if(spec.style === "tray_lid"){
+    const Hl = dlNum(spec.height_lid, 8, 300, Math.max(10, Ht*0.5)), gap = thk + 0.6;
+    const base = dlTray(L, Wd, Ht), lid = dlTray(L+2*gap, Wd+2*gap, Hl);
+    paths = base.paths.concat(dlShift(lid.paths, base.w + 15, 0));
+  } else if(spec.style === "custom" && spec.custom && Array.isArray(spec.custom.paths)){
+    paths = spec.custom.paths.map(p => ({
+      t: p.type === "score" ? "score" : "cut", closed: !!p.closed,
+      pts: (p.points||[]).filter(q => Array.isArray(q) && isFinite(q[0]) && isFinite(q[1])).map(q => [Number(q[0]), Number(q[1])])
+    })).filter(p => p.pts.length >= 2);
+    if(!paths.some(p => p.t === "cut")) throw new Error("طرح سفارشی Claude خط برش نداشت");
+  } else paths = dlTuckEnd(L, Wd, Ht, dlNum(spec.glue_flap, 6, 25, 12));
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  paths.forEach(p => p.pts.forEach(q => { x0=Math.min(x0,q[0]); y0=Math.min(y0,q[1]); x1=Math.max(x1,q[0]); y1=Math.max(y1,q[1]); }));
+  if(x1-x0 > 700 || y1-y0 > 700) throw new Error("ابعاد طرح بیش از حد بزرگ است (بیش از ۷۰۰ میلی‌متر)");
+  const M = 10;
+  return {paths: dlShift(paths, M-x0, M-y0), w: Math.ceil(x1-x0+2*M), h: Math.ceil(y1-y0+2*M)};
+}
+const dlF = n => (Math.round(n*1000)/1000).toString();
+function dlSvg(d, sw){
+  const pd = ps => ps.map(p => "M" + p.pts.map(q => dlF(q[0]) + " " + dlF(q[1])).join(" L") + (p.closed ? " Z" : "")).join(" ");
+  const cut = d.paths.filter(p => p.t === "cut"), sc = d.paths.filter(p => p.t === "score"), w = sw || 0.5;
+  return '<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="' + d.w + 'mm" height="' + d.h + 'mm" viewBox="0 0 ' + d.w + ' ' + d.h + '">\n' +
+    '<g id="CUT" fill="none" stroke="#ff0000" stroke-width="' + w + '"><path d="' + pd(cut) + '"/></g>\n' +
+    '<g id="SCORE" fill="none" stroke="#0000ff" stroke-width="' + w + '" stroke-dasharray="' + (w*6) + ' ' + (w*4) + '"><path d="' + pd(sc) + '"/></g>\n</svg>\n';
+}
+function dlDxf(d){
+  const ent = [];
+  d.paths.forEach(p => {
+    const n = p.closed ? p.pts.length : p.pts.length - 1;
+    for(let i=0;i<n;i++){
+      const a = p.pts[i], b = p.pts[(i+1) % p.pts.length];
+      ent.push("0\nLINE\n8\n" + (p.t === "cut" ? "CUT" : "SCORE") + "\n10\n" + dlF(a[0]) + "\n20\n" + dlF(d.h-a[1]) + "\n30\n0\n11\n" + dlF(b[0]) + "\n21\n" + dlF(d.h-b[1]) + "\n31\n0");
+    }
+  });
+  return "0\nSECTION\n2\nHEADER\n9\n$INSUNITS\n70\n4\n0\nENDSEC\n0\nSECTION\n2\nTABLES\n0\nTABLE\n2\nLAYER\n70\n2\n" +
+    "0\nLAYER\n2\nCUT\n70\n0\n62\n1\n6\nCONTINUOUS\n0\nLAYER\n2\nSCORE\n70\n0\n62\n5\n6\nCONTINUOUS\n0\nENDTAB\n0\nENDSEC\n0\nSECTION\n2\nENTITIES\n" +
+    ent.join("\n") + "\n0\nENDSEC\n0\nEOF\n";
+}
+const pdfAscii = s => String(s).replace(/[^\x20-\x7E]/g, "?").replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+function pdfBuild(pages){
+  const objs = [], kids = []; let n = 4;
+  objs[1] = "<< /Type /Catalog /Pages 2 0 R >>";
+  objs[3] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";
+  pages.forEach(pg => {
+    const pid = n++, cid = n++; kids.push(pid + " 0 R");
+    objs[pid] = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + pg.w.toFixed(2) + " " + pg.h.toFixed(2) + "] /Resources << /Font << /F1 3 0 R >> >> /Contents " + cid + " 0 R >>";
+    objs[cid] = "<< /Length " + pg.stream.length + " >>\nstream\n" + pg.stream + "\nendstream";
+  });
+  objs[2] = "<< /Type /Pages /Kids [" + kids.join(" ") + "] /Count " + kids.length + " >>";
+  let out = "%PDF-1.4\n"; const offs = [];
+  for(let i=1;i<n;i++){ offs[i] = out.length; out += i + " 0 obj\n" + objs[i] + "\nendobj\n"; }
+  const xr = out.length; out += "xref\n0 " + n + "\n0000000000 65535 f \n";
+  for(let i=1;i<n;i++) out += String(offs[i]).padStart(10,"0") + " 00000 n \n";
+  out += "trailer\n<< /Size " + n + " /Root 1 0 R >>\nstartxref\n" + xr + "\n%%EOF";
+  return new Blob([out], {type:"application/pdf"});
+}
+function dlPdf(d){
+  const k = DL_MM, H = d.h*k, pt = q => dlF(q[0]*k) + " " + dlF(H - q[1]*k);
+  const draw = (ps) => ps.map(p => "" + pt(p.pts[0]) + " m " + p.pts.slice(1).map(q => pt(q) + " l").join(" ") + (p.closed ? " h" : "") + " S").join("\n");
+  const stream = "1 0 0 RG 0.7 w [] 0 d\n" + draw(d.paths.filter(p => p.t === "cut")) + "\n0 0 1 RG 0.7 w [4 3] 0 d\n" + draw(d.paths.filter(p => p.t === "score")) +
+    "\n0 g BT /F1 7 Tf " + dlF(10*k) + " " + dlF(4*k) + " Td (" + pdfAscii("RED = CUT   BLUE DASHED = SCORE / FOLD   Size " + d.w + " x " + d.h + " mm   Print at 100% (no scaling)") + ") Tj ET";
+  return pdfBuild([{w: d.w*k, h: H, stream}]);
+}
+function dlGuidePdf(spec, d){
+  const lines = [];
+  const wrap = (t, n) => { const w = String(t).split(/\s+/); let l = ""; w.forEach(x => { if((l + " " + x).length > n && l){ lines.push([l,11]); l = x; } else l = l ? l + " " + x : x; }); if(l) lines.push([l,11]); };
+  lines.push([(spec.name || "Box Template") + " - Assembly Guide", 18], ["", 11]);
+  lines.push(["Finished size: " + spec.length + " x " + spec.width + " x " + spec.height + " mm   |   Material: " + (spec.material || "Cardstock 250-300 gsm"), 11], ["", 11]);
+  lines.push(["Before you start", 14]); wrap("Do a test cut on plain paper first. Red lines = cut, blue dashed lines = score/fold. Use a scoring stylus or scoring blade for the blue lines.", 92); lines.push(["", 11]);
+  lines.push(["Steps", 14]); (spec.assembly_steps || []).forEach((s,i) => wrap((i+1) + ". " + s, 92)); lines.push(["", 11]);
+  lines.push(["Files in this package", 14]); wrap("SVG (Cricut Design Space, Silhouette Studio, Inkscape, Illustrator), DXF (laser cutters, LightBurn, Glowforge), PDF (print or preview). The SVG/DXF/PDF are the same design.", 92);
+  const pages = []; let cur = [], y = 800;
+  const flush = () => { pages.push({w:595, h:842, stream: cur.join("\n")}); cur = []; y = 800; };
+  lines.forEach(([t,sz]) => { if(y < 60) flush(); cur.push("BT /F1 " + sz + " Tf 50 " + y + " Td (" + pdfAscii(t) + ") Tj ET"); y -= sz + 5; });
+  flush();
+  return pdfBuild(pages);
+}
+
+// ── Claude: سؤال‌ها و طرح
+const dzState = {brief:"", qs:[], qa:[], spec:null, dl:null};
+const dzEsc = s => String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+async function dzAsk(){
+  const brief = $("st-dzBrief").value.trim();
+  if(!brief) return toast("اول ایده‌ی محصول رو بنویس.");
+  if(typeof callClaude !== "function") return toast("موتور AI در دسترس نیست — API Key را در تنظیمات وارد کن.");
+  dzState.brief = brief; $("st-dzOut").innerHTML = ""; $("st-dzQs").innerHTML = "<p class='help'>⏳ Claude دارد سؤال‌ها را آماده می‌کند...</p>";
+  try{
+    const mine = (S.products||[]).slice(0,8).map(x => x.TITLE).filter(Boolean).join(" | ");
+    const prompt = "You are a senior packaging dieline designer and an Etsy digital-template coach. A Persian-speaking seller wants to create a NEW digital product (cut files SVG/DXF/PDF for Cricut, Silhouette and laser cutters; the buyer downloads files, nothing is shipped).\n" +
+      "Seller idea: " + brief + "\nShop niche: " + (S.shopNicheVal||"-") + (mine ? "\nExisting listings (avoid duplicating): " + mine : "") +
+      "\n\nAsk the seller 4 to 6 SHORT questions, in Persian, that you genuinely need to finalize the box dieline and the listing (box style/closure, real size or use case, material and thickness, extras like window/handle/insert, target buyer/occasion, machines). For each question give 3 to 5 suggested answers in Persian (the seller can also type their own).\n" +
+      'Return ONLY JSON: {"questions":[{"q":"...","options":["...","..."]}]}';
+    const d = parseJSON(await callClaude(prompt, 2500));
+    dzState.qs = (d.questions || []).slice(0,6);
+    if(!dzState.qs.length) throw new Error("Claude سؤالی برنگرداند");
+    $("st-dzQs").innerHTML = dzState.qs.map((q,i) =>
+      "<div style='margin:12px 0;padding:10px;border:1px solid var(--rule);border-radius:8px'><b>" + fa(i+1) + ". " + dzEsc(q.q) + "</b><div style='margin-top:6px;display:flex;flex-wrap:wrap;gap:6px'>" +
+      (q.options||[]).map(o => "<label style='border:1px solid var(--rule);border-radius:20px;padding:4px 10px;cursor:pointer;font-size:12.5px'><input type='radio' name='dzq" + i + "' value='" + dzEsc(o) + "'> " + dzEsc(o) + "</label>").join("") +
+      "</div><input type='text' data-dzq='" + i + "' placeholder='یا جواب دلخواه...' style='margin-top:8px;width:100%'></div>").join("") +
+      "<button class='ghost mini' id='st-dzGo'>✅ ثبت پاسخ‌ها و طراحی</button>";
+    $("st-dzGo").onclick = () => {
+      dzState.qa = dzState.qs.map((q,i) => {
+        const typed = (document.querySelector("[data-dzq='" + i + "']").value || "").trim();
+        const radio = document.querySelector("input[name='dzq" + i + "']:checked");
+        return {q: q.q, a: typed || (radio ? radio.value : "(هر چی تو صلاح می‌دانی)")};
+      });
+      dzDesign("");
+    };
+  }catch(e){ $("st-dzQs").innerHTML = "<p class='help' style='color:var(--cut)'>خطا: " + dzEsc(e.message) + "</p>"; }
+}
+async function dzDesign(feedback){
+  if(typeof callClaude !== "function") return toast("موتور AI در دسترس نیست.");
+  $("st-dzOut").innerHTML = "<p class='help'>⏳ Claude دارد جعبه را طراحی و متن لیستینگ را می‌نویسد (۳۰–۹۰ ثانیه)...</p>";
+  try{
+    const qa = dzState.qa.map(x => "Q: " + x.q + "\nA: " + x.a).join("\n");
+    const prompt = "You are a senior packaging dieline designer AND an expert Etsy SEO copywriter for digital cut-file templates (Cricut / Silhouette / Glowforge / laser).\n" +
+      "Seller idea: " + dzState.brief + "\n" + (qa ? "Seller answers:\n" + qa + "\n" : "No questions were asked: decide sensible defaults yourself.\n") +
+      (feedback && dzState.spec ? "\nPREVIOUS DESIGN (JSON): " + JSON.stringify(dzState.spec).slice(0,6000) + "\nSELLER FEEDBACK (apply it): " + feedback + "\n" : "") +
+      "\nDESIGN RULES:\n- style must be one of: \"tuck_end\" (straight tuck-end carton), \"tray_lid\" (two-piece tray base + lid), or \"custom\". tuck_end and tray_lid are generated by exact code from your dimensions — PREFER them. Use \"custom\" only for shapes they cannot make; then give paths in millimetres (origin top-left, one closed outer CUT outline plus SCORE lines, bounding box <= 500 mm, all fold lines consistent with the outline).\n" +
+      "- length/width/height are the FINISHED INNER box size in mm (height_lid only for tray_lid). Choose realistic sizes for the use case and material thickness; consider tolerances.\n" +
+      "- Fill every field. assembly_steps: 4-7 short English steps.\n\n" +
+      "LISTING RULES: title in English, max 14 words and 140 chars, must start with a letter or number, no characters $ ^ ` . °, at most one each of % : &, no more than 3 ALL-CAPS words (SVG/DXF/PDF count). tags: exactly 13, each max 20 chars, no underscores. materials: up to 13 short items. price: realistic USD number for this digital template.\n" + DESC_FORMAT_RULES + "\n" +
+      "notes_fa: 2-4 Persian sentences telling the seller what was designed (style, sizes, material) and what to test-cut.\n\n" +
+      'Return ONLY JSON: {"style":"tuck_end","name":"Short English product name","category":"Packaging Template","length":100,"width":70,"height":30,"height_lid":15,"glue_flap":12,"thickness":0.3,"material":"Cardstock 250-300 gsm","machines":["Cricut","Silhouette","Glowforge"],"custom":{"paths":[{"type":"cut","closed":true,"points":[[0,0],[10,0]]}]},"assembly_steps":["..."],"price":4.5,"notes_fa":"...","listing":{"title":"...","tags":["..."],"description":"...","materials":["..."]}}';
+    const spec = parseJSON(await callClaude(prompt, 8000));
+    if(!spec.listing) throw new Error("پاسخ Claude ناقص بود (بخش listing ندارد) — دوباره امتحان کن");
+    const d = dlBuild(spec);
+    dzState.spec = spec; dzState.dl = d;
+    dzRender();
+  }catch(e){ $("st-dzOut").innerHTML = "<p class='help' style='color:var(--cut)'>خطا: " + dzEsc(e.message) + "</p>"; }
+}
+function dzRender(){
+  const s = dzState.spec, d = dzState.dl, l = s.listing || {};
+  const sw = Math.max(0.5, d.w/220);
+  $("st-dzOut").innerHTML =
+    "<div style='margin-top:14px;padding:12px;border:1px solid var(--rule);border-radius:10px'>" +
+    "<h3 style='margin:0 0 8px'>🧩 طرح پیشنهادی Claude</h3>" +
+    "<div style='background:#fff;border:1px solid var(--rule);border-radius:8px;padding:8px;direction:ltr;overflow:auto'>" + dlSvg(d, sw).replace(/<\?xml[^>]*>\s*/, "").replace(/width="[\d.]+mm" height="[\d.]+mm"/, 'style="width:100%;max-height:360px"') + "</div>" +
+    "<p class='help' style='margin-top:6px'>خط قرمز = برش · خط آبی خط‌چین = تا/اسکور · اندازه‌ی کل ورق: " + fa(d.w) + "×" + fa(d.h) + " mm</p>" +
+    "<table style='font-size:13px;line-height:2;direction:rtl'><tr><td>نوع</td><td dir='ltr'>" + dzEsc(s.style) + "</td></tr><tr><td>اندازه‌ی نهایی</td><td dir='ltr'>" + dzEsc(s.length + " × " + s.width + " × " + s.height + " mm") + "</td></tr><tr><td>متریال</td><td dir='ltr'>" + dzEsc(s.material) + "</td></tr><tr><td>قیمت پیشنهادی</td><td dir='ltr'>$" + dzEsc(s.price) + "</td></tr><tr><td>عنوان</td><td dir='ltr'>" + dzEsc(l.title) + "</td></tr></table>" +
+    "<p class='help'>" + dzEsc(s.notes_fa || "") + "</p>" +
+    "<p class='help' style='color:var(--cut)'>⚠ قبل از فروش، یک بار طرح را روی کاغذ معمولی برش بزن و جعبه را سوار کن.</p>" +
+    "<div style='display:flex;gap:8px;flex-wrap:wrap;margin:8px 0'><button class='ghost mini' id='st-dzApply'>✔ ساخت فایل‌ها، تصویرها و پر کردن همه‌چیز</button></div>" +
+    "<label class='fld'><span>تغییر می‌خواهی؟ توضیح بده تا Claude اصلاح کند</span><input type='text' id='st-dzFeed' placeholder='مثلاً: ۲ سانت بلندتر، پنجره‌ی شفاف اضافه کن'></label>" +
+    "<button class='ghost mini' id='st-dzRedo' style='margin-top:6px'>🔁 اصلاح طرح</button></div>";
+  $("st-dzApply").onclick = dzApply;
+  $("st-dzRedo").onclick = () => { const f = $("st-dzFeed").value.trim(); if(!f) return toast("اول بنویس چه تغییری می‌خواهی."); dzDesign(f); };
+}
+async function dzApply(){
+  const s = dzState.spec, d = dzState.dl; if(!s || !d) return;
+  const l = s.listing || {}, p = blankProduct();
+  p.name = String(s.name || "Box").slice(0,80);
+  p.code = "BG-" + String(state.products.length + 1).padStart(3,"0");
+  p.w = Math.round(dlNum(s.length,10,400,100)); p.h = Math.round(dlNum(s.width,10,400,70)); p.d = Math.round(dlNum(s.height,8,300,30));
+  p.category = s.category || "Packaging Template"; p.material = s.material || p.material;
+  p.machines = (s.machines || []).join(" / ") || p.machines;
+  p.title = limitTitle(sanitizeEtsyTitle(l.title || p.name));
+  p.description = normalizeDescription(l.description || "");
+  p.tags = (l.tags || []).map(t => String(t).replace(/_/g," ").trim()).filter(t => t && t.length <= 20).slice(0,13).join(", ");
+  p.materials = sanitizeMaterials(l.materials || [], parseMaterials(p.materials)).join(", ");
+  p.price = Number(s.price) > 0 ? Number(s.price) : 4.5;
+  p.notes = "ساخته‌شده با Claude · قیمت پیشنهادی: $" + p.price + (s.notes_fa ? "\n" + s.notes_fa : "");
+  const put = async (slot, blob, name) => { const key = p.id + ":files:" + slot; const f = new File([blob], name, {type: blob.type}); await blobPut(key, f); p.files[slot] = {name, size: f.size, type: f.type, key}; };
+  const base = slug(p.name);
+  await put("svg", new Blob([dlSvg(d)], {type:"image/svg+xml"}), base + ".svg");
+  await put("dxf", new Blob([dlDxf(d)], {type:"application/dxf"}), base + ".dxf");
+  await put("pdf", dlPdf(d), base + ".pdf");
+  await put("guide", dlGuidePdf(s, d), base + "-instructions.pdf");
+  state.products.push(p); state.active = p.id; save(); renderAll();
+  await generateListingImages({product:p, slots:IMG_SLOTS.map(x => x.k), overwrite:false});
+  fillAlt(p, true); save(); renderAll();
+  document.querySelector("#page-studio .tab[data-p='st-p-check']").click();
+  toast("✅ محصول کامل ساخته شد — الان «ارسال کامل به Etsy» را بزن.");
+}
+
+// ── ارسال کامل به Etsy: پیش‌نویس + فایل‌های دیجیتال + ۱۰ تصویر با ALT
+async function studioSendToEtsy(){
+  const p = cur();
+  if(!p.title || !tagList(p).length) return toast("عنوان و تگ‌ها خالی است — اول تب «سئو اتسی» را کامل کن.");
+  let price = parseFloat(p.price) || parseFloat(((String(p.notes||"").match(/\$\s*([0-9]+(?:\.[0-9]+)?)/)||[])[1]));
+  if(!(price > 0)){ price = parseFloat(prompt("قیمت لیستینگ (USD):", "4.5")); if(!(price > 0)) return; }
+  p.price = price; save();
+  const files = FILE_SLOTS.filter(s => p.files[s.k]), imgs = IMG_SLOTS.filter(s => p.images[s.k]);
+  if(!confirm("«" + p.title + "»\nقیمت: $" + price + "\n" + files.length + " فایل و " + imgs.length + " تصویر به‌صورت پیش‌نویس (Draft) روی Etsy ساخته بشه؟\n(منتشر نمی‌شود؛ خودت در Etsy بررسی و Publish می‌کنی.)")) return;
+  const item = {title: p.title, tags: tagList(p), description: p.description, price, materials: matList(p)};
+  toast("⏳ در حال ساخت پیش‌نویس روی Etsy...");
+  const ok = await etsyCreateDraftListing(item);
+  if(!ok) return toast("ساخت پیش‌نویس ناموفق بود — جزئیات را در «لاگ فعالیت» ببین.");
+  const lid = item.etsyListingId; p.etsyListingId = lid; save();
+  let fOk = 0, iOk = 0, errs = [];
+  for(const [i, s] of files.entries()){
+    try{
+      const v = p.files[s.k], b = await blobGet(v.key);
+      await etsyMultipartPost("listings/" + lid + "/files", {name: v.name, rank: i+1}, "file", b, v.name);
+      fOk++; toast("⬆ فایل " + fa(fOk) + "/" + fa(files.length) + " آپلود شد");
+    }catch(e){ errs.push(s.t + ": " + e.message); }
+  }
+  for(const [i, s] of imgs.entries()){
+    try{
+      const v = p.images[s.k], b = await blobGet(v.key), idx = IMG_SLOTS.findIndex(x => x.k === s.k);
+      await etsyMultipartPost("listings/" + lid + "/images", {rank: idx+1, overwrite: "true", alt_text: altResolved(p)[idx].slice(0,250)}, "image", b, v.name || (s.f + ".jpg"));
+      iOk++; toast("🖼 تصویر " + fa(iOk) + "/" + fa(imgs.length) + " آپلود شد");
+    }catch(e){ errs.push(s.t + ": " + e.message); }
+  }
+  log("📦 Etsy (ID " + lid + "): " + fOk + "/" + files.length + " فایل و " + iOk + "/" + imgs.length + " تصویر آپلود شد" + (errs.length ? " — خطاها: " + errs.join(" | ") : ""), errs.length ? "warn" : "ok");
+  alert("✅ پیش‌نویس روی Etsy ساخته شد (ID " + lid + ")\nفایل‌ها: " + fOk + "/" + files.length + " · تصویرها: " + iOk + "/" + imgs.length +
+    (errs.length ? "\n\n⚠ بعضی آپلودها خطا داد:\n" + errs.slice(0,3).join("\n") : "") +
+    "\n\nحالا در Etsy → Shop Manager → Listings → Drafts بازش کن، بررسی کن و Publish بزن.");
+}
+if($("st-dzAsk")) $("st-dzAsk").onclick = dzAsk;
+if($("st-dzSkip")) $("st-dzSkip").onclick = () => { const b = $("st-dzBrief").value.trim(); if(!b) return toast("اول ایده‌ی محصول رو بنویس."); dzState.brief = b; dzState.qa = []; $("st-dzQs").innerHTML = ""; dzDesign(""); };
+if($("st-btnSendEtsy")) $("st-btnSendEtsy").onclick = studioSendToEtsy;
 $("st-btnTxt").onclick = async () => {
   const txt = listingText(cur());
   try{ await navigator.clipboard.writeText(txt); toast("متن لیستینگ کپی شد."); }

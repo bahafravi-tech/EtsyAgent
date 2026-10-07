@@ -35,7 +35,7 @@ export default {
       return new Response('Bad JSON', { status: 400 });
     }
 
-    const { url, method = 'GET', headers = {}, body } = payload;
+    const { url, method = 'GET', headers = {}, body, bodyBase64 } = payload;
 
     let target;
     try {
@@ -49,7 +49,13 @@ export default {
     }
 
     const fetchOptions = { method, headers };
-    if (method !== 'GET' && method !== 'HEAD' && body !== undefined && body !== null) {
+    if (bodyBase64) {
+      // آپلود باینری (فایل/تصویر لیستینگ Etsy): کلاینت بدنه‌ی multipart رو base64 می‌فرسته
+      const bin = atob(bodyBase64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      fetchOptions.body = bytes;
+    } else if (method !== 'GET' && method !== 'HEAD' && body !== undefined && body !== null) {
       fetchOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
     }
 
