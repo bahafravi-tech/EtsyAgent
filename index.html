@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.12.3 -->
+<!-- APP_VERSION: 1.12.4 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v123</div>
+        <div class="logo-badge">v124</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -6781,7 +6781,8 @@ async function checkOAuthCallback(){
 // توکن دسترسی Etsy فقط ~۱ ساعت اعتباره — این تابع با refresh_token ذخیره‌شده
 // یه توکن تازه می‌گیره، بدون نیاز به اتصال مجدد دستی
 async function refreshEtsyOAuthToken(){
-  if(!S.etsyRefreshToken||!S.etsyApiKey) return false;
+  if(!S.etsyRefreshToken){ log('✗ تمدید ممکن نیست: Refresh Token ذخیره نشده (توکن دستی وارد شده؟). از تنظیمات → Etsy روی «اتصال به Etsy» (OAuth) بزن تا توکن و Refresh Token تازه گرفته شود.','err'); return false; }
+  if(!S.etsyApiKey) return false;
   try{
     const res=await fetch('etsy_oauth_token.php',{
       method:'POST',
@@ -6789,14 +6790,14 @@ async function refreshEtsyOAuthToken(){
       body:JSON.stringify({grant_type:'refresh_token',client_id:S.etsyApiKey,refresh_token:S.etsyRefreshToken})
     });
     const rawText=await res.text();
-    let d; try{ d=JSON.parse(rawText); }catch{ return false; }
-    if(!d.access_token) return false;
+    let d; try{ d=JSON.parse(rawText); }catch{ log('✗ تمدید توکن: پاسخ etsy_oauth_token.php قابل‌خوندن نبود — '+rawText.slice(0,120),'err'); return false; }
+    if(!d.access_token){ log('✗ تمدید توکن رد شد: '+String(d.error_description||d.error||JSON.stringify(d)).slice(0,200)+' — از تنظیمات → Etsy دوباره «اتصال به Etsy» (OAuth) را انجام بده.','err'); return false; }
     S.etsyOAuthToken=d.access_token;
     if(d.refresh_token) S.etsyRefreshToken=d.refresh_token;
     saveCurrentShop();
     log('🔄 توکن Etsy خودکار تمدید شد','ok');
     return true;
-  }catch(e){ return false; }
+  }catch(e){ log('✗ تمدید توکن: '+e.message,'err'); return false; }
 }
 
 function setOAuthStatus(msg,type){
