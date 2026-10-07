@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.12.5 -->
+<!-- APP_VERSION: 1.13.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v125</div>
+        <div class="logo-badge">v126</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1750,6 +1750,7 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
       <div class="block">
         <h3>ده تصویر لیستینگ</h3>
         <p class="help">ترتیب همان ترتیبی است که در اتسی دیده می‌شود. می‌توانید تصویر را روی کادر رها کنید. هر تصویر هنگام خروجی با شماره و نام استاندارد ذخیره می‌شود.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button type="button" class="ghost mini" id="st-btnGenImgs">🎨 ساخت خودکار تصویرهای خالی از روی مشخصات محصول</button><button type="button" class="ghost mini" id="st-btnGenImgsAll">♻️ ساخت دوباره‌ی همه</button></div>
         <div class="slots img" id="st-imgSlots"></div>
       </div>
       <div class="block">
@@ -7658,6 +7659,178 @@ $("st-btnAutoAlt").onclick = () => {
   save(); renderAll();
   toast(before >= IMG_SLOTS.length ? "همه‌ی ALTها از قبل پر بودن." : fa(IMG_SLOTS.length - before) + " ALT خالی خودکار پر شد.");
 };
+/* ===================== ساخت خودکار تصویرهای لیستینگ (Canvas، بدون API و بدون هزینه) ===================== */
+const GI = {W:2400, H:1800, bg:"#f6f1e7", ink:"#1e2a32", mute:"#5b6770", acc:"#d9480f", teal:"#0f766e", card:"#ffffff", line:"#e4dccb"};
+const GI_FONT = "'Segoe UI',Arial,sans-serif";
+function giRR(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+function giWrap(c,text,x,y,maxW,lh,maxLines,align){
+  const words = String(text||"").split(/\s+/).filter(Boolean); let line="", lines=[];
+  for(const w of words){ const t = line ? line+" "+w : w; if(c.measureText(t).width > maxW && line){ lines.push(line); line=w; } else line=t; }
+  if(line) lines.push(line);
+  if(maxLines && lines.length > maxLines){ lines = lines.slice(0,maxLines); lines[maxLines-1] = lines[maxLines-1].replace(/\s*\S*$/,"") + "…"; }
+  c.textAlign = align || "left";
+  lines.forEach((l,i)=>c.fillText(l,x,y+i*lh));
+  return y + lines.length*lh;
+}
+function giPill(c,text,x,y,font,fg,bg){
+  c.font = font; const w = c.measureText(text).width + 64, h = 84;
+  c.fillStyle = bg; giRR(c,x,y,w,h,42); c.fill();
+  c.fillStyle = fg; c.textAlign="left"; c.textBaseline="middle"; c.fillText(text,x+32,y+h/2+2); c.textBaseline="alphabetic";
+  return w;
+}
+function giFrame(c,title,sub,shop,logo){
+  c.fillStyle = GI.bg; c.fillRect(0,0,GI.W,GI.H);
+  c.fillStyle = GI.acc; c.fillRect(0,0,GI.W,24);
+  if(title){
+    c.fillStyle = GI.ink; c.font = "800 108px " + GI_FONT; c.textAlign="center";
+    const y = giWrap(c,title,GI.W/2,250,GI.W-300,124,2,"center");
+    if(sub){ c.fillStyle = GI.mute; c.font = "500 54px " + GI_FONT; giWrap(c,sub,GI.W/2,y+10,GI.W-400,66,2,"center"); }
+  }
+  c.fillStyle = GI.line; c.fillRect(120,GI.H-150,GI.W-240,3);
+  c.fillStyle = GI.mute; c.font = "600 46px " + GI_FONT; c.textAlign="left";
+  let tx = 120;
+  if(logo){ const lh=84, lw=logo.width*lh/logo.height; c.drawImage(logo,120,GI.H-128,lw,lh); tx = 120+lw+24; }
+  c.fillText(shop, tx, GI.H-68);
+  c.textAlign="right"; c.fillStyle = GI.teal; c.fillText("Instant Digital Download", GI.W-120, GI.H-68);
+}
+function giPreviewCard(c,x,y,w,h,svgImg,p){
+  c.fillStyle = GI.card; giRR(c,x,y,w,h,36); c.fill(); c.strokeStyle = GI.line; c.lineWidth=4; c.stroke();
+  if(svgImg){
+    const iw = svgImg.naturalWidth||svgImg.width||800, ih = svgImg.naturalHeight||svgImg.height||600, k = Math.min((w-120)/iw,(h-120)/ih);
+    c.drawImage(svgImg, x+(w-iw*k)/2, y+(h-ih*k)/2, iw*k, ih*k);
+  } else { // طرح نمادین الگوی برش (وقتی فایل SVG هنوز آپلود نشده)
+    const bw = w-300, bh = Math.min(h-300, bw*Math.max(.35,Math.min(1,(p.h||70)/(p.w||100)))), bx = x+(w-bw)/2, by = y+(h-bh)/2;
+    c.strokeStyle="#d92d20"; c.lineWidth=7; c.setLineDash([]); giRR(c,bx,by,bw,bh,28); c.stroke();
+    c.strokeStyle="#2563eb"; c.lineWidth=5; c.setLineDash([26,18]);
+    [0.22,0.78].forEach(f=>{ c.beginPath(); c.moveTo(bx+bw*f,by); c.lineTo(bx+bw*f,by+bh); c.stroke(); });
+    c.beginPath(); c.moveTo(bx,by+bh/2); c.lineTo(bx+bw,by+bh/2); c.stroke(); c.setLineDash([]);
+  }
+}
+function giList(p){
+  const dim = p.w + " × " + p.h + " × " + p.d + " mm";
+  const upl = FILE_SLOTS.filter(s=>p.files[s.k]);
+  const fmts = upl.length ? upl : FILE_SLOTS.slice(0,4);
+  const machines = String(p.machines||"").split(/[\/,&;]|\band\b/i).map(s=>s.trim()).filter(Boolean);
+  const lines = String(p.description||"").split("\n").map(s=>s.trim());
+  let ideas = [], on = false;
+  for(const l of lines){
+    const head = l.replace(/^\p{Extended_Pictographic}️?\s*/u,"");
+    if(/^[A-Z][A-Z '&-]{3,}$/.test(head)) on = /PERFECT|IDEA|USE|OCCASION/i.test(head);
+    else if(on && /^(•|✔|✅|-|\*)/.test(l)) ideas.push(l.replace(/^(•|✔|✅|-|\*)\s*/,""));
+  }
+  if(ideas.length < 4) ideas = ["Wedding favors","Party gifts","Small business packaging","Holiday gift boxes","Product launches","Handmade shop packaging"];
+  return { dim, fmts, machines: machines.length ? machines : ["Cricut","Silhouette","Glowforge","Laser cutter"], ideas: ideas.slice(0,8) };
+}
+const GI_DRAW = {
+  hero(c,p,L,svgImg){
+    giPreviewCard(c,1180,330,1100,1180,svgImg,p);
+    c.fillStyle = GI.acc; c.font="800 56px " + GI_FONT; c.textAlign="left"; c.fillText("DIGITAL DOWNLOAD", 140, 470);
+    c.fillStyle = GI.ink; c.font="800 128px " + GI_FONT; let y = giWrap(c,p.name,140,620,1000,148,3);
+    c.fillStyle = GI.mute; c.font="500 60px " + GI_FONT; y = giWrap(c,p.category||"Template",140,y+10,1000,76,2);
+    c.fillStyle = GI.ink; c.font="700 70px " + GI_FONT; c.fillText(L.dim, 140, y+80);
+    let x=140; const py=y+150; L.fmts.slice(0,4).forEach(s=>{ x += giPill(c,s.t,x,py,"800 46px " + GI_FONT,"#fff",GI.teal)+20; });
+  },
+  dims(c,p,L){
+    const bw=1300, bh=Math.max(350,Math.min(700,bw*(p.h||70)/(p.w||100))), bx=(GI.W-bw)/2, by=660;
+    c.fillStyle=GI.card; giRR(c,bx,by,bw,bh,28); c.fill(); c.strokeStyle=GI.ink; c.lineWidth=6; c.stroke();
+    c.strokeStyle=GI.acc; c.fillStyle=GI.acc; c.lineWidth=6; c.font="800 70px " + GI_FONT; c.textAlign="center";
+    c.beginPath(); c.moveTo(bx,by-60); c.lineTo(bx+bw,by-60); c.stroke(); c.fillText(p.w+" mm",GI.W/2,by-90);
+    c.save(); c.translate(bx+bw+130,by+bh/2); c.rotate(Math.PI/2); c.fillText(p.h+" mm",0,0); c.restore();
+    c.beginPath(); c.moveTo(bx+bw+60,by); c.lineTo(bx+bw+60,by+bh); c.stroke();
+    giPill(c,"Depth: "+p.d+" mm",GI.W/2-280,by+bh+90,"800 56px " + GI_FONT,"#fff",GI.teal);
+  },
+  template(c,p,L,svgImg){
+    giPreviewCard(c,420,430,1560,880,svgImg,p);
+    c.font="700 52px " + GI_FONT; c.textAlign="left";
+    c.strokeStyle="#d92d20"; c.lineWidth=8; c.setLineDash([]); c.beginPath(); c.moveTo(560,1420); c.lineTo(700,1420); c.stroke(); c.fillStyle=GI.ink; c.fillText("Cut line",730,1438);
+    c.strokeStyle="#2563eb"; c.setLineDash([26,18]); c.beginPath(); c.moveTo(1200,1420); c.lineTo(1340,1420); c.stroke(); c.setLineDash([]); c.fillText("Score / fold line",1370,1438);
+  },
+  formats(c,p,L){
+    const n=L.fmts.length, cols=Math.min(3,n), rows=Math.ceil(n/cols), cw=620, ch=380, gx=60, gy=60, x0=(GI.W-(cols*cw+(cols-1)*gx))/2, y0=480+(rows===1?120:0);
+    const desc = {svg:"Main cut file", dxf:"For laser cutters", pdf:"Print & preview", ai:"Editable version", guide:"Step-by-step guide", studio:"Silhouette file"};
+    L.fmts.forEach((s,i)=>{ const x=x0+(i%cols)*(cw+gx), y=y0+Math.floor(i/cols)*(ch+gy);
+      c.fillStyle=GI.card; giRR(c,x,y,cw,ch,36); c.fill(); c.strokeStyle=GI.line; c.lineWidth=4; c.stroke();
+      c.fillStyle=GI.teal; c.font="900 150px " + GI_FONT; c.textAlign="center"; c.fillText(s.t.toUpperCase().slice(0,6),x+cw/2,y+210);
+      c.fillStyle=GI.mute; c.font="500 48px " + GI_FONT; c.fillText(desc[s.k]||"",x+cw/2,y+300); });
+  },
+  machines(c,p,L){
+    let x=300,y=560; const maxX=GI.W-300;
+    L.machines.forEach(m=>{ c.font="800 64px " + GI_FONT; const w=c.measureText(m).width+64; if(x+w>maxX){x=300;y+=170;} giPill(c,m,x,y,"800 64px " + GI_FONT,"#fff",GI.teal); x+=w+30; });
+    c.fillStyle=GI.mute; c.font="500 56px " + GI_FONT; c.textAlign="center"; c.fillText("Works with any machine that opens SVG or DXF files",GI.W/2,y+360);
+  },
+  included(c,p,L){
+    const items=[...L.fmts.map(s=>s.t+" file"),"Assembly instructions"].slice(0,8);
+    items.forEach((t,i)=>{ const y=520+i*130; c.fillStyle=GI.teal; c.beginPath(); c.arc(660,y,42,0,Math.PI*2); c.fill(); c.fillStyle="#fff"; c.font="900 56px " + GI_FONT; c.textAlign="center"; c.fillText("✓",660,y+20);
+      c.fillStyle=GI.ink; c.font="700 68px " + GI_FONT; c.textAlign="left"; c.fillText(t,750,y+24); });
+  },
+  finished(c,p,L){
+    c.textAlign="center"; c.fillStyle=GI.acc; c.font="900 190px " + GI_FONT; c.fillText(L.dim,GI.W/2,720);
+    c.fillStyle=GI.ink; c.font="700 78px " + GI_FONT; c.fillText("Finished size",GI.W/2,830);
+    c.fillStyle=GI.mute; c.font="600 70px " + GI_FONT; giWrap(c,"Material: "+(p.material||"Cardstock"),GI.W/2,1010,GI.W-500,90,2,"center");
+  },
+  ideas(c,p,L){
+    const cw=900, x0=(GI.W-(2*cw+60))/2; L.ideas.forEach((t,i)=>{ const x=x0+(i%2)*(cw+60), y=500+Math.floor(i/2)*190;
+      c.fillStyle=GI.card; giRR(c,x,y,cw,150,30); c.fill(); c.strokeStyle=GI.line; c.lineWidth=4; c.stroke();
+      c.fillStyle=GI.acc; c.beginPath(); c.arc(x+70,y+75,22,0,Math.PI*2); c.fill();
+      c.fillStyle=GI.ink; c.font="700 54px " + GI_FONT; c.textAlign="left"; giWrap(c,t,x+120,y+70,cw-160,60,2); });
+  },
+  assembly(c,p,L){
+    const steps=[["1","Download","Instant access to your files"],["2","Cut","Upload the SVG and cut your material"],["3","Score & fold","Follow the dashed lines"],["4","Assemble","Glue or tuck the tabs in place"]];
+    const cw=490, gap=45, x0=(GI.W-(4*cw+3*gap))/2;
+    steps.forEach((s,i)=>{ const x=x0+i*(cw+gap), y=520; c.fillStyle=GI.card; giRR(c,x,y,cw,700,36); c.fill(); c.strokeStyle=GI.line; c.lineWidth=4; c.stroke();
+      c.fillStyle=GI.acc; c.beginPath(); c.arc(x+cw/2,y+150,90,0,Math.PI*2); c.fill();
+      c.fillStyle="#fff"; c.font="900 100px " + GI_FONT; c.textAlign="center"; c.fillText(s[0],x+cw/2,y+185);
+      c.fillStyle=GI.ink; c.font="800 64px " + GI_FONT; c.fillText(s[1],x+cw/2,y+370);
+      c.fillStyle=GI.mute; c.font="500 46px " + GI_FONT; giWrap(c,s[2],x+cw/2,y+450,cw-70,58,4,"center"); });
+  },
+  promo(c,p,L){
+    c.textAlign="center"; c.fillStyle=GI.acc; c.font="900 190px " + GI_FONT; c.fillText("INSTANT",GI.W/2,620); c.fillText("DOWNLOAD",GI.W/2,830);
+    c.fillStyle=GI.ink; c.font="800 90px " + GI_FONT; giWrap(c,p.name,GI.W/2,1020,GI.W-400,104,2,"center");
+    c.fillStyle=GI.mute; c.font="600 60px " + GI_FONT; giWrap(c,"Digital file only — no physical item will be shipped",GI.W/2,1260,GI.W-500,76,2,"center");
+  }
+};
+const GI_TITLES = {
+  hero:null, dims:["Dimensions","Exact finished size"], template:["Cutting Template","Ready-to-cut layout"], formats:["File Formats Included","One download, every format"],
+  machines:["Compatible Machines","Cricut • Silhouette • Laser"], included:["What's Included",""], finished:["Size & Material",""], ideas:["Perfect For",""], assembly:["Easy Assembly","4 simple steps"], promo:null
+};
+async function giSvgImage(p){
+  const v = p.files && p.files.svg; if(!v) return null;
+  try{
+    const b = await blobGet(v.key); if(!b) return null;
+    const url = URL.createObjectURL(new Blob([b],{type:"image/svg+xml"}));
+    return await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=url; });
+  }catch(e){ return null; }
+}
+async function generateListingImages(overwrite){
+  const p = cur(); if(!p) return;
+  const targets = IMG_SLOTS.filter(s => overwrite || !p.images[s.k]);
+  if(!targets.length) return toast("همه‌ی ۱۰ تصویر پر هستند — برای جایگزینی از «ساخت دوباره‌ی همه» استفاده کن.");
+  if(overwrite && !confirm("تصویرهای فعلی همه‌ی اسلات‌ها با تصویرهای خودکار جایگزین بشن؟")) return;
+  toast("⏳ در حال ساخت تصویرها...");
+  const shop = (typeof getShopName === "function" ? getShopName() : "") || "Shop";
+  let logo = null; if(S.brandLogoDataUrl){ try{ logo = await loadImage(S.brandLogoDataUrl); }catch(e){} }
+  const svgImg = await giSvgImage(p), L = giList(p), cv = document.createElement("canvas"); cv.width = GI.W; cv.height = GI.H;
+  const c = cv.getContext("2d"); c.direction = "ltr";
+  let n = 0;
+  for(const s of targets){
+    c.setLineDash([]); c.textBaseline = "alphabetic";
+    const t = GI_TITLES[s.k];
+    giFrame(c, t ? t[0] : "", t ? t[1] : "", shop, logo);
+    GI_DRAW[s.k](c,p,L,svgImg);
+    const blob = await new Promise(r => cv.toBlob(r,"image/jpeg",0.92));
+    const file = new File([blob], s.f + ".jpg", {type:"image/jpeg"});
+    const key = p.id + ":images:" + s.k;
+    await blobPut(key, file);
+    p.images[s.k] = {name:file.name, size:file.size, type:file.type, key};
+    const i = IMG_SLOTS.findIndex(x => x.k === s.k), raw = altRaw(p);
+    if(i >= 0 && !raw[i]){ raw[i] = ALT_DEFAULTS[s.k]; p.alt = raw.join("\n"); }
+    n++;
+  }
+  save(); renderAll();
+  toast("✅ " + fa(n) + " تصویر ساخته شد" + (svgImg ? "" : " — با آپلود فایل SVG، پیش‌نمایش واقعی طرح هم داخل تصویرها می‌آید") + ".");
+}
+$("st-btnGenImgs").onclick = () => generateListingImages(false);
+$("st-btnGenImgsAll").onclick = () => generateListingImages(true);
 $("st-btnTxt").onclick = async () => {
   const txt = listingText(cur());
   try{ await navigator.clipboard.writeText(txt); toast("متن لیستینگ کپی شد."); }
