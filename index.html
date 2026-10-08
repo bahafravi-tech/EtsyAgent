@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.17.0 -->
+<!-- APP_VERSION: 1.18.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v130</div>
+        <div class="logo-badge">v131</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1674,9 +1674,11 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
         <h3>🧰 طراحی جعبه و ساخت فایل‌ها با Claude</h3>
         <p class="help">ایده‌ات را بنویس. Claude چند سؤال کوتاه می‌پرسد، جعبه را طراحی می‌کند و فایل‌های <b>SVG، DXF، PDF و راهنمای مونتاژ</b> را می‌سازد؛ عنوان، تگ، توضیحات، قیمت و ۱۰ تصویر هم خودکار پر می‌شود. در آخر فقط «ارسال کامل به Etsy» را می‌زنی.</p>
         <label class="fld"><span>ایده‌ی محصول</span><textarea id="st-dzBrief" style="min-height:90px" placeholder="مثلاً: یک جعبه‌ی هدیه‌ی کوچک برای جواهرات دست‌ساز، مناسب Cricut و لیزر"></textarea></label>
+        <label class="fld" style="max-width:380px;margin-top:8px"><span>مدل طراحی</span><select id="st-dzModel"><option value="opus">Claude Opus (سرور) — دقیق‌ترین ⭐</option><option value="sonnet">Claude Sonnet (سرور) — سریع‌تر</option><option value="app">همان مدل تنظیمات برنامه</option></select></label>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
           <button type="button" class="ghost mini" id="st-dzAsk">❓ Claude سؤال بپرسد</button>
           <button type="button" class="ghost mini" id="st-dzSkip">⚡ بدون سؤال، خودت تصمیم بگیر</button>
+          <button type="button" class="ghost mini" id="st-dzGuideBtn">📘 ساخت/به‌روزرسانی راهنمای PDF محصول فعال</button>
         </div>
         <div id="st-dzQs"></div>
         <div id="st-dzOut"></div>
@@ -8415,56 +8417,121 @@ function giOpenSlotsViewer(slotKey){
 }
 giBind2();
 /* ===================== طراحی جعبه با Claude: سؤال ← طرح ← فایل‌های SVG/DXF/PDF ← ارسال به Etsy ===================== */
-// ── کتابخانه‌ی دای‌لاین (دقیق، با کد) — Claude نوع و اندازه رو انتخاب می‌کنه؛ هندسه رو کد می‌سازه
+// ── موتور دای‌لاین نسخه‌ی ۲: «شبکه‌ی پنل/فلپ» — هر جعبه‌ی پنل‌مستطیلی (تاشو، سینی، آستین، کشویی، قفل‌دار، درب‌دار...) از روی چیدمان پنل‌ها و فلپ‌ها ساخته می‌شود؛ خط برش/تا خودکار و همیشه سازگار است
 const DL_MM = 72/25.4;
-function dlTuckEnd(L, Wd, Ht, g){
-  g = g || 12;
-  const tuckH = Math.max(10, Wd*0.95), dustH = Math.min(tuckH-2, Wd*0.5), tr = Math.min(6, L/6), tp = Math.min(6, g/2+2), Y0 = tuckH, Yb = tuckH + Ht;
-  const xF=g, xS1=g+L, xB=g+L+Wd, xS2=g+2*L+Wd, R=g+2*L+2*Wd, T=Yb+tuckH;
-  const out = [[0,Y0+tp],[g,Y0],
-    [g+1.5,Y0],[g+1.5,tr],[g+1.5+tr,0],[xS1-1.5-tr,0],[xS1-1.5,tr],[xS1-1.5,Y0],[xS1,Y0],
-    [xS1+4,Y0-dustH],[xB-4,Y0-dustH],[xB,Y0],
-    [xS2,Y0],[xS2+4,Y0-dustH],[R-4,Y0-dustH],[R,Y0],
-    [R,Yb],[R-4,Yb+dustH],[xS2+4,Yb+dustH],[xS2,Yb],
-    [xB,Yb],[xB-4,Yb+dustH],[xS1+4,Yb+dustH],[xS1,Yb],
-    [xS1-1.5,Yb],[xS1-1.5,T-tr],[xS1-1.5-tr,T],[g+1.5+tr,T],[g+1.5,T-tr],[g+1.5,Yb],[g,Yb],[0,Yb-tp]];
-  const paths = [{t:"cut", pts:out, closed:true}];
-  [xF,xS1,xB,xS2].forEach(x => paths.push({t:"score", pts:[[x,Y0],[x,Yb]]}));
-  paths.push({t:"score", pts:[[xF,Y0],[xS1,Y0]]}, {t:"score", pts:[[xS1,Y0],[xB,Y0]]}, {t:"score", pts:[[xS2,Y0],[R,Y0]]});
-  paths.push({t:"score", pts:[[xF,Yb],[xS1,Yb]]}, {t:"score", pts:[[xS1,Yb],[xB,Yb]]}, {t:"score", pts:[[xS2,Yb],[R,Yb]]});
+const dlNum = (v, lo, hi, d) => { v = Number(v); return isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d; };
+const DL_EPS = 0.05;
+function ivMerge(a){ a = a.filter(x => x[1]-x[0] > DL_EPS).sort((p,q) => p[0]-q[0]); const o = []; for(const x of a){ if(o.length && x[0] <= o[o.length-1][1]+DL_EPS) o[o.length-1][1] = Math.max(o[o.length-1][1], x[1]); else o.push([x[0],x[1]]); } return o; }
+function ivSub(base, cut){
+  let rem = [[base[0],base[1]]];
+  for(const c of cut){ const n = []; for(const r of rem){ if(c[1] <= r[0]+DL_EPS || c[0] >= r[1]-DL_EPS){ n.push(r); continue; } if(c[0] > r[0]+DL_EPS) n.push([r[0],c[0]]); if(c[1] < r[1]-DL_EPS) n.push([c[1],r[1]]); } rem = n; }
+  return rem.filter(x => x[1]-x[0] > DL_EPS);
+}
+function dlChain(segs){
+  const key = p => Math.round(p[0]*100) + "," + Math.round(p[1]*100), adj = new Map(), used = new Array(segs.length).fill(false), out = [];
+  segs.forEach((s,i) => [0,1].forEach(e => { const k = key(s[e]); if(!adj.has(k)) adj.set(k,[]); adj.get(k).push(i); }));
+  const next = k => { const l = adj.get(k) || []; for(const j of l) if(!used[j]) return j; return -1; };
+  for(let i = 0; i < segs.length; i++){
+    if(used[i]) continue; used[i] = true; const pts = [segs[i][0], segs[i][1]];
+    for(;;){ const end = pts[pts.length-1], j = next(key(end)); if(j < 0) break; used[j] = true; const s = segs[j]; pts.push(key(s[0]) === key(end) ? s[1] : s[0]); }
+    for(;;){ const st = pts[0], j = next(key(st)); if(j < 0) break; used[j] = true; const s = segs[j]; pts.unshift(key(s[0]) === key(st) ? s[1] : s[0]); }
+    const closed = pts.length > 3 && key(pts[0]) === key(pts[pts.length-1]); if(closed) pts.pop();
+    out.push({t:"cut", pts, closed});
+  }
+  return out;
+}
+// net = {panels:[{x,y,w,h}], flaps:[{panel,edge,depth,shape,from,to,gap,inset,insetStart,insetEnd,radius}]}  (میلی‌متر، محور y به پایین)
+function netBuild(net){
+  const P = (net && net.panels || []).map(p => ({x:Number(p.x), y:Number(p.y), w:Number(p.w), h:Number(p.h)}));
+  if(P.length < 1 || P.length > 24) throw new Error("تعداد پنل‌ها نامعتبر است (۱ تا ۲۴)");
+  P.forEach((p,i) => { if(![p.x,p.y,p.w,p.h].every(isFinite) || p.w < 3 || p.h < 3) throw new Error("پنل شماره‌ی " + i + " اندازه‌ی نامعتبر دارد"); });
+  for(let i = 0; i < P.length; i++) for(let j = i+1; j < P.length; j++){
+    const ox = Math.min(P[i].x+P[i].w, P[j].x+P[j].w) - Math.max(P[i].x, P[j].x), oy = Math.min(P[i].y+P[i].h, P[j].y+P[j].h) - Math.max(P[i].y, P[j].y);
+    if(ox > 0.5 && oy > 0.5) throw new Error("پنل‌های " + i + " و " + j + " روی هم افتاده‌اند (overlap)");
+  }
+  const flaps = (net.flaps || []).map((f,fi) => {
+    const pi = Number(f.panel), p = P[pi]; if(!p) throw new Error("فلپ " + fi + ": پنل " + f.panel + " وجود ندارد (شماره‌ی پنل از ۰ شروع می‌شود)");
+    const edge = String(f.edge); if(!["top","bottom","left","right"].includes(edge)) throw new Error("فلپ " + fi + ": edge نامعتبر");
+    const horiz = edge === "top" || edge === "bottom", len = horiz ? p.w : p.h, base = edge === "top" ? p.y : edge === "bottom" ? p.y+p.h : edge === "left" ? p.x : p.x+p.w;
+    const nrm = (edge === "top" || edge === "left") ? -1 : 1, start = horiz ? p.x : p.y, shape = f.shape || "trapezoid";
+    const from = dlNum(f.from, 0, len, 0), to = dlNum(f.to, from+1, len, len), gap = dlNum(f.gap != null ? f.gap : (shape === "tuck" ? 1.5 : 0), 0, (to-from)/4, 0);
+    const d = dlNum(f.depth, 2, 300, 10), s0 = from + gap, s1 = to - gap, Lh = s1 - s0;
+    let pts = [];
+    if(shape === "round" || shape === "tuck"){
+      const r = dlNum(f.radius, 0.5, Math.min(d, Lh/2), Math.min(d*0.35, 10, Lh/4));
+      pts.push([s0,0],[s0,d-r]);
+      for(let a = 1; a <= 5; a++){ const t = a/6*Math.PI/2; pts.push([s0+r-r*Math.cos(t), d-r+r*Math.sin(t)]); }
+      pts.push([s0+r,d],[s1-r,d]);
+      for(let a = 1; a <= 5; a++){ const t = a/6*Math.PI/2; pts.push([s1-r+r*Math.sin(t), d-r+r*Math.cos(t)]); }
+      pts.push([s1,d-r],[s1,0]);
+    } else if(shape === "rect") pts = [[s0,0],[s0,d],[s1,d],[s1,0]];
+    else { const ins = dlNum(f.inset, 0, Lh/2.2, Math.min(d*0.3, Lh*0.2)), iS = dlNum(f.insetStart, 0, Lh/2.2, ins), iE = dlNum(f.insetEnd, 0, Lh/2.2, ins); pts = [[s0,0],[s0+iS,d],[s1-iE,d],[s1,0]]; }
+    const xy = pts.map(q => horiz ? [start+q[0], base+nrm*q[1]] : [base+nrm*q[1], start+q[0]]);
+    return {pi, edge, horiz, a: start+s0, b: start+s1, xy};
+  });
+  const hMap = new Map(), vMap = new Map(), addScore = (map, c, a, b) => { const k = Math.round(c*100); if(!map.has(k)) map.set(k, {c, iv:[]}); map.get(k).iv.push([a,b]); };
+  const cutSegs = [];
+  const edgesOf = P.map((p,i) => [{h:true, c:p.y, a:p.x, b:p.x+p.w, side:"top"},{h:true, c:p.y+p.h, a:p.x, b:p.x+p.w, side:"bottom"},{h:false, c:p.x, a:p.y, b:p.y+p.h, side:"left"},{h:false, c:p.x+p.w, a:p.y, b:p.y+p.h, side:"right"}]);
+  P.forEach((p,i) => edgesOf[i].forEach(e => {
+    const cov = [];
+    P.forEach((q,j) => { if(j === i) return; edgesOf[j].forEach(e2 => { if(e2.h === e.h && Math.abs(e2.c-e.c) < DL_EPS){ const a = Math.max(e.a,e2.a), b = Math.min(e.b,e2.b); if(b-a > DL_EPS) cov.push([a,b]); } }); });
+    flaps.forEach(f => { if(f.pi === i && f.edge === e.side) cov.push([f.a, f.b]); });
+    const covM = ivMerge(cov);
+    covM.forEach(iv => addScore(e.h ? hMap : vMap, e.c, iv[0], iv[1]));
+    ivSub([e.a,e.b], covM).forEach(iv => cutSegs.push(e.h ? [[iv[0],e.c],[iv[1],e.c]] : [[e.c,iv[0]],[e.c,iv[1]]]));
+  }));
+  flaps.forEach(f => { for(let k = 0; k < f.xy.length-1; k++) cutSegs.push([f.xy[k], f.xy[k+1]]); });
+  const paths = dlChain(cutSegs);
+  [[hMap,true],[vMap,false]].forEach(([map,h]) => map.forEach(v => ivMerge(v.iv).forEach(iv => paths.push({t:"score", pts: h ? [[iv[0],v.c],[iv[1],v.c]] : [[v.c,iv[0]],[v.c,iv[1]]]}))));
   return paths;
 }
-function dlTray(L, Wd, Ht){
-  const a=0.12*Ht, b=0.3*Ht, X2=Ht+L, X3=L+2*Ht, Y2=Ht+Wd, Y3=Wd+2*Ht;
-  const out = [[Ht,0],[X2,0],[X2,Ht],[X2+a,b],[X3-a,b],[X3,Ht],[X3,Y2],[X3-a,Y2+Ht-b],[X2+a,Y2+Ht-b],[X2,Y2],
-    [X2,Y3],[Ht,Y3],[Ht,Y2],[Ht-a,Y2+Ht-b],[a,Y2+Ht-b],[0,Y2],[0,Ht],[a,b],[Ht-a,b],[Ht,Ht]];
-  const paths = [{t:"cut", pts:out, closed:true},
-    {t:"score", pts:[[Ht,Ht],[X2,Ht],[X2,Y2],[Ht,Y2]], closed:true},
-    {t:"score", pts:[[0,Ht],[Ht,Ht]]}, {t:"score", pts:[[X2,Ht],[X3,Ht]]},
-    {t:"score", pts:[[0,Y2],[Ht,Y2]]}, {t:"score", pts:[[X2,Y2],[X3,Y2]]}];
-  return {paths, w:X3, h:Y3};
+const dlShiftNet = (net, dx, dy, idx) => ({panels: net.panels.map(p => ({x:p.x+dx, y:p.y+dy, w:p.w, h:p.h})), flaps: (net.flaps||[]).map(f => Object.assign({}, f, {panel: f.panel + idx}))});
+const dlJoinNets = nets => { const out = {panels:[], flaps:[]}; nets.forEach(n => { const s = dlShiftNet(n, 0, 0, out.panels.length); out.panels.push(...s.panels); out.flaps.push(...s.flaps); }); return out; };
+const dlNetBounds = n => ({w: Math.max(...n.panels.map(p => p.x+p.w), ...(n.flaps||[]).map(() => 0)), h: Math.max(...n.panels.map(p => p.y+p.h))});
+// ── سبک‌های آماده (دقیق)
+function dlNetTuck(L, Wd, Ht, g){
+  g = g || 12; const tuck = Math.max(10, Wd*0.92), dust = Math.min(tuck-2, Wd*0.5), ins = Math.min(5, Wd*0.12), gi = Math.min(8, Ht*0.18);
+  const panels = [{x:0,y:0,w:L,h:Ht},{x:L,y:0,w:Wd,h:Ht},{x:L+Wd,y:0,w:L,h:Ht},{x:2*L+Wd,y:0,w:Wd,h:Ht}];
+  const flaps = [{panel:0,edge:"left",depth:g,shape:"trapezoid",insetStart:gi,insetEnd:gi},
+    {panel:0,edge:"top",depth:tuck,shape:"tuck"},{panel:0,edge:"bottom",depth:tuck,shape:"tuck"}];
+  [1,3].forEach(i => ["top","bottom"].forEach(e => flaps.push({panel:i,edge:e,depth:dust,shape:"trapezoid",inset:ins})));
+  return {panels, flaps};
 }
-function dlShift(paths, dx, dy){ return paths.map(p => ({t:p.t, closed:p.closed, pts:p.pts.map(q => [q[0]+dx, q[1]+dy])})); }
-const dlNum = (v, lo, hi, d) => { v = Number(v); return isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d; };
+function dlNetTray(L, Wd, Ht){
+  const a = Math.min(Ht*0.15, 6), tab = Ht*0.75;
+  const panels = [{x:Ht,y:Ht,w:L,h:Wd},{x:Ht,y:0,w:L,h:Ht},{x:Ht,y:Ht+Wd,w:L,h:Ht},{x:0,y:Ht,w:Ht,h:Wd},{x:Ht+L,y:Ht,w:Ht,h:Wd}];
+  const flaps = []; [3,4].forEach(i => ["top","bottom"].forEach(e => flaps.push({panel:i,edge:e,depth:tab,shape:"trapezoid",insetStart:a,insetEnd:a})));
+  return {panels, flaps};
+}
+function dlNetSleeve(A, B, Ls, g){
+  g = g || 12; const gi = Math.min(8, Ls*0.18);
+  return {panels:[{x:0,y:0,w:A,h:Ls},{x:A,y:0,w:B,h:Ls},{x:A+B,y:0,w:A,h:Ls},{x:2*A+B,y:0,w:B,h:Ls}], flaps:[{panel:0,edge:"left",depth:g,shape:"trapezoid",insetStart:gi,insetEnd:gi}]};
+}
+function dlSpecToNet(spec){
+  const L = dlNum(spec.length, 10, 400, 100), Wd = dlNum(spec.width, 10, 400, 70), Ht = dlNum(spec.height, 8, 300, 30), thk = dlNum(spec.thickness, 0.1, 3, 0.3), g = dlNum(spec.glue_flap, 6, 25, 12);
+  const style = spec.style;
+  if(style === "tuck_end") return dlNetTuck(L, Wd, Ht, g);
+  if(style === "tray_lid"){
+    const Hl = dlNum(spec.height_lid, 8, 300, Math.max(10, Ht*0.5)), gap = thk + 0.6, base = dlNetTray(L, Wd, Ht), lid = dlNetTray(L+2*gap, Wd+2*gap, Hl);
+    return dlJoinNets([base, dlShiftNet(lid, 2*Ht + L + 15, 0, 0)]);
+  }
+  if(style === "sleeve") return dlNetSleeve(Wd, Ht, L, g);
+  if(style === "drawer_sleeve"){
+    const c = 2*thk + 1, Ls = dlNum(spec.sleeve_length, 10, L, L*0.6), tray = dlNetTray(L, Wd, Ht), sleeve = dlNetSleeve(Wd+c, Ht+c, Ls, g);
+    return dlJoinNets([tray, dlShiftNet(sleeve, 2*Ht + L + 15, 0, 0)]);
+  }
+  if(style === "net"){ if(!spec.net) throw new Error("برای style=net بخش net لازم است"); return spec.net; }
+  throw new Error("نوع طرح «" + style + "» نامعتبر است — فقط tuck_end, tray_lid, sleeve, drawer_sleeve, net");
+}
 function dlBuild(spec){
-  const L = dlNum(spec.length, 10, 400, 100), Wd = dlNum(spec.width, 10, 400, 70), Ht = dlNum(spec.height, 8, 300, 30), thk = dlNum(spec.thickness, 0.1, 3, 0.3);
-  let paths;
-  if(spec.style === "tray_lid"){
-    const Hl = dlNum(spec.height_lid, 8, 300, Math.max(10, Ht*0.5)), gap = thk + 0.6;
-    const base = dlTray(L, Wd, Ht), lid = dlTray(L+2*gap, Wd+2*gap, Hl);
-    paths = base.paths.concat(dlShift(lid.paths, base.w + 15, 0));
-  } else if(spec.style === "custom" && spec.custom && Array.isArray(spec.custom.paths)){
-    paths = spec.custom.paths.map(p => ({
-      t: p.type === "score" ? "score" : "cut", closed: !!p.closed,
-      pts: (p.points||[]).filter(q => Array.isArray(q) && isFinite(q[0]) && isFinite(q[1])).map(q => [Number(q[0]), Number(q[1])])
-    })).filter(p => p.pts.length >= 2);
-    if(!paths.some(p => p.t === "cut")) throw new Error("طرح سفارشی Claude خط برش نداشت");
-  } else paths = dlTuckEnd(L, Wd, Ht, dlNum(spec.glue_flap, 6, 25, 12));
+  const net = dlSpecToNet(spec); let paths = netBuild(net);
   let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
   paths.forEach(p => p.pts.forEach(q => { x0=Math.min(x0,q[0]); y0=Math.min(y0,q[1]); x1=Math.max(x1,q[0]); y1=Math.max(y1,q[1]); }));
-  if(x1-x0 > 700 || y1-y0 > 700) throw new Error("ابعاد طرح بیش از حد بزرگ است (بیش از ۷۰۰ میلی‌متر)");
-  const M = 10;
-  return {paths: dlShift(paths, M-x0, M-y0), w: Math.ceil(x1-x0+2*M), h: Math.ceil(y1-y0+2*M)};
+  if(!isFinite(x0)) throw new Error("طرح خالی است");
+  if(x1-x0 > 800 || y1-y0 > 800) throw new Error("ابعاد طرح بیش از حد بزرگ است (بیش از ۸۰۰ میلی‌متر)");
+  const M = 10, dx = M-x0, dy = M-y0;
+  paths = paths.map(p => ({t:p.t, closed:p.closed, pts:p.pts.map(q => [q[0]+dx, q[1]+dy])}));
+  return {paths, w: Math.ceil(x1-x0+2*M), h: Math.ceil(y1-y0+2*M)};
 }
 const dlF = n => (Math.round(n*1000)/1000).toString();
 function dlSvg(d, sw){
@@ -8527,21 +8594,32 @@ function dlGuidePdf(spec, d){
   return pdfBuild(pages);
 }
 
-// ── Claude: سؤال‌ها و طرح
+// ── Claude: سؤال‌ها و طرح (نسخه‌ی ۲)
 const dzState = {brief:"", qs:[], qa:[], spec:null, dl:null};
 const dzEsc = s => String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+// مدل طراحی: «Claude سرور» (Opus/Sonnet با کلید سرور، دقیق‌تر) یا همان مدل تنظیمات برنامه
+async function dzCall(prompt, maxTokens){
+  const m = $("st-dzModel") ? $("st-dzModel").value : "app";
+  if(m !== "app" && S.contentBackendUrl){
+    const res = await fetch(crApiUrl("design_ai.php"), {method:"POST", headers: crHeaders(), body: JSON.stringify({prompt, max_tokens: maxTokens, model: m})});
+    const d = await mktParseResponse(res);
+    if(!d.text) throw new Error("پاسخ خالی از سرور");
+    return d.text;
+  }
+  if(typeof callClaude !== "function") throw new Error("موتور AI در دسترس نیست — API Key را در تنظیمات وارد کن");
+  return callClaude(prompt, maxTokens);
+}
 async function dzAsk(){
   const brief = $("st-dzBrief").value.trim();
   if(!brief) return toast("اول ایده‌ی محصول رو بنویس.");
-  if(typeof callClaude !== "function") return toast("موتور AI در دسترس نیست — API Key را در تنظیمات وارد کن.");
   dzState.brief = brief; $("st-dzOut").innerHTML = ""; $("st-dzQs").innerHTML = "<p class='help'>⏳ Claude دارد سؤال‌ها را آماده می‌کند...</p>";
   try{
     const mine = (S.products||[]).slice(0,8).map(x => x.TITLE).filter(Boolean).join(" | ");
-    const prompt = "You are a senior packaging dieline designer and an Etsy digital-template coach. A Persian-speaking seller wants to create a NEW digital product (cut files SVG/DXF/PDF for Cricut, Silhouette and laser cutters; the buyer downloads files, nothing is shipped).\n" +
+    const prompt = "You are a senior packaging engineer (dieline designer) and an Etsy digital-template coach. A Persian-speaking seller wants to create a NEW digital product (cut files SVG/DXF/PDF for Cricut, Silhouette and laser cutters; the buyer downloads files, nothing is shipped).\n" +
       "Seller idea: " + brief + "\nShop niche: " + (S.shopNicheVal||"-") + (mine ? "\nExisting listings (avoid duplicating): " + mine : "") +
-      "\n\nAsk the seller 4 to 6 SHORT questions, in Persian, that you genuinely need to finalize the box dieline and the listing (box style/closure, real size or use case, material and thickness, extras like window/handle/insert, target buyer/occasion, machines). For each question give 3 to 5 suggested answers in Persian (the seller can also type their own).\n" +
+      "\n\nAsk the seller 4 to 6 SHORT questions, in Persian, that you genuinely need to design the right box (box type and closure: tuck-end carton / two-piece lid / hinged lid / sleeve / drawer / etc., real size or use case, material and thickness, extras like window/handle/insert, target buyer/occasion, machines). For each question give 3 to 5 suggested answers in Persian (the seller can also type their own).\n" +
       'Return ONLY JSON: {"questions":[{"q":"...","options":["...","..."]}]}';
-    const d = parseJSON(await callClaude(prompt, 2500));
+    const d = parseJSON(await dzCall(prompt, 3000));
     dzState.qs = (d.questions || []).slice(0,6);
     if(!dzState.qs.length) throw new Error("Claude سؤالی برنگرداند");
     $("st-dzQs").innerHTML = dzState.qs.map((q,i) =>
@@ -8559,43 +8637,79 @@ async function dzAsk(){
     };
   }catch(e){ $("st-dzQs").innerHTML = "<p class='help' style='color:var(--cut)'>خطا: " + dzEsc(e.message) + "</p>"; }
 }
+const DZ_NET_DOC =
+"BOX GEOMETRY FORMAT — choose ONE style:\n" +
+"1) \"tuck_end\": straight-tuck-end carton (4 wall panels in a row, glue flap, tuck + dust flaps). Params: length, width, height.\n" +
+"2) \"tray_lid\": two-piece box, open tray base + separate lid. Params: length, width, height (base), height_lid.\n" +
+"3) \"sleeve\": open-ended wrap/belly band. Params: length = sleeve length, width/height = cross-section.\n" +
+"4) \"drawer_sleeve\": sliding drawer tray + sleeve. Params: length, width, height (drawer), sleeve_length.\n" +
+"5) \"net\": ANY other rectangular-panel box (hinged lid, mailer, roll-end, auto-bottom, cereal-style, gift box with attached lid, hexagon-free shapes, etc.). You design the layout yourself:\n" +
+"   net.panels = array of axis-aligned rectangles {x,y,w,h} in millimetres (origin top-left, y grows DOWN). Two panels whose edges touch share a FOLD line automatically. Panels must never overlap.\n" +
+"   net.flaps = array of {panel, edge, depth, shape, ...} where panel = 0-based index into net.panels, edge = top|bottom|left|right, depth = how far the flap extends (mm), shape = trapezoid | rect | round | tuck (tuck = rounded with a small relief gap). Optional: from/to (mm offsets along that edge, default whole edge), inset / insetStart / insetEnd (taper at the free corners, trapezoid), radius, gap.\n" +
+"   The code draws the cut outline (red) and fold lines (blue dashed) from this; so the numbers must be geometrically consistent (adjacent panels share exact edges: e.g. panel widths add up, heights equal where they touch).\n" +
+"   Example (a simple sleeve-like net): {\"panels\":[{\"x\":0,\"y\":0,\"w\":60,\"h\":40},{\"x\":60,\"y\":0,\"w\":30,\"h\":40},{\"x\":90,\"y\":0,\"w\":60,\"h\":40},{\"x\":150,\"y\":0,\"w\":30,\"h\":40}],\"flaps\":[{\"panel\":0,\"edge\":\"left\",\"depth\":12,\"shape\":\"trapezoid\"},{\"panel\":0,\"edge\":\"top\",\"depth\":28,\"shape\":\"tuck\"}]}\n" +
+"STYLE CHOICE: pick the style that truly matches what the seller asked for. Do NOT default to tuck_end. If the request needs something the engine cannot draw (curved pillow box, gable, hexagon), choose the closest rectangular alternative and say so in notes_fa.";
 async function dzDesign(feedback){
-  if(typeof callClaude !== "function") return toast("موتور AI در دسترس نیست.");
-  $("st-dzOut").innerHTML = "<p class='help'>⏳ Claude دارد جعبه را طراحی و متن لیستینگ را می‌نویسد (۳۰–۹۰ ثانیه)...</p>";
+  $("st-dzOut").innerHTML = "<p class='help'>⏳ Claude دارد جعبه را طراحی و راهنما/متن لیستینگ را می‌نویسد (۳۰ تا ۱۲۰ ثانیه)...</p>";
   try{
     const qa = dzState.qa.map(x => "Q: " + x.q + "\nA: " + x.a).join("\n");
-    const prompt = "You are a senior packaging dieline designer AND an expert Etsy SEO copywriter for digital cut-file templates (Cricut / Silhouette / Glowforge / laser).\n" +
+    const base = "You are a senior packaging engineer who designs production-quality box dielines AND an expert Etsy SEO copywriter for digital cut-file templates (Cricut / Silhouette / Glowforge / laser).\n" +
       "Seller idea: " + dzState.brief + "\n" + (qa ? "Seller answers:\n" + qa + "\n" : "No questions were asked: decide sensible defaults yourself.\n") +
-      (feedback && dzState.spec ? "\nPREVIOUS DESIGN (JSON): " + JSON.stringify(dzState.spec).slice(0,6000) + "\nSELLER FEEDBACK (apply it): " + feedback + "\n" : "") +
-      "\nDESIGN RULES:\n- style must be one of: \"tuck_end\" (straight tuck-end carton), \"tray_lid\" (two-piece tray base + lid), or \"custom\". tuck_end and tray_lid are generated by exact code from your dimensions — PREFER them. Use \"custom\" only for shapes they cannot make; then give paths in millimetres (origin top-left, one closed outer CUT outline plus SCORE lines, bounding box <= 500 mm, all fold lines consistent with the outline).\n" +
-      "- length/width/height are the FINISHED INNER box size in mm (height_lid only for tray_lid). Choose realistic sizes for the use case and material thickness; consider tolerances.\n" +
-      "- Fill every field. assembly_steps: 4-7 short English steps.\n\n" +
+      (feedback && dzState.spec ? "\nPREVIOUS DESIGN (JSON): " + JSON.stringify(dzState.spec).slice(0,7000) + "\nSELLER FEEDBACK (apply it): " + feedback + "\n" : "") +
+      "\n" + DZ_NET_DOC + "\n\n" +
+      "SIZE RULES: length/width/height are the FINISHED INNER box size in mm. Choose realistic numbers for the use case and material thickness (allow tolerances). Keep the whole sheet under ~500 mm.\n" +
+      "GUIDE: write a friendly assembly guide for buyers: guide.steps = 5-8 items {title (max 4 words), text (1-2 short sentences), tip (optional short)}; guide.tools = 4-6 items; guide.tips = 4-6 items {title, text}. Plain English, no emojis.\n\n" +
       "LISTING RULES: title in English, max 14 words and 140 chars, must start with a letter or number, no characters $ ^ ` . °, at most one each of % : &, no more than 3 ALL-CAPS words (SVG/DXF/PDF count). tags: exactly 13, each max 20 chars, no underscores. materials: up to 13 short items. price: realistic USD number for this digital template.\n" + DESC_FORMAT_RULES + "\n" +
-      "notes_fa: 2-4 Persian sentences telling the seller what was designed (style, sizes, material) and what to test-cut.\n\n" +
-      'Return ONLY JSON: {"style":"tuck_end","name":"Short English product name","category":"Packaging Template","length":100,"width":70,"height":30,"height_lid":15,"glue_flap":12,"thickness":0.3,"material":"Cardstock 250-300 gsm","machines":["Cricut","Silhouette","Glowforge"],"custom":{"paths":[{"type":"cut","closed":true,"points":[[0,0],[10,0]]}]},"assembly_steps":["..."],"price":4.5,"notes_fa":"...","listing":{"title":"...","tags":["..."],"description":"...","materials":["..."]}}';
-    const spec = parseJSON(await callClaude(prompt, 8000));
-    if(!spec.listing) throw new Error("پاسخ Claude ناقص بود (بخش listing ندارد) — دوباره امتحان کن");
-    const d = dlBuild(spec);
+      "notes_fa: 2-4 Persian sentences telling the seller what was designed (style, sizes, material, closure) and what to test-cut.\n\n" +
+      'Return ONLY JSON: {"style":"tuck_end","name":"Short English product name","category":"Packaging Template","length":100,"width":70,"height":30,"height_lid":15,"sleeve_length":60,"glue_flap":12,"thickness":0.3,"material":"Cardstock 250-300 gsm","machines":["Cricut","Silhouette","Glowforge"],"net":null,"assembly_steps":["..."],"guide":{"steps":[{"title":"...","text":"...","tip":"..."}],"tools":["..."],"tips":[{"title":"...","text":"..."}]},"price":4.5,"notes_fa":"...","listing":{"title":"...","tags":["..."],"description":"...","materials":["..."]}}';
+    let spec = null, d = null, err = "";
+    for(let attempt = 0; attempt < 2; attempt++){
+      const text = await dzCall(base + (err ? "\n\nYOUR PREVIOUS ANSWER WAS REJECTED BY THE GEOMETRY CHECKER: " + err + "\nFix this and return the full corrected JSON." : ""), 12000);
+      try{
+        spec = parseJSON(text);
+        if(!spec.listing) throw new Error("بخش listing در پاسخ نبود");
+        d = dlBuild(spec); err = ""; break;
+      }catch(e){ err = e.message; if(attempt === 1) throw new Error(err); }
+    }
     dzState.spec = spec; dzState.dl = d;
     dzRender();
   }catch(e){ $("st-dzOut").innerHTML = "<p class='help' style='color:var(--cut)'>خطا: " + dzEsc(e.message) + "</p>"; }
 }
+function dzRebuild(){
+  const s = dzState.spec; if(!s) return;
+  const num = id => Number($(id).value);
+  s.style = $("st-dzStyle").value; s.length = num("st-dzL"); s.width = num("st-dzW"); s.height = num("st-dzH");
+  if($("st-dzHl").value) s.height_lid = num("st-dzHl");
+  try{ dzState.dl = dlBuild(s); dzRender(); }catch(e){ toast("طرح ساخته نشد: " + e.message); }
+}
 function dzRender(){
-  const s = dzState.spec, d = dzState.dl, l = s.listing || {};
-  const sw = Math.max(0.5, d.w/220);
+  const s = dzState.spec, d = dzState.dl, l = s.listing || {}, sw = Math.max(0.5, d.w/220);
+  const styles = [["tuck_end","جعبه‌ی تاشو (tuck end)"],["tray_lid","سینی + درب جدا"],["sleeve","آستین (sleeve)"],["drawer_sleeve","کشویی + آستین"]].concat(s.net ? [["net","طرح اختصاصی Claude"]] : []);
   $("st-dzOut").innerHTML =
     "<div style='margin-top:14px;padding:12px;border:1px solid var(--rule);border-radius:10px'>" +
     "<h3 style='margin:0 0 8px'>🧩 طرح پیشنهادی Claude</h3>" +
-    "<div style='background:#fff;border:1px solid var(--rule);border-radius:8px;padding:8px;direction:ltr;overflow:auto'>" + dlSvg(d, sw).replace(/<\?xml[^>]*>\s*/, "").replace(/width="[\d.]+mm" height="[\d.]+mm"/, 'style="width:100%;max-height:360px"') + "</div>" +
-    "<p class='help' style='margin-top:6px'>خط قرمز = برش · خط آبی خط‌چین = تا/اسکور · اندازه‌ی کل ورق: " + fa(d.w) + "×" + fa(d.h) + " mm</p>" +
-    "<table style='font-size:13px;line-height:2;direction:rtl'><tr><td>نوع</td><td dir='ltr'>" + dzEsc(s.style) + "</td></tr><tr><td>اندازه‌ی نهایی</td><td dir='ltr'>" + dzEsc(s.length + " × " + s.width + " × " + s.height + " mm") + "</td></tr><tr><td>متریال</td><td dir='ltr'>" + dzEsc(s.material) + "</td></tr><tr><td>قیمت پیشنهادی</td><td dir='ltr'>$" + dzEsc(s.price) + "</td></tr><tr><td>عنوان</td><td dir='ltr'>" + dzEsc(l.title) + "</td></tr></table>" +
+    "<div style='background:#fff;border:1px solid var(--rule);border-radius:8px;padding:8px;direction:ltr;overflow:auto'>" + dlSvg(d, sw).replace(/<\?xml[^>]*>\s*/, "").replace(/width="[\d.]+mm" height="[\d.]+mm"/, 'style="width:100%;max-height:380px"') + "</div>" +
+    "<p class='help' style='margin-top:6px'>خط قرمز = برش · خط آبی خط‌چین = تا/اسکور · اندازه‌ی ورق: " + fa(d.w) + "×" + fa(d.h) + " mm</p>" +
+    "<canvas id='st-dz3d' width='700' height='420' style='width:100%;max-width:420px;border:1px solid var(--rule);border-radius:8px;background:#fff'></canvas>" +
+    "<p class='help'>پیش‌نمایش ۳بعدی تقریبی (جعبه‌ی بسته با ابعاد نهایی)</p>" +
+    "<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin:8px 0'>" +
+      "<label class='fld'><span>نوع</span><select id='st-dzStyle'>" + styles.map(x => "<option value='" + x[0] + "'" + (x[0] === s.style ? " selected" : "") + ">" + x[1] + "</option>").join("") + "</select></label>" +
+      "<label class='fld'><span>طول (mm)</span><input type='number' id='st-dzL' value='" + dzEsc(s.length) + "'></label>" +
+      "<label class='fld'><span>عرض (mm)</span><input type='number' id='st-dzW' value='" + dzEsc(s.width) + "'></label>" +
+      "<label class='fld'><span>ارتفاع (mm)</span><input type='number' id='st-dzH' value='" + dzEsc(s.height) + "'></label>" +
+      "<label class='fld'><span>ارتفاع درب (mm)</span><input type='number' id='st-dzHl' value='" + dzEsc(s.height_lid || "") + "'></label>" +
+    "</div>" +
+    "<table style='font-size:13px;line-height:2;direction:rtl'><tr><td>متریال</td><td dir='ltr'>" + dzEsc(s.material) + "</td></tr><tr><td>قیمت پیشنهادی</td><td dir='ltr'>$" + dzEsc(s.price) + "</td></tr><tr><td>عنوان</td><td dir='ltr'>" + dzEsc(l.title) + "</td></tr></table>" +
     "<p class='help'>" + dzEsc(s.notes_fa || "") + "</p>" +
     "<p class='help' style='color:var(--cut)'>⚠ قبل از فروش، یک بار طرح را روی کاغذ معمولی برش بزن و جعبه را سوار کن.</p>" +
-    "<div style='display:flex;gap:8px;flex-wrap:wrap;margin:8px 0'><button class='ghost mini' id='st-dzApply'>✔ ساخت فایل‌ها، تصویرها و پر کردن همه‌چیز</button></div>" +
-    "<label class='fld'><span>تغییر می‌خواهی؟ توضیح بده تا Claude اصلاح کند</span><input type='text' id='st-dzFeed' placeholder='مثلاً: ۲ سانت بلندتر، پنجره‌ی شفاف اضافه کن'></label>" +
-    "<button class='ghost mini' id='st-dzRedo' style='margin-top:6px'>🔁 اصلاح طرح</button></div>";
+    "<div style='display:flex;gap:8px;flex-wrap:wrap;margin:8px 0'><button class='ghost mini' id='st-dzApply'>✔ ساخت فایل‌ها، راهنمای PDF، تصویرها و پر کردن همه‌چیز</button></div>" +
+    "<label class='fld'><span>تغییر می‌خواهی؟ توضیح بده تا Claude اصلاح کند</span><input type='text' id='st-dzFeed' placeholder='مثلاً: درب لولایی داشته باشد، ۲ سانت بلندتر'></label>" +
+    "<button class='ghost mini' id='st-dzRedo' style='margin-top:6px'>🔁 اصلاح طرح با Claude</button></div>";
   $("st-dzApply").onclick = dzApply;
   $("st-dzRedo").onclick = () => { const f = $("st-dzFeed").value.trim(); if(!f) return toast("اول بنویس چه تغییری می‌خواهی."); dzDesign(f); };
+  ["st-dzStyle","st-dzL","st-dzW","st-dzH","st-dzHl"].forEach(id => $(id).onchange = dzRebuild);
+  try{ giApply(giGet()); const c = $("st-dz3d").getContext("2d"); c.fillStyle = "#fff"; c.fillRect(0,0,700,420);
+    giBox3dSimple(c, {name: s.name, w: Number(s.length)||100, h: Number(s.width)||70, d: Number(s.height)||30}, 620, 340, 350, 210, GI.acc, giOnAcc()); }catch(e){}
 }
 async function dzApply(){
   const s = dzState.spec, d = dzState.dl; if(!s || !d) return;
@@ -8612,6 +8726,7 @@ async function dzApply(){
   p.materials = sanitizeMaterials(l.materials || [], parseMaterials(p.materials)).join(", ");
   p.price = Number(s.price) > 0 ? Number(s.price) : 4.5;
   p.notes = "ساخته‌شده با Claude · قیمت پیشنهادی: $" + p.price + (s.notes_fa ? "\n" + s.notes_fa : "");
+  p.dzSpec = {style:s.style, length:s.length, width:s.width, height:s.height, height_lid:s.height_lid, sleeve_length:s.sleeve_length, material:s.material, name:s.name, guide:s.guide, assembly_steps:s.assembly_steps};
   const put = async (slot, blob, name) => { const key = p.id + ":files:" + slot; const f = new File([blob], name, {type: blob.type}); await blobPut(key, f); p.files[slot] = {name, size: f.size, type: f.type, key}; };
   const base = slug(p.name);
   await put("svg", new Blob([dlSvg(d)], {type:"image/svg+xml"}), base + ".svg");
@@ -8620,11 +8735,168 @@ async function dzApply(){
   await put("guide", dlGuidePdf(s, d), base + "-instructions.pdf");
   state.products.push(p); state.active = p.id; save(); renderAll();
   await generateListingImages({product:p, slots:IMG_SLOTS.map(x => x.k), overwrite:false});
+  try{ await dzBuildGuide(p); }catch(e){ console.warn("guide", e); }
   fillAlt(p, true); save(); renderAll();
   document.querySelector("#page-studio .tab[data-p='st-p-check']").click();
   toast("✅ محصول کامل ساخته شد — الان «ارسال کامل به Etsy» را بزن.");
 }
 
+/* ---------- راهنمای PDF زیبا (چندصفحه‌ای، رنگی، با تصویر) ---------- */
+function pdfStr(s){
+  const map = {"•":"\\225","–":"\\226","—":"\\227","’":"\\222","‘":"\\221","“":"\\223","”":"\\224","×":"\\327","°":"\\260","…":"\\205","✓":"v","→":"->","›":">","✔":"v","\u00A0":" "};
+  return Array.from(String(s)).map(ch => { if(ch === "\\" || ch === "(" || ch === ")") return "\\" + ch; const c = ch.charCodeAt(0); if(c >= 32 && c < 127) return ch; return map[ch] || "?"; }).join("");
+}
+function pdfW(s, size, bold){
+  let w = 0; for(const ch of String(s)){ const c = ch; w += /[ilj.,:;!|'`]/.test(c) ? 0.27 : /[ftrI]/.test(c) ? 0.33 : /[mwMW]/.test(c) ? (c === "W" || c === "M" ? 0.9 : 0.8) : /[A-Z]/.test(c) ? 0.68 : /[0-9]/.test(c) ? 0.556 : c === " " ? 0.28 : 0.52; }
+  return w * size * (bold ? 1.06 : 1);
+}
+class PdfDoc{
+  constructor(){ this.pages = []; this.images = []; this.W = 595.28; this.H = 841.89; }
+  addImage(bytes, w, h){ this.images.push({bytes, w, h}); return this.images.length-1; }
+  newPage(){ this.cur = {ops: [], imgs: new Set()}; this.pages.push(this.cur); return this; }
+  hex(h){ return g3.hex(h).map(v => (v/255).toFixed(3)).join(" "); }
+  rrPath(x, yb, w, h, r){ r = Math.min(r, w/2, h/2); const k = r*0.5523, f = v => v.toFixed(2);
+    return [x+r, yb, "m", x+w-r, yb, "l", x+w-r+k, yb, x+w, yb+r-k, x+w, yb+r, "c", x+w, yb+h-r, "l", x+w, yb+h-r+k, x+w-r+k, yb+h, x+w-r, yb+h, "c", x+r, yb+h, "l", x+r-k, yb+h, x, yb+h-r+k, x, yb+h-r, "c", x, yb+r, "l", x, yb+r-k, x+r-k, yb, x+r, yb, "c", "h"].map(v => typeof v === "number" ? f(v) : v).join(" "); }
+  rect(x, y, w, h, o){ o = o || {}; const yb = this.H - y - h, ops = this.cur.ops;
+    if(o.fill) ops.push(this.hex(o.fill) + " rg"); if(o.stroke) ops.push(this.hex(o.stroke) + " RG " + (o.lw || 1) + " w");
+    ops.push(o.r ? this.rrPath(x, yb, w, h, o.r) : x.toFixed(2) + " " + yb.toFixed(2) + " " + w.toFixed(2) + " " + h.toFixed(2) + " re");
+    ops.push(o.fill && o.stroke ? "B" : o.fill ? "f" : "S"); }
+  circle(cx, cy, r, fill){ const k = r*0.5523, y = this.H - cy, f = v => v.toFixed(2);
+    this.cur.ops.push(this.hex(fill) + " rg " + [cx+r,y,"m",cx+r,y+k,cx+k,y+r,cx,y+r,"c",cx-k,y+r,cx-r,y+k,cx-r,y,"c",cx-r,y-k,cx-k,y-r,cx,y-r,"c",cx+k,y-r,cx+r,y-k,cx+r,y,"c","f"].map(v => typeof v === "number" ? f(v) : v).join(" ")); }
+  line(x1, y1, x2, y2, color, lw, dash){ this.cur.ops.push(this.hex(color) + " RG " + (lw||1) + " w " + (dash ? "[" + dash + "] 0 d" : "[] 0 d") + " " + x1.toFixed(2) + " " + (this.H-y1).toFixed(2) + " m " + x2.toFixed(2) + " " + (this.H-y2).toFixed(2) + " l S [] 0 d"); }
+  wrap(str, width, size, bold){ const words = String(str).split(/\s+/).filter(Boolean), lines = []; let line = ""; words.forEach(w => { const t = line ? line + " " + w : w; if(pdfW(t, size, bold) > width && line){ lines.push(line); line = w; } else line = t; }); if(line) lines.push(line); return lines; }
+  // y = خط پایه‌ی اولین سطر از بالا؛ برمی‌گرداند y بعد از آخرین سطر
+  text(str, x, y, o){ o = o || {}; const size = o.size || 11, font = o.font || "F1", lh = o.lh || size*1.35, bold = font === "F2";
+    const lines = o.width ? this.wrap(str, o.width, size, bold) : [String(str)];
+    lines.forEach((ln, i) => { const w = pdfW(ln, size, bold), xx = o.align === "center" ? x - w/2 : o.align === "right" ? x - w : x;
+      this.cur.ops.push("BT /" + font + " " + size + " Tf " + this.hex(o.color || "#000000") + " rg " + xx.toFixed(2) + " " + (this.H - y - i*lh).toFixed(2) + " Td (" + pdfStr(ln) + ") Tj ET"); });
+    return y + lines.length*lh; }
+  image(idx, x, y, w, h){ this.cur.imgs.add(idx); this.cur.ops.push("q " + w.toFixed(2) + " 0 0 " + h.toFixed(2) + " " + x.toFixed(2) + " " + (this.H-y-h).toFixed(2) + " cm /Im" + idx + " Do Q"); }
+  build(){
+    const enc = new TextEncoder(), parts = []; let off = 0; const offs = [];
+    const push = d => { const b = typeof d === "string" ? enc.encode(d) : d; parts.push(b); off += b.length; };
+    const nImg = this.images.length, pageStart = 6 + nImg, total = pageStart + this.pages.length*2;
+    push("%PDF-1.4\n%\u00e2\u00e3\n");
+    const obj = (id, body) => { offs[id] = off; push(id + " 0 obj\n" + body + "\nendobj\n"); };
+    obj(1, "<< /Type /Catalog /Pages 2 0 R >>");
+    obj(2, "<< /Type /Pages /Kids [" + this.pages.map((p,i) => (pageStart + i*2) + " 0 R").join(" ") + "] /Count " + this.pages.length + " >>");
+    obj(3, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
+    obj(4, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
+    obj(5, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique /Encoding /WinAnsiEncoding >>");
+    this.images.forEach((im, i) => { const id = 6 + i; offs[id] = off; push(id + " 0 obj\n<< /Type /XObject /Subtype /Image /Width " + im.w + " /Height " + im.h + " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " + im.bytes.length + " >>\nstream\n"); push(im.bytes); push("\nendstream\nendobj\n"); });
+    this.pages.forEach((pg, i) => { const pid = pageStart + i*2, cid = pid + 1, stream = pg.ops.join("\n");
+      const xo = [...pg.imgs].map(k => "/Im" + k + " " + (6 + k) + " 0 R").join(" ");
+      obj(pid, "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + this.W.toFixed(2) + " " + this.H.toFixed(2) + "] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >>" + (xo ? " /XObject << " + xo + " >>" : "") + " >> /Contents " + cid + " 0 R >>");
+      obj(cid, "<< /Length " + enc.encode(stream).length + " >>\nstream\n" + stream + "\nendstream"); });
+    const xr = off; let x = "xref\n0 " + total + "\n0000000000 65535 f \n"; for(let i = 1; i < total; i++) x += String(offs[i]).padStart(10,"0") + " 00000 n \n";
+    push(x + "trailer\n<< /Size " + total + " /Root 1 0 R >>\nstartxref\n" + xr + "\n%%EOF");
+    return new Blob(parts, {type:"application/pdf"});
+  }
+}
+async function dzToJpeg(blobOrCanvas, maxW){
+  let src, w, h;
+  if(blobOrCanvas instanceof Blob){ src = await createImageBitmap(blobOrCanvas); w = src.width; h = src.height; } else { src = blobOrCanvas; w = src.width; h = src.height; }
+  const k = Math.min(1, maxW / w), cw = Math.round(w*k), ch = Math.round(h*k), cv = document.createElement("canvas"); cv.width = cw; cv.height = ch;
+  const c = cv.getContext("2d"); c.fillStyle = "#ffffff"; c.fillRect(0,0,cw,ch); c.drawImage(src, 0, 0, cw, ch);
+  const b = await new Promise(r => cv.toBlob(r, "image/jpeg", 0.9));
+  return {bytes: new Uint8Array(await b.arrayBuffer()), w: cw, h: ch};
+}
+async function dzBuildGuide(p){
+  const gs = giGet(); giApply(gs);
+  const spec = p.dzSpec || {name: p.name, length: p.w, width: p.h, height: p.d, material: p.material, style: p.dzStyle};
+  const pdf = new PdfDoc(), W = pdf.W, H = pdf.H, ink = GI.ink, mute = GI.mute, acc = GI.acc, teal = GI.teal;
+  const dark = giLum(GI.bg) < 120, pageBg = dark ? "#ffffff" : GI.bg, txt = "#1e2a32", softTxt = "#5b6770", accSoft = vidMix(acc, "#ffffff", 0.88), onAcc = giOnAcc();
+  const shop = (typeof getShopName === "function" ? getShopName() : "") || "";
+  const name = spec.name || p.name, dim = p.w + " × " + p.h + " × " + p.d + " mm";
+  const g = spec.guide || {};
+  let steps = (g.steps && g.steps.length) ? g.steps : (spec.assembly_steps && spec.assembly_steps.length ? spec.assembly_steps.map((t,i) => ({title: "Step " + (i+1), text: t})) : [
+    {title:"Download", text:"Download and unzip the files from your Etsy purchases page."},
+    {title:"Test cut", text:"Cut once on plain paper to check size and fit."},
+    {title:"Cut", text:"Load your material and cut using the SVG or DXF file."},
+    {title:"Score and fold", text:"Score the blue dashed lines, then fold firmly along them."},
+    {title:"Assemble", text:"Glue the tab and close the flaps to finish the box."}]);
+  steps = steps.slice(0,8).map(s => typeof s === "string" ? {title: "", text: s} : s);
+  const tools = (g.tools && g.tools.length ? g.tools : ["Cutting machine (Cricut, Silhouette, Glowforge) or craft knife","Cutting mat and scoring tool","Ruler and bone folder","Strong glue or double-sided tape"]).slice(0,6);
+  const tips = (g.tips && g.tips.length ? g.tips : [
+    {title:"Cutting settings", text:"Use a fresh blade and your machine's cardstock setting. Always test-cut first."},
+    {title:"Crisp folds", text:"Score first, then fold along the line. A bone folder gives sharp edges."},
+    {title:"Strong glue", text:"Use a thin line of strong glue on the tab and hold for 20 seconds."},
+    {title:"Resizing", text:"Scale the whole SVG proportionally in your software. Fold lines scale with it."},
+    {title:"Thicker material", text:"Thick board may crack at folds. Score deeper or use lighter paper."},
+    {title:"Need help?", text:"Message me on Etsy. I'm happy to help."}]).slice(0,6);
+  const toJ = async blob => dzToJpeg(blob, 1600);
+  let heroIdx = -1, heroAR = 0.75, tplIdx = -1, tplAR = 1;
+  const hs = p.images.hero || p.images.box3d;
+  if(hs){ const b = await blobGet(hs.key); if(b){ const j = await toJ(b); heroIdx = pdf.addImage(j.bytes, j.w, j.h); heroAR = j.h/j.w; } }
+  const svgImg = await giSvgImage(p);
+  if(svgImg){ const iw = svgImg.naturalWidth || 800, ih = svgImg.naturalHeight || 600, cv = document.createElement("canvas"); cv.width = 1800; cv.height = Math.round(1800*ih/iw);
+    const c = cv.getContext("2d"); c.fillStyle = "#fff"; c.fillRect(0,0,cv.width,cv.height); c.drawImage(svgImg,0,0,cv.width,cv.height); const j = await dzToJpeg(cv, 1800); tplIdx = pdf.addImage(j.bytes, j.w, j.h); tplAR = j.h/j.w; }
+  const pageNo = {n: 0};
+  const header = (title, sub) => { pdf.newPage(); pageNo.n++; pdf.rect(0,0,W,H,{fill:pageBg}); pdf.rect(0,0,W,96,{fill:acc}); pdf.text(title, 48, 58, {size:26, font:"F2", color:onAcc}); if(sub) pdf.text(sub, 48, 80, {size:11, color:onAcc});
+    pdf.text(shop, 48, H-28, {size:9, color:softTxt}); pdf.text(String(pageNo.n), W-48, H-28, {size:9, color:softTxt, align:"right"}); };
+  const card = (x,y,w,h) => pdf.rect(x,y,w,h,{fill:"#ffffff", stroke:"#e3e0d8", lw:0.8, r:12});
+  // ۱) جلد
+  pdf.newPage(); pageNo.n++; pdf.rect(0,0,W,H,{fill:pageBg}); pdf.rect(0,0,W,210,{fill:acc});
+  pdf.text("ASSEMBLY GUIDE", 48, 62, {size:13, font:"F2", color:onAcc});
+  pdf.text(name, 48, 112, {size:34, font:"F2", color:onAcc, width:W-96, lh:40});
+  pdf.text((spec.category || p.category || "Digital template") + "  •  Finished size " + dim, 48, 232, {size:12, color:softTxt});
+  const hw = W-96, hh = heroIdx >= 0 ? Math.min(430, hw*heroAR) : 0;
+  if(heroIdx >= 0){ pdf.rect(48,252,hw,hh+16,{fill:"#ffffff", stroke:"#e3e0d8", lw:0.8, r:14}); pdf.image(heroIdx, 56, 260, hw-16, Math.min(hh, (hw-16)*heroAR)); }
+  let fy = 252 + (heroIdx >= 0 ? hh + 52 : 20);
+  const fmts = FILE_SLOTS.filter(s => p.files[s.k]).map(s => s.k === "guide" ? "GUIDE" : s.t.toUpperCase()); let fx = 48;
+  fmts.slice(0,5).forEach(f => { const w = pdfW(f, 11, true) + 22; pdf.rect(fx, fy, w, 24, {fill:teal, r:12}); pdf.text(f, fx + w/2, fy + 16, {size:11, font:"F2", color:giOnTeal(), align:"center"}); fx += w + 8; });
+  pdf.text("Digital download — nothing physical is shipped.", 48, H-62, {size:11, color:softTxt}); pdf.text(shop, 48, H-40, {size:14, font:"F2", color:txt});
+  // ۲) قبل از شروع
+  header("Before You Start", "Everything you need in one place");
+  card(48,122,245,300); pdf.text("You will need", 64, 152, {size:15, font:"F2", color:txt});
+  let y = 180; tools.concat(spec.material ? ["Material: " + String(spec.material).split(/[,;]/)[0]] : []).forEach(t => { pdf.circle(70, y-4, 4, acc); y = pdf.text(t, 84, y, {size:11, color:txt, width:195, lh:14}) + 9; });
+  card(302,122,245,300); pdf.text("Files in your download", 318, 152, {size:15, font:"F2", color:txt});
+  const desc = {svg:"Main cut file for Cricut, Silhouette, Inkscape, Illustrator", dxf:"For laser cutters, LightBurn, Glowforge", pdf:"Print or preview the template", ai:"Editable version", studio:"Silhouette Studio file", guide:"This assembly guide"};
+  y = 180; FILE_SLOTS.filter(s => p.files[s.k]).forEach(s => { pdf.text(s.k === "guide" ? "Guide (PDF)" : s.t.toUpperCase(), 318, y, {size:11, font:"F2", color:acc}); y = pdf.text(desc[s.k] || "", 318, y+14, {size:10.5, color:softTxt, width:215, lh:13}) + 12; });
+  card(48,442,499,120); pdf.text("Reading the template", 64, 470, {size:15, font:"F2", color:txt});
+  pdf.line(64,498,134,498,"#d92d20",2.2); pdf.text("CUT — cut all the way through", 146, 502, {size:11.5, color:txt});
+  pdf.line(64,526,134,526,"#2563eb",2.2,"6 4"); pdf.text("SCORE / FOLD — score lightly, do not cut through", 146, 530, {size:11.5, color:txt});
+  pdf.rect(48,580,499,86,{fill:accSoft, r:12}); pdf.text("Pro tip", 66, 608, {size:13, font:"F2", color:acc});
+  pdf.text("Always test-cut on plain paper first to check size and fit. Cut and print at 100% scale — never use \"fit to page\".", 66, 628, {size:11.5, color:txt, width:462, lh:15});
+  // ۳) الگو
+  header("Your Template", "Sheet and finished size");
+  const tw = W-96;
+  if(tplIdx >= 0){ const th = Math.min(520, tw*tplAR), tww = th/tplAR; card(48,120,tw,th+30); pdf.image(tplIdx, 48 + (tw-tww)/2, 135, tww, th); y = 120 + th + 60; }
+  else { card(48,120,tw,120); pdf.text("Open the SVG file in your cutting software to see the template.", 64, 180, {size:12, color:softTxt}); y = 280; }
+  const sheet = svgImg && svgImg.sheet ? svgImg.sheet.w + " × " + svgImg.sheet.h + " mm" : "see SVG";
+  [["Sheet size", sheet],["Finished size", dim],["Material", String(spec.material || p.material || "Cardstock").split(/[,;]/)[0]]].forEach((r,i) => { const x = 48 + i*(tw/3); pdf.text(r[0].toUpperCase(), x, y, {size:9, font:"F2", color:acc}); pdf.text(r[1], x, y+18, {size:13, font:"F2", color:txt, width:tw/3-10, lh:16}); });
+  // ۴) مراحل
+  const perPage = 4;
+  for(let s0 = 0; s0 < steps.length; s0 += perPage){
+    header("Step by Step", steps.length > perPage ? "Steps " + (s0+1) + "–" + Math.min(steps.length, s0+perPage) : "Follow in order");
+    steps.slice(s0, s0+perPage).forEach((st, i) => { const top = 122 + i*160;
+      card(48, top, 499, 146); pdf.circle(92, top+73, 28, acc); pdf.text(String(s0+i+1), 92, top+84, {size:28, font:"F2", color:onAcc, align:"center"});
+      let yy = pdf.text(st.title || ("Step " + (s0+i+1)), 140, top+38, {size:17, font:"F2", color:txt}) ;
+      yy = pdf.text(st.text || "", 140, top+62, {size:12, color:txt, width:385, lh:16});
+      if(st.tip) { pdf.rect(140, Math.min(yy+2, top+104), 385, 28, {fill:accSoft, r:8}); pdf.text("Tip: " + st.tip, 150, Math.min(yy+2, top+104)+18, {size:10.5, font:"F3", color:acc, width:365, lh:13}); } });
+  }
+  // ۵) نکته‌ها
+  header("Tips & Troubleshooting", "Small details that make a big difference");
+  tips.forEach((t,i) => { const x = 48 + (i%2)*254, top = 122 + Math.floor(i/2)*182; card(x, top, 245, 168); pdf.rect(x, top, 245, 6, {fill:i%2 ? teal : acc, r:3});
+    pdf.text(t.title || "", x+16, top+38, {size:14, font:"F2", color:txt, width:213, lh:17}); pdf.text(t.text || "", x+16, top+64, {size:11, color:softTxt, width:213, lh:14.5}); });
+  // ۶) پایان
+  pdf.newPage(); pageNo.n++; pdf.rect(0,0,W,H,{fill:acc});
+  pdf.text("THANK YOU", W/2, 330, {size:44, font:"F2", color:onAcc, align:"center"});
+  pdf.text("for choosing " + name, W/2, 370, {size:15, color:onAcc, align:"center", width:W-120, lh:20});
+  pdf.text("If you enjoyed this template, a review on Etsy helps other makers find it.", W/2, 440, {size:12, color:onAcc, align:"center", width:W-160, lh:17});
+  pdf.text(shop, W/2, 520, {size:20, font:"F2", color:onAcc, align:"center"});
+  const blob = pdf.build(), key = p.id + ":files:guide", fname = slug(p.name) + "-assembly-guide.pdf";
+  if(p.files.guide) await blobDel(p.files.guide.key);
+  const f = new File([blob], fname, {type:"application/pdf"}); await blobPut(key, f); p.files.guide = {name: fname, size: f.size, type: f.type, key};
+  save(); renderAll();
+  return blob;
+}
+async function dzGuideForCurrent(){
+  const p = cur();
+  toast("⏳ در حال ساخت راهنمای PDF...");
+  try{ await dzBuildGuide(p); toast("✅ راهنمای PDF ساخته و در اسلات «راهنمای مونتاژ» قرار گرفت."); }
+  catch(e){ toast("خطا در ساخت راهنما: " + (e && e.message ? e.message : e)); }
+}
 // ── ارسال کامل به Etsy: پیش‌نویس + فایل‌های دیجیتال + ۱۰ تصویر با ALT
 async function studioSendToEtsy(){
   const p = cur();
@@ -8670,6 +8942,7 @@ async function studioSendToEtsy(){
     "\n\nحالا در Etsy → Shop Manager → Listings → Drafts بازش کن، بررسی کن و Publish بزن.");
 }
 if($("st-dzAsk")) $("st-dzAsk").onclick = dzAsk;
+if($("st-dzGuideBtn")) $("st-dzGuideBtn").onclick = dzGuideForCurrent;
 if($("st-dzSkip")) $("st-dzSkip").onclick = () => { const b = $("st-dzBrief").value.trim(); if(!b) return toast("اول ایده‌ی محصول رو بنویس."); dzState.brief = b; dzState.qa = []; $("st-dzQs").innerHTML = ""; dzDesign(""); };
 if($("st-btnSendEtsy")) $("st-btnSendEtsy").onclick = studioSendToEtsy;
 /* ===================== ویدیوهای لیستینگ (۲ ویدیو، ساخته‌شده در مرورگر با Canvas + MediaRecorder) ===================== */
