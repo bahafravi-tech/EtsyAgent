@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.23.0 -->
+<!-- APP_VERSION: 1.24.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v136</div>
+        <div class="logo-badge">v137</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1773,6 +1773,18 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
         <div id="st-genBlock" style="border:1px solid var(--rule);border-radius:10px;padding:12px;margin-bottom:14px">
           <h3 style="margin:0 0 6px">🎨 ساخت خودکار تصویرها (تا ۲۰ تصویر، با تم و جعبه‌ی ۳بعدی)</h3>
           <label class="fld"><span>ساخت تصویر برای کدام محصول؟</span><select id="st-gProduct"></select></label>
+          <div style="border:1px dashed var(--rule);border-radius:8px;padding:10px;margin:10px 0">
+            <b style="font-size:13px">📷 عکس‌های اصلی من (چند عکس یا رندر از محصول)</b>
+            <p class="help">عکس‌های واقعی محصولت را بده؛ اولی «تصویر اصلی» است. تصویرهای اصلی، محصول ساخته‌شده، ایده‌ها، پایانی و تشکر از روی همین عکس‌ها ساخته می‌شود (برش‌های بزرگ‌نمایی‌شده هم برای تنوع).</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+              <label class="ghost mini" style="cursor:pointer">➕ افزودن عکس‌ها<input type="file" id="st-refFile" accept="image/*" multiple hidden></label>
+              <button type="button" class="ghost mini" id="st-refPalette">🎨 رنگ تم را از عکس اصلی بگیر</button>
+            </div>
+            <div id="st-refList" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+            <div id="st-refUse" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:12.5px"><b>استفاده در:</b>
+              <label><input type="checkbox" data-ps="hero"> تصویر اصلی</label><label><input type="checkbox" data-ps="finished"> محصول ساخته‌شده</label><label><input type="checkbox" data-ps="ideas"> ایده‌ها</label><label><input type="checkbox" data-ps="promo"> پایانی</label><label><input type="checkbox" data-ps="thanks"> تشکر</label>
+            </div>
+          </div>
           <div style="margin-top:8px;font-size:13px"><b>تم (روی یکی بزن):</b></div>
           <div id="st-gThemes" style="display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px"></div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
@@ -7779,6 +7791,7 @@ $("st-btnDel").onclick = async () => {
   if(!confirm("حذف «" + p.name + "» و همه فایل‌های پیوستش؟")) return;
   for(const kind of ["files","images","videos"])
     for(const k in p[kind]) await fsDelEntry(p[kind][k]);
+  for(const e of (p.refImages || [])) await blobDel(e.key);
   state.products = state.products.filter(x => x.id !== p.id);
   state.active = state.products[0].id;
   save(); renderAll(); toast("حذف شد.");
@@ -8418,17 +8431,18 @@ function giRender(c,p,slotKey,ctx){
   c.setLineDash([]); c.textBaseline = "alphabetic"; c.direction = "ltr"; c.setTransform(1,0,0,1,0,0);
   GI_BG = ctx.bgImg || null;
   let t = GI_TITLES[slotKey];
+  if(slotKey === "finished" && giPhotoOn("finished", ctx)) t = ["Finished Product", ctx.L.dim];
   if(slotKey === "template" && p.dzStyle === "rigid_shape") t = ["All Parts Included", "12 parts: chipboard + paper"];
   else if(slotKey === "template" && ctx.svgImg && ctx.svgImg.sheet) t = ["Cutting Template", "Sheet " + ctx.svgImg.sheet.w + " × " + ctx.svgImg.sheet.h + " mm"];
   if(slotKey === "hero" && GI_OPT.hero === "center") t = [p.name, p.category || ""];
   giFrame(c, t ? t[0] : "", t ? t[1] : "", ctx.shop, ctx.logo);
-  GI_DRAW[slotKey](c,p,ctx.L,ctx.svgImg,ctx.shop,ctx.logo);
+  (giPhotoOn(slotKey, ctx) ? GI_PHOTO : GI_DRAW)[slotKey](c,p,ctx.L,ctx.svgImg,ctx.shop,ctx.logo,ctx);
 }
 async function giContext(p){
   const shop = (typeof getShopName === "function" ? getShopName() : "") || "Shop";
   const gs = giGet(); let bgImg = null;
   if(gs.bgKey){ try{ const bb = await blobGet(gs.bgKey); if(bb) bgImg = await loadImage(URL.createObjectURL(bb)); }catch(e){} }
-  return {shop, logo: await giLogo(), svgImg: await giSvgImage(p), L: giList(p), bgImg};
+  return {shop, logo: await giLogo(), svgImg: await giSvgImage(p), L: giList(p), bgImg, photos: await giLoadPhotos(p)};
 }
 async function generateListingImages(opts){
   opts = opts || {};
@@ -8586,6 +8600,7 @@ async function giImportTpl(file){
   }catch(e){ toast("این فایل قالب معتبر نیست."); }
 }
 function giUiRefresh2(){
+  if(typeof refUiRefresh === "function") refUiRefresh();
   const gs = giGet();
   $("st-gBoxStyle").value = gs.boxStyle || "auto"; $("st-gBgAlpha").value = Math.round((gs.bgAlpha == null ? 0.85 : gs.bgAlpha)*100);
   $("st-gBgInfo").textContent = gs.bgKey ? "پس‌زمینه‌ی دلخواه فعال است." : "";
@@ -9503,7 +9518,7 @@ async function vidBuild3d(p, seconds, onProgress){
 }
 async function vidBuildTour(p, seconds, onProgress){
   const gs = giGet(); giApply(gs);
-  const ctx = await giContext(p), keys = ["hero","box3d","template","formats","assembly","promo"];
+  const ctx = await giContext(p), keys = (p.refImages && p.refImages.length) ? ["hero","finished","box3d","template","formats","assembly","promo"] : ["hero","box3d","template","formats","assembly","promo"];
   const slides = keys.map(k => { const cv = document.createElement("canvas"); cv.width = GI.W; cv.height = GI.H; giRender(cv.getContext("2d"), p, k, ctx); return cv; });
   const n = slides.length, seg = seconds / n, bg = GI.bg;
   const drawSlide = (c, cv, alpha, local) => {
@@ -9557,6 +9572,91 @@ function renderVideos(){
     box.appendChild(d);
   });
 }
+/* ===================== عکس‌های اصلی من: چند عکس/رندر محصول بده تا تصویرهای دیگر از روی آن‌ها ساخته شود ===================== */
+const giPhotoCache = new Map();
+async function giLoadPhotos(p){
+  const out = [];
+  for(const e of (p.refImages || []).slice(0,6)){
+    let cv = giPhotoCache.get(e.key);
+    if(!cv){ try{ const b = await blobGet(e.key); if(!b) continue; const bmp = await createImageBitmap(b), k = Math.min(1, 1800/Math.max(bmp.width, bmp.height)); cv = document.createElement("canvas"); cv.width = Math.round(bmp.width*k); cv.height = Math.round(bmp.height*k); cv.getContext("2d").drawImage(bmp, 0, 0, cv.width, cv.height); giPhotoCache.set(e.key, cv); }catch(err){ continue; } }
+    out.push(cv);
+  }
+  return out;
+}
+const GI_PHOTO_DEFAULT = {hero:true, finished:true, ideas:true, promo:true, thanks:true};
+function giPhotoOn(slotKey, ctx){ return !!(ctx.photos && ctx.photos.length && GI_PHOTO[slotKey] && (giGet().photoSlots || GI_PHOTO_DEFAULT)[slotKey] !== false); }
+function giCover(c, img, x, y, w, h, r, zoom, fx, fy){
+  c.save(); giRR(c,x,y,w,h,r == null ? 36 : r); c.clip(); const z = zoom || 1, k = Math.max(w/img.width, h/img.height)*z, iw = img.width*k, ih = img.height*k;
+  const ox = x + (w-iw)*(fx == null ? 0.5 : fx), oy = y + (h-ih)*(fy == null ? 0.5 : fy); c.drawImage(img, ox, oy, iw, ih); c.restore();
+  c.strokeStyle = GI.line; c.lineWidth = 4; giRR(c,x,y,w,h,r == null ? 36 : r); c.stroke();
+}
+function giPhotoBg(c, img){ const k = Math.max(GI.W/img.width, GI.H/img.height), iw = img.width*k, ih = img.height*k; c.drawImage(img, (GI.W-iw)/2, (GI.H-ih)/2, iw, ih); c.fillStyle = "rgba(10,10,14,0.5)"; c.fillRect(0,0,GI.W,GI.H); }
+const GI_PHOTO = {
+  hero(c,p,L,svg,shop,logo,ctx){
+    const ph = ctx.photos, pillF = "800 64px " + GI_FONT; let x = 140;
+    L.fmts.slice(0,3).forEach(s => { x += giPill(c, s.k === "guide" ? "GUIDE" : s.t.toUpperCase(), x, 140, pillF, giOnTeal(), GI.teal) + 24; });
+    c.fillStyle = GI.ink; c.font = "800 150px " + GI_FONT; c.textAlign = "left"; const y = giWrap(c, p.name, 140, 410, 2100, 166, 2);
+    c.fillStyle = GI.mute; c.font = "600 72px " + GI_FONT; c.fillText((p.category || "Template") + " • " + L.dim, 140, y + 6);
+    const top = y + 60, h = GI.H - 170 - 50 - top, hh = (h-30)/2;
+    giCover(c, ph[0], 140, top, 1480, h, 44);
+    giPreviewCard(c, 1660, top, 600, hh, svg, p);
+    giCard(c, 1660, top + hh + 30, 600, hh, 36); giBox3dSimple(c, p, 520, hh-70, 1960, top + hh + 30 + hh/2, GI.acc, giOnAcc());
+  },
+  finished(c,p,L,svg,shop,logo,ctx){
+    const ph = ctx.photos.slice(0,4), x0 = 140, y0 = 560, W = 2120, H = 1010, g = 40;
+    if(ph.length === 1) giCover(c, ph[0], x0, y0, W, H, 44);
+    else if(ph.length === 2){ giCover(c, ph[0], x0, y0, (W-g)/2, H, 44); giCover(c, ph[1], x0+(W+g)/2, y0, (W-g)/2, H, 44); }
+    else if(ph.length === 3){ giCover(c, ph[0], x0, y0, W*0.6, H, 44); giCover(c, ph[1], x0+W*0.6+g, y0, W*0.4-g, (H-g)/2, 44); giCover(c, ph[2], x0+W*0.6+g, y0+(H+g)/2, W*0.4-g, (H-g)/2, 44); }
+    else ph.forEach((im,i) => giCover(c, im, x0+(i%2)*(W+g)/2, y0+Math.floor(i/2)*(H+g)/2, (W-g)/2, (H-g)/2, 44));
+  },
+  ideas(c,p,L,svg,shop,logo,ctx){
+    const ph = ctx.photos, cw = 1040, ch = 480, g = 40, x0 = (GI.W-(2*cw+g))/2, foc = [[0.5,0.5],[0.25,0.35],[0.75,0.65],[0.5,0.2]];
+    L.ideas.slice(0,4).forEach((t,i) => { const x = x0+(i%2)*(cw+g), y = 540+Math.floor(i/2)*(ch+g), im = ph[i % ph.length], zoomed = i >= ph.length;
+      giCover(c, im, x, y, cw, ch, 36, zoomed ? 1.9 : 1, zoomed ? foc[i%4][0] : 0.5, zoomed ? foc[i%4][1] : 0.5);
+      c.fillStyle = "rgba(10,10,14,0.58)"; c.save(); giRR(c,x,y,cw,ch,36); c.clip(); c.fillRect(x, y+ch-110, cw, 110); c.restore();
+      c.fillStyle = "#ffffff"; c.font = "800 64px " + GI_FONT; c.textAlign = "left"; giWrap(c, t, x+36, y+ch-38, cw-72, 70, 1); });
+  },
+  promo(c,p,L,svg,shop,logo,ctx){
+    giPhotoBg(c, ctx.photos[ctx.photos.length > 1 ? 1 : 0]);
+    c.textAlign = "center"; c.fillStyle = "#ffffff"; c.font = "900 230px " + GI_FONT; c.fillText("INSTANT", GI.W/2, 760); c.fillText("DOWNLOAD", GI.W/2, 990);
+    c.font = "800 100px " + GI_FONT; giWrap(c, p.name, GI.W/2, 1200, GI.W-400, 118, 2, "center");
+    c.fillStyle = "rgba(255,255,255,0.85)"; c.font = "700 66px " + GI_FONT; c.fillText("Digital files only — nothing is shipped", GI.W/2, 1450);
+  },
+  thanks(c,p,L,svg,shop,logo,ctx){
+    giPhotoBg(c, ctx.photos[ctx.photos.length-1]);
+    c.textAlign = "center"; c.fillStyle = "#ffffff"; c.font = "900 260px " + GI_FONT; c.fillText("THANK YOU", GI.W/2, 860);
+    c.font = "800 96px " + GI_FONT; giWrap(c, "for choosing " + (p.name || "this template"), GI.W/2, 1040, GI.W-400, 112, 2, "center");
+    if(logo){ const lh = 200, lw = logo.width*lh/logo.height; c.drawImage(logo, (GI.W-lw)/2, 1260, lw, lh); }
+  }
+};
+/* ---------- رابط: افزودن/حذف/اصلی‌کردن عکس‌ها ---------- */
+async function refAdd(files){
+  const p = cur(); p.refImages = p.refImages || [];
+  for(const f of files){ if(!/^image\//.test(f.type)) continue; const key = p.id + ":ref:" + uid(); await blobPut(key, f); p.refImages.push({name: f.name, size: f.size, type: f.type, key}); }
+  save(); refUiRefresh(); giSig = ""; giQueuePreview(); toast("عکس‌ها اضافه شد — از «ساخت تصویرها» برای ساختن تصویرهای دیگر استفاده کن.");
+}
+async function refRemove(i){ const p = cur(), e = (p.refImages || [])[i]; if(!e) return; await blobDel(e.key); giPhotoCache.delete(e.key); p.refImages.splice(i,1); save(); refUiRefresh(); giQueuePreview(); }
+function refMakeMain(i){ const p = cur(), a = p.refImages; if(!a || !a[i]) return; a.unshift(a.splice(i,1)[0]); save(); refUiRefresh(); giQueuePreview(); }
+function refUiRefresh(){
+  const box = $("st-refList"); if(!box) return; const p = cur(), list = p.refImages || []; box.innerHTML = "";
+  list.forEach((e,i) => { const d = document.createElement("div"); d.style.cssText = "width:112px;border:1px solid var(--rule);border-radius:8px;padding:4px;text-align:center;font-size:11px" + (i === 0 ? ";outline:2px solid var(--crease)" : "");
+    d.innerHTML = "<img alt='' style='width:100%;height:80px;object-fit:cover;border-radius:6px'><div style='margin:3px 0'>" + (i === 0 ? "★ تصویر اصلی" : fa(i+1)) + "</div><div style='display:flex;gap:3px;justify-content:center'>" + (i ? "<button class='ghost mini' data-main='" + i + "'>اصلی</button>" : "") + "<button class='ghost mini' data-del='" + i + "'>✕</button></div>";
+    blobGet(e.key).then(b => { if(b) d.querySelector("img").src = URL.createObjectURL(b); });
+    d.querySelector("[data-del]").onclick = () => refRemove(i); const m = d.querySelector("[data-main]"); if(m) m.onclick = () => refMakeMain(i);
+    d.querySelector("img").style.cursor = "zoom-in"; d.querySelector("img").onclick = async () => stOpenViewer(await Promise.all(list.map(async (x,j) => ({title: (j+1) + ". " + x.name, get: async () => URL.createObjectURL(await blobGet(x.key))}))), i);
+    box.appendChild(d); });
+  if(!list.length) box.innerHTML = "<span class='help'>هنوز عکسی اضافه نشده. چند عکس یا رندر از محصولت بده (اولی = تصویر اصلی).</span>";
+  const gs = giGet(), ps = gs.photoSlots || GI_PHOTO_DEFAULT;
+  document.querySelectorAll("#st-refUse [data-ps]").forEach(cb => { cb.checked = ps[cb.dataset.ps] !== false; });
+}
+async function refPalette(){
+  const ph = await giLoadPhotos(cur()); if(!ph.length) return toast("اول یک عکس اضافه کن.");
+  const pal = giPaletteFromImage(ph[0]); if(!pal) return toast("رنگی استخراج نشد.");
+  const gs = giGet(), dark = giLum(pal.bg) < 120; Object.assign(gs, {theme: dark ? "midnight" : "cream", bg: pal.bg, ink: pal.ink, acc: pal.acc, teal: pal.teal}); save(); giSig = ""; giUiRefresh(); toast("رنگ تم از روی عکس اصلی گرفته شد.");
+}
+$("st-refFile").onchange = e => { const fl = [...e.target.files]; e.target.value = ""; if(fl.length) refAdd(fl); };
+$("st-refPalette").onclick = refPalette;
+$("st-refUse").onchange = e => { const k = e.target.dataset.ps; if(!k) return; const gs = giGet(); gs.photoSlots = Object.assign({}, GI_PHOTO_DEFAULT, gs.photoSlots || {}); gs.photoSlots[k] = e.target.checked; save(); giQueuePreview(); };
 $("st-btnTxt").onclick = async () => {
   const txt = listingText(cur());
   try{ await navigator.clipboard.writeText(txt); toast("متن لیستینگ کپی شد."); }
@@ -9578,6 +9678,7 @@ $("st-btnReset").onclick = async () => {
   for(const p of state.products)
     for(const kind of ["files","images","videos"])
       for(const k in p[kind]) { const e = p[kind][k]; if(!usedElsewhere.has(e.key)) await blobDel(e.key); for(const m of (e.more || [])) if(!usedElsewhere.has(m.key)) await blobDel(m.key); }
+  for(const pp of state.products) for(const e of (pp.refImages || [])) await blobDel(e.key);
   const b = blankProduct();
   state = {products:[b], active:b.id};
   save(); renderAll(); toast("استودیوی این فروشگاه خالی شد.");
