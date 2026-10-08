@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.27.1 -->
+<!-- APP_VERSION: 1.27.2 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v141</div>
+        <div class="logo-badge">v142</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -5215,7 +5215,8 @@ function parseMaterials(str){ return String(str||'').split(/[,;\n]/).map(s=>s.tr
 function sanitizeMaterials(list, fallback){
   const raw=Array.isArray(list)?list:parseMaterials(list);
   const clean=raw
-    .map(m=>String(m).replace(/[^\p{L}\p{N}\s\-]/gu,'').replace(/\s+/g,' ').trim().slice(0,45))
+    // Etsy فقط حرف انگلیسی، عدد و فاصله می‌پذیرد (خط‌تیره، ویرگول و حروف فارسی → «contains invalid characters»)
+    .map(m=>String(m).replace(/[^A-Za-z0-9\s]/g,' ').replace(/\s+/g,' ').trim().slice(0,45))
     .filter((m,i,a)=>m && a.findIndex(x=>x.toLowerCase()===m.toLowerCase())===i)
     .slice(0,13);
   return clean.length?clean:(fallback||[]);
