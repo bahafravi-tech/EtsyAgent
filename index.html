@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.27.0 -->
+<!-- APP_VERSION: 1.27.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v140</div>
+        <div class="logo-badge">v141</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -7994,9 +7994,14 @@ function g3Open(c,b,o,hex){
   g3Face(c,F.front,rgb,o,null); g3Face(c,F.right,rgb,o,null);
 }
 const GI_COLORWAYS = [["#d9480f","Terracotta"],["#0f766e","Teal"],["#7c3aed","Violet"],["#be185d","Rose"]];
+// نام کوتاه برای نوشتن روی درب/جعبه‌ی ۳بعدی: کلمه‌های تکراری عنوان (Cut File, SVG, Template...) حذف و حداکثر ۳ کلمه
+function giShortName(n){
+  const w = String(n || "").split(/\s+/).filter(Boolean), keep = w.filter(x => !/^(cut|file|files|svg|dxf|pdf|template|templates|digital|download|cricut|silhouette|laser|printable|with|and|for|the|a)$/i.test(x));
+  let r = (keep.length ? keep : w).slice(0,3).join(" "); if(r.length > 22) r = r.slice(0,22).replace(/\s+\S*$/, "") || r.slice(0,22); return r || "Box";
+}
 function giBoxLabels(p,txtColor){
   return {
-    top:   g3Text(p.name || "Box", 1.0, txtColor),
+    top:   g3Text(giShortName(p.name), 1.0, txtColor),
     front: g3Text((giShopName() || "Handmade"), 0.6, txtColor),
     right: g3Text(p.w + " x " + p.h + " x " + p.d + " mm", 0.55, txtColor)
   };
@@ -8168,7 +8173,7 @@ function giShape(p, k){
       return {kind:"prism", pts, H,
         verts: t => { t = t || [0,0,0]; const v = []; pts.forEach(q => { v.push([q[0]+t[0], t[1], q[1]+t[2]], [q[0]+t[0], H+t[1], q[1]+t[2]]); }); return v; },
         draw: (c,o,hex,txt,t) => { const T = t || [0,0,0]; g3Shadow(c, pts, o, T); g3PrismClosed(c, pts, hb, o, hex, null, null, T);
-          g3PrismClosed(c, lp, hl, o, vidMix(hex, "#ffffff", 0.2), txt, p.name, [T[0], T[1]+hb, T[2]]); } }; }
+          g3PrismClosed(c, lp, hl, o, vidMix(hex, "#ffffff", 0.2), txt, giShortName(p.name), [T[0], T[1]+hb, T[2]]); } }; }
   }
   const b = {L:p.w*k, W:p.h*k, H:p.d*k};
   return {kind:"box", b, H:b.H,
@@ -8278,7 +8283,7 @@ const GI_DRAW = {
       const lk = (p.w+3)/p.w, lk2 = (p.h+3)/p.h, Hl = Math.max(8, p.d*((p.dzShape && p.dzShape.lidFrac) || 0.4)), T = [p.w*0.95, 0, p.h*0.12], lidPts = so.pts.map(q => [q[0]*lk, q[1]*lk2]);
       const lidV = []; lidPts.forEach(q => lidV.push([q[0]+T[0], 0, q[1]+T[2]], [q[0]+T[0], Hl, q[1]+T[2]]));
       const o = g3FitV(so.verts().concat(lidV), 1700, 980, GI.W/2, 1070, -0.62, 0.52);
-      g3Shadow(c, so.pts, o, null); g3Shadow(c, lidPts, o, T); g3PrismOpen(c, so.pts, so.H, o, GI.acc); g3PrismClosed(c, lidPts, Hl, o, GI.teal, giOnTeal(), p.name, T); return;
+      g3Shadow(c, so.pts, o, null); g3Shadow(c, lidPts, o, T); g3PrismOpen(c, so.pts, so.H, o, GI.acc); g3PrismClosed(c, lidPts, Hl, o, GI.teal, giOnTeal(), giShortName(p.name), T); return;
     }
     const L = p.w, W = p.h, H = p.d, style = (GI_OPT.boxStyle && GI_OPT.boxStyle !== "auto") ? GI_OPT.boxStyle : (p.dzStyle === "tray_lid" ? "tray" : "tuck");
     if(style === "tray"){
@@ -8286,7 +8291,7 @@ const GI_DRAW = {
       const b1 = {L, W, H}, b2 = {L:L+4, W:W+4, H:Hl, t:[0, H+gap, -W*0.45]};
       const o = g3Fit([b1,b2],1700,980,GI.W/2,1070,-0.62,0.52);
       g3Open(c,b1,o,GI.acc);
-      g3Closed(c,b2,o,GI.teal,{top:g3Text(p.name||"Box",0.9,giOnTeal())});
+      g3Closed(c,b2,o,GI.teal,{top:g3Text(giShortName(p.name),0.9,giOnTeal())});
     } else {
       // جعبه‌ی تاشو با درب بازشده (flap)
       const a = 0.35, fl = W*0.95, fy = Math.cos(a)*fl, fz = -Math.sin(a)*fl;
@@ -8294,7 +8299,7 @@ const GI_DRAW = {
       const o = g3Fit([bb],1700,980,GI.W/2,1070,-0.62,0.52);
       const rgb = g3.hex(GI.acc), flap = {n:[0,0.4,0.9], o:[-L/2,H+fy,-W/2+fz], u:[1,0,0], v:[0,-fy/fl,-fz/fl], fw:L, fh:fl};
       flap.n = [0, Math.sin(a), Math.cos(a)];
-      g3Face(c,flap,rgb,o,g3Text(p.name||"Box",0.5,giOnAcc()));
+      g3Face(c,flap,rgb,o,g3Text(giShortName(p.name),0.5,giOnAcc()));
       g3Open(c,{L,W,H},o,GI.acc);
     }
   },
@@ -9309,7 +9314,7 @@ async function rsRender3d(p){
   if(so.kind === "prism"){
     const lk = (p.w+3)/p.w, lk2 = (p.h+3)/p.h, Hl = Math.max(8, p.d*0.3), T = [p.w*0.95, 0, p.h*0.14], lidPts = so.pts.map(q => [q[0]*lk, q[1]*lk2]), lidV = []; lidPts.forEach(q => lidV.push([q[0]+T[0],0,q[1]+T[2]],[q[0]+T[0],Hl,q[1]+T[2]]));
     const o = g3FitV(so.verts().concat(lidV), W-120, H-120, W/2, H/2, -0.62, 0.52);
-    g3Shadow(c2, so.pts, o, null); g3Shadow(c2, lidPts, o, T); g3PrismOpen(c2, so.pts, so.H, o, GI.acc); g3PrismClosed(c2, lidPts, Hl, o, vidMix(GI.acc,"#ffffff",0.2), giOnAcc(), p.name, T);
+    g3Shadow(c2, so.pts, o, null); g3Shadow(c2, lidPts, o, T); g3PrismOpen(c2, so.pts, so.H, o, GI.acc); g3PrismClosed(c2, lidPts, Hl, o, vidMix(GI.acc,"#ffffff",0.2), giOnAcc(), giShortName(p.name), T);
   } else giBox3dSimple(c2, p, W-160, H-140, W/2, H/2, GI.teal, giOnTeal());
   return [await dzToJpeg(cv1, 1300), await dzToJpeg(cv2, 1300)];
 }
