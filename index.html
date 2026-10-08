@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.25.0 -->
+<!-- APP_VERSION: 1.26.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v138</div>
+        <div class="logo-badge">v139</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1779,6 +1779,8 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
               <label class="ghost mini" style="cursor:pointer">➕ افزودن عکس‌ها<input type="file" id="st-refFile" accept="image/*" multiple hidden></label>
               <button type="button" class="ghost mini" id="st-refPalette">🎨 رنگ تم را از عکس اصلی بگیر</button>
+              <label style="font-size:12.5px"><input type="checkbox" id="st-gCutout"> حذف پس‌زمینه‌ی عکس‌ها (بی‌رنگ)</label>
+              <label style="font-size:12.5px">حساسیت <input type="range" id="st-gCutTol" min="15" max="90" style="vertical-align:middle;width:100px"></label>
             </div>
             <div id="st-refList" style="display:flex;gap:8px;flex-wrap:wrap"></div>
             <div id="st-refUse" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:12.5px"><b>استفاده در:</b>
@@ -1826,6 +1828,9 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
             <label><input type="checkbox" id="st-gFooter"> نوار پایین (نام فروشگاه)</label>
             <label><input type="checkbox" id="st-gLogoOn"> لوگوی برند</label>
             <label><input type="checkbox" id="st-gPlain"> پس‌زمینه‌ی بی‌رنگ (سفید)</label>
+            <label><input type="checkbox" id="st-gCenter"> وسط‌چین (مناسب موبایل)</label>
+            <label>حاشیه‌ی امن <input type="range" id="st-gMargin" min="0" max="14" style="vertical-align:middle;width:110px"></label>
+            <label>نام روی تصویرها <input type="text" id="st-gBrand" placeholder="پیش‌فرض: نام فروشگاه" style="width:170px"></label>
             <button type="button" class="ghost mini" id="st-gReset">↺ بازنشانی تنظیمات</button>
           </div>
           <div style="margin-top:6px;font-size:13px"><b>کدام تصویرها ساخته شود؟</b>
@@ -7877,7 +7882,7 @@ const giOnTeal = () => { const [r,g,b] = g3.hex(GI.teal); return (r*0.299+g*0.58
 function giCard(c,x,y,w,h,r){ const rr = (r||36)*(GI.rScale == null ? 1 : GI.rScale); c.save(); if(GI.shadow){ c.shadowColor = "rgba(0,0,0,0.16)"; c.shadowBlur = 36; c.shadowOffsetY = 14; } c.fillStyle=GI.card; giRR(c,x,y,w,h,rr); c.fill(); c.restore(); c.strokeStyle=GI.line; c.lineWidth=4; giRR(c,x,y,w,h,rr); c.stroke(); }
 let GI_BG = null, GI_TRANSP = false;
 function giFrame(c,title,sub,shop,logo){
-  const o = GI_OPT, left = o.align === "left", tx0 = left ? 140 : GI.W/2, al = left ? "left" : "center";
+  const o = GI_OPT, left = o.align === "left" && !o.center, tx0 = left ? 140 : GI.W/2, al = left ? "left" : "center";
   if(GI_TRANSP){
   } else if(GI_BG){
     const k = Math.max(GI.W/GI_BG.width, GI.H/GI_BG.height), w = GI_BG.width*k, h = GI_BG.height*k;
@@ -7992,7 +7997,7 @@ const GI_COLORWAYS = [["#d9480f","Terracotta"],["#0f766e","Teal"],["#7c3aed","Vi
 function giBoxLabels(p,txtColor){
   return {
     top:   g3Text(p.name || "Box", 1.0, txtColor),
-    front: g3Text(((typeof getShopName === "function" ? getShopName() : "") || "Handmade"), 0.6, txtColor),
+    front: g3Text((giShopName() || "Handmade"), 0.6, txtColor),
     right: g3Text(p.w + " x " + p.h + " x " + p.d + " mm", 0.55, txtColor)
   };
 }
@@ -8178,13 +8183,15 @@ const GI_DRAW = {
   hero(c,p,L,svgImg){
     let mode = GI_OPT.hero || "combo"; const pillF = "800 64px " + GI_FONT; if((mode === "combo" || mode === "3d") && !giHas3d(p)) mode = "split";
     if(mode === "combo"){
-      let x = 140; L.fmts.slice(0,3).forEach(s => { x += giPill(c,s.k === "guide" ? "GUIDE" : s.t.toUpperCase(),x,140,pillF,giOnTeal(),GI.teal) + 24; });
-      c.fillStyle = GI.ink; c.font = "800 160px " + GI_FONT; c.textAlign = "left";
-      const y = giWrap(c,p.name,140,420,2100,176,2);
-      c.fillStyle = GI.mute; c.font = "600 76px " + GI_FONT; c.fillText((p.category || "Template") + " • " + L.dim, 140, y + 10);
+      const cen = !!GI_OPT.center, fm = L.fmts.slice(0,3), lab = s => s.k === "guide" ? "GUIDE" : s.t.toUpperCase(); c.font = pillF;
+      const ws = fm.map(s => c.measureText(lab(s)).width + 64 + 24); let x = cen ? (GI.W - (ws.reduce((a,b) => a+b,0) - 24))/2 : 140;
+      fm.forEach((s,i) => { giPill(c,lab(s),x,140,pillF,giOnTeal(),GI.teal); x += ws[i]; });
+      c.fillStyle = GI.ink; c.font = "800 160px " + GI_FONT; c.textAlign = cen ? "center" : "left";
+      const y = giWrap(c,p.name,cen ? GI.W/2 : 140,420,2100,176,2,cen ? "center" : "left");
+      c.fillStyle = GI.mute; c.font = "600 76px " + GI_FONT; c.textAlign = cen ? "center" : "left"; c.fillText((p.category || "Template") + " • " + L.dim, cen ? GI.W/2 : 140, y + 10);
       giCard(c,140,y + 70,2120,GI.H - 170 - 60 - (y + 70),44);
       const cardY = y + 70, cardH = GI.H - 170 - 60 - cardY;
-      giBox3dSimple(c,p,1300,cardH-120,860,cardY + cardH/2,GI.acc,giOnAcc());
+      giBox3dSimple(c,p,cen ? 1150 : 1300,cardH-120,cen ? GI.W/2 : 860,cardY + cardH/2,GI.acc,giOnAcc());
       const iw = 700, ih = Math.min(cardH-160, 560), ix = 2260 - iw - 60, iy = cardY + cardH - ih - 60;
       giPreviewCard(c,ix,iy,iw,ih,svgImg,p);
       giPill(c,"CUT FILE INCLUDED",ix + 40,iy - 100,"800 52px " + GI_FONT,giOnAcc(),GI.acc);
@@ -8437,6 +8444,13 @@ function giList(p){
   if(ideas.length < 4) ideas = ["Wedding favors","Party gifts","Small business packaging","Holiday gift boxes","Product launches","Handmade shop packaging"];
   return { dim, fmts, machines: machines.length ? machines : ["Cricut","Silhouette","Glowforge","Laser cutter"], ideas: ideas.slice(0,8) };
 }
+function giBg(c){
+  const o = GI_OPT;
+  if(GI_BG){ const k = Math.max(GI.W/GI_BG.width, GI.H/GI_BG.height), w = GI_BG.width*k, h = GI_BG.height*k; c.drawImage(GI_BG, (GI.W-w)/2, (GI.H-h)/2, w, h); c.globalAlpha = o.bgAlpha == null ? 0.85 : o.bgAlpha; c.fillStyle = GI.bg; c.fillRect(0,0,GI.W,GI.H); c.globalAlpha = 1; }
+  else { c.fillStyle = GI.bg; c.fillRect(0,0,GI.W,GI.H); }
+  if(o.frame === "bar"){ c.fillStyle = GI.acc; c.fillRect(0,0,GI.W,28); }
+  else if(o.frame === "border"){ c.strokeStyle = GI.acc; c.lineWidth = 26; giRR(c,40,40,GI.W-80,GI.H-80,40); c.stroke(); }
+}
 // یک اسلاید رو روی canvas می‌کشه (نیاز: giApply از قبل صدا زده شده)
 function giRender(c,p,slotKey,ctx){
   if(ctx.bgImg && GI_OPT.bgMode === "full"){
@@ -8445,6 +8459,13 @@ function giRender(c,p,slotKey,ctx){
     c.setTransform(1,0,0,1,0,0); const im = ctx.bgImg, k = Math.max(GI.W/im.width, GI.H/im.height); c.drawImage(im, (GI.W-im.width*k)/2, (GI.H-im.height*k)/2, im.width*k, im.height*k);
     const sf = GI_OPT.safe || {l:6,t:6,r:6,b:6}, sx = GI.W*sf.l/100, sy = GI.H*sf.t/100, sw = GI.W*(1-(sf.l+sf.r)/100), sh = GI.H*(1-(sf.t+sf.b)/100), kk = Math.min(sw/GI.W, sh/GI.H);
     c.drawImage(tmp, sx + (sw-GI.W*kk)/2, sy + (sh-GI.H*kk)/2, GI.W*kk, GI.H*kk); return;
+  }
+  const mg = GI_OPT.margin == null ? 5 : GI_OPT.margin;
+  if(mg > 0){ // محتوا کمی کوچک‌تر و وسط، با فاصله از لبه‌ها (مناسب موبایل)
+    c.setTransform(1,0,0,1,0,0); GI_BG = ctx.bgImg || null; giBg(c);
+    const tmp = document.createElement("canvas"); tmp.width = GI.W; tmp.height = GI.H; GI_TRANSP = true;
+    try{ giRenderCore(tmp.getContext("2d"), p, slotKey, Object.assign({}, ctx, {bgImg: null})); }finally{ GI_TRANSP = false; }
+    const kk = 1 - 2*mg/100; c.drawImage(tmp, GI.W*(1-kk)/2, GI.H*(1-kk)/2, GI.W*kk, GI.H*kk); return;
   }
   giRenderCore(c,p,slotKey,ctx);
 }
@@ -8461,7 +8482,7 @@ function giRenderCore(c,p,slotKey,ctx){
   (giPhotoOn(slotKey, ctx) ? GI_PHOTO : GI_DRAW)[slotKey](c,p,ctx.L,ctx.svgImg,ctx.shop,ctx.logo,ctx);
 }
 async function giContext(p){
-  const shop = (typeof getShopName === "function" ? getShopName() : "") || "Shop";
+  const shop = giShopName() || "Shop";
   const gs = giGet(); let bgImg = null;
   if(gs.bgKey){ try{ const bb = await blobGet(gs.bgKey); if(bb) bgImg = await loadImage(URL.createObjectURL(bb)); }catch(e){} }
   return {shop, logo: await giLogo(), svgImg: await giSvgImage(p), L: giList(p), bgImg, photos: await giLoadPhotos(p)};
@@ -8625,6 +8646,7 @@ async function giImportTpl(file){
 function giUiRefresh2(){
   if(typeof refUiRefresh === "function") refUiRefresh();
   if(typeof giUiRefresh3 === "function") giUiRefresh3();
+  if(typeof giUiRefresh4 === "function") giUiRefresh4();
   const gs = giGet();
   $("st-gBoxStyle").value = gs.boxStyle || "auto"; $("st-gBgAlpha").value = Math.round((gs.bgAlpha == null ? 0.85 : gs.bgAlpha)*100);
   $("st-gBgInfo").textContent = gs.bgKey ? "پس‌زمینه‌ی دلخواه فعال است." : "";
@@ -9069,7 +9091,7 @@ async function dzBuildGuide(p){
   const spec = p.dzSpec || {name: p.name, length: p.w, width: p.h, height: p.d, material: p.material, style: p.dzStyle};
   const pdf = new PdfDoc(), W = pdf.W, H = pdf.H, ink = GI.ink, mute = GI.mute, acc = GI.acc, teal = GI.teal;
   const dark = giLum(GI.bg) < 120, pageBg = dark ? "#ffffff" : GI.bg, txt = "#1e2a32", softTxt = "#5b6770", accSoft = vidMix(acc, "#ffffff", 0.88), onAcc = giOnAcc();
-  const shop = (typeof getShopName === "function" ? getShopName() : "") || "";
+  const shop = giShopName() || "";
   const name = spec.name || p.name, dim = p.w + " × " + p.h + " × " + p.d + " mm";
   const g = spec.guide || {};
   let steps = (g.steps && g.steps.length) ? g.steps : (spec.assembly_steps && spec.assembly_steps.length ? spec.assembly_steps.map((t,i) => ({title: "Step " + (i+1), text: t})) : [
@@ -9290,7 +9312,7 @@ async function rsRender3d(p){
 async function dzBuildRigidGuide(p){
   const spec = p.dzSpec || {}, kit = rsBuild(Object.assign({}, spec, {outline: p.dzShape && p.dzShape.outline, shape: p.dzShape && p.dzShape.shape, smooth: p.dzShape && p.dzShape.smooth}));
   const gs = giGet(); giApply(gs); const unit = kit.unit, letter = unit === "in", PW = letter ? 612 : 595.28, PH = letter ? 792 : 841.89, MX = 44;
-  const pdf = new PdfDoc(PW, PH), shop = (typeof getShopName === "function" ? getShopName() : "") || "", name = spec.name || p.name;
+  const pdf = new PdfDoc(PW, PH), shop = giShopName() || "", name = spec.name || p.name;
   const dark = giLum(GI.bg) < 120, pageBg = "#ffffff", accC = GI.acc, txt = "#1e2a32", soft = "#5b6770", accSoft = vidMix(accC, "#ffffff", 0.9), line = "#e3e0d8";
   const [imgA, imgB] = await rsRender3d(p), iA = pdf.addImage(imgA.bytes, imgA.w, imgA.h), iB = pdf.addImage(imgB.bytes, imgB.w, imgB.h);
   let pageN = 0, y = 0;
@@ -9525,7 +9547,7 @@ function vidPrepText(c, p, shop, u){
 async function vidBuild3d(p, seconds, onProgress){
   const gs = giGet(); giApply(gs);
   if(!giHas3d(p)) throw new Error("برای ویدیوی ۳بعدی، اول در تنظیمات تصویرها «شکل ۳بعدی» را انتخاب کن");
-  const shop = (typeof getShopName === "function" ? getShopName() : "") || "Shop";
+  const shop = giShopName() || "Shop";
   const sh = giShape(p,1), pitch = 0.45;
   // مقیاس ثابت: کوچک‌ترین مقیاسی که در همه‌ی زاویه‌های چرخش جا می‌شود
   let sMin = 1e9; for(let a = 0; a < 12; a++) sMin = Math.min(sMin, g3FitV(sh.verts(),760,640,0,0,a*Math.PI/6,pitch).s);
@@ -9598,61 +9620,93 @@ function renderVideos(){
   });
 }
 /* ===================== عکس‌های اصلی من: چند عکس/رندر محصول بده تا تصویرهای دیگر از روی آن‌ها ساخته شود ===================== */
-const giPhotoCache = new Map();
+const giPhotoCache = new Map(), giCutCache = new Map();
+// حذف پس‌زمینه‌ی یکدست عکس (بی‌رنگ‌کردن): از لبه‌ها پر می‌کند و فقط رنگ‌های نزدیک به پس‌زمینه را شفاف می‌کند
+function giCutout(src, tol){
+  const w = src.width, h = src.height, cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+  const c = cv.getContext("2d", {willReadFrequently: true}); c.drawImage(src, 0, 0);
+  const img = c.getImageData(0,0,w,h), d = img.data, bs = [];
+  const add = (x,y) => { const i = (y*w+x)*4; bs.push([d[i],d[i+1],d[i+2]]); };
+  for(let x = 0; x < w; x += Math.max(1, w>>6)){ add(x,0); add(x,h-1); } for(let y = 0; y < h; y += Math.max(1, h>>6)){ add(0,y); add(w-1,y); }
+  const med = k => { const a = bs.map(v => v[k]).sort((x,y) => x-y); return a[a.length>>1]; }, bg = [med(0), med(1), med(2)];
+  const dist = i => Math.hypot(d[i]-bg[0], d[i+1]-bg[1], d[i+2]-bg[2]);
+  const near = bs.filter(v => Math.hypot(v[0]-bg[0], v[1]-bg[1], v[2]-bg[2]) <= tol*1.6).length/bs.length;
+  if(near < 0.85) return {cv: src, ok: false};
+  const removed = new Uint8Array(w*h), stack = [];
+  const bgLight = (bg[0]+bg[1]+bg[2])/3 > 200, soft = i => bgLight && (Math.max(d[i],d[i+1],d[i+2]) - Math.min(d[i],d[i+1],d[i+2])) < 22 && (d[i]+d[i+1]+d[i+2])/3 > 175;
+  const push = (x,y) => { const k = y*w+x; if(removed[k]) return; const i = k*4; if(dist(i) <= tol || soft(i)){ removed[k] = 1; stack.push(k); } };
+  for(let x = 0; x < w; x++){ push(x,0); push(x,h-1); } for(let y = 0; y < h; y++){ push(0,y); push(w-1,y); }
+  while(stack.length){ const k = stack.pop(), x = k % w, y = (k/w)|0; if(x > 0) push(x-1,y); if(x < w-1) push(x+1,y); if(y > 0) push(x,y-1); if(y < h-1) push(x,y+1); }
+  let gone = 0; for(let k = 0; k < w*h; k++) if(removed[k]) gone++;
+  if(gone > w*h*0.97) return {cv: src, ok: false};
+  const tol2 = tol*1.7; let x0 = w, y0 = h, x1 = 0, y1 = 0;
+  for(let k = 0; k < w*h; k++){ const i = k*4;
+    if(removed[k]){ d[i+3] = 0; continue; }
+    const x = k % w, y = (k/w)|0, nb = (x > 0 && removed[k-1]) || (x < w-1 && removed[k+1]) || (y > 0 && removed[k-w]) || (y < h-1 && removed[k+w]);
+    if(nb) d[i+3] = Math.round(255*Math.max(0, Math.min(1, (dist(i)-tol)/(tol2-tol))));
+    if(d[i+3] > 8){ if(x < x0) x0 = x; if(x > x1) x1 = x; if(y < y0) y0 = y; if(y > y1) y1 = y; } }
+  c.putImageData(img,0,0);
+  const m = 6; x0 = Math.max(0,x0-m); y0 = Math.max(0,y0-m); x1 = Math.min(w-1,x1+m); y1 = Math.min(h-1,y1+m);
+  const out = document.createElement("canvas"); out.width = x1-x0+1; out.height = y1-y0+1; out.getContext("2d").drawImage(cv, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
+  return {cv: out, ok: true};
+}
 async function giLoadPhotos(p){
-  const out = [];
+  const gs = giGet(), cut = gs.removeBg !== false, tol = gs.cutTol || 48, out = [];
   for(const e of (p.refImages || []).slice(0,6)){
     let cv = giPhotoCache.get(e.key);
     if(!cv){ try{ const b = await blobGet(e.key); if(!b) continue; const bmp = await createImageBitmap(b), k = Math.min(1, 1800/Math.max(bmp.width, bmp.height)); cv = document.createElement("canvas"); cv.width = Math.round(bmp.width*k); cv.height = Math.round(bmp.height*k); cv.getContext("2d").drawImage(bmp, 0, 0, cv.width, cv.height); giPhotoCache.set(e.key, cv); }catch(err){ continue; } }
-    out.push(cv);
+    if(cut){ const ck = e.key + "|" + tol; let r = giCutCache.get(ck); if(!r){ r = giCutout(cv, tol); giCutCache.set(ck, r); } out.push(r.cv); } else out.push(cv);
   }
   return out;
 }
 const GI_PHOTO_DEFAULT = {hero:true, finished:true, ideas:true, promo:true, thanks:true};
 function giPhotoOn(slotKey, ctx){ return !!(ctx.photos && ctx.photos.length && GI_PHOTO[slotKey] && (giGet().photoSlots || GI_PHOTO_DEFAULT)[slotKey] !== false); }
-function giCover(c, img, x, y, w, h, r, zoom, fx, fy){
-  c.save(); giRR(c,x,y,w,h,r == null ? 36 : r); c.clip(); const z = zoom || 1, k = Math.max(w/img.width, h/img.height)*z, iw = img.width*k, ih = img.height*k;
-  const ox = x + (w-iw)*(fx == null ? 0.5 : fx), oy = y + (h-ih)*(fy == null ? 0.5 : fy); c.drawImage(img, ox, oy, iw, ih); c.restore();
-  c.strokeStyle = GI.line; c.lineWidth = 4; giRR(c,x,y,w,h,r == null ? 36 : r); c.stroke();
+// عکس را کامل (بدون برش) و وسط‌چین می‌گذارد
+function giFit(c, img, x, y, w, h, pad, shadow){
+  pad = pad == null ? 30 : pad; const k = Math.min((w-2*pad)/img.width, (h-2*pad)/img.height), iw = img.width*k, ih = img.height*k;
+  c.save(); if(shadow){ c.shadowColor = "rgba(0,0,0,0.22)"; c.shadowBlur = 44; c.shadowOffsetY = 20; } c.drawImage(img, x+(w-iw)/2, y+(h-ih)/2, iw, ih); c.restore();
 }
-function giPhotoBg(c, img){ const k = Math.max(GI.W/img.width, GI.H/img.height), iw = img.width*k, ih = img.height*k; c.drawImage(img, (GI.W-iw)/2, (GI.H-ih)/2, iw, ih); c.fillStyle = "rgba(10,10,14,0.5)"; c.fillRect(0,0,GI.W,GI.H); }
+function giPhotoCard(c, img, x, y, w, h){ giCard(c, x, y, w, h, 36); giFit(c, img, x, y, w, h, 36, true); }
+function giPhotoRow(c, photos, y, h){
+  const n = Math.min(3, photos.length), g = 40, W = 2120, cw = (W-(n-1)*g)/n; photos.slice(0,n).forEach((im,i) => giPhotoCard(c, im, 140 + i*(cw+g), y, cw, h));
+}
 const GI_PHOTO = {
   hero(c,p,L,svg,shop,logo,ctx){
-    const ph = ctx.photos, pillF = "800 64px " + GI_FONT; let x = 140;
-    L.fmts.slice(0,3).forEach(s => { x += giPill(c, s.k === "guide" ? "GUIDE" : s.t.toUpperCase(), x, 140, pillF, giOnTeal(), GI.teal) + 24; });
-    c.fillStyle = GI.ink; c.font = "800 150px " + GI_FONT; c.textAlign = "left"; const y = giWrap(c, p.name, 140, 450, 2100, 166, 2);
-    c.fillStyle = GI.mute; c.font = "600 72px " + GI_FONT; c.fillText((p.category || "Template") + " • " + L.dim, 140, y + 6);
-    const top = y + 60, h = GI.H - 170 - 50 - top, hh = (h-30)/2;
-    giCover(c, ph[0], 140, top, 1480, h, 44);
-    giPreviewCard(c, 1660, top, 600, hh, svg, p);
+    const ph = ctx.photos, cen = !!GI_OPT.center, pillF = "800 64px " + GI_FONT, lab = s => s.k === "guide" ? "GUIDE" : s.t.toUpperCase(), fm = L.fmts.slice(0,3);
+    c.font = pillF; const ws = fm.map(s => c.measureText(lab(s)).width + 64 + 24); let x = cen ? (GI.W - (ws.reduce((a,b) => a+b, 0) - 24))/2 : 140;
+    fm.forEach((s,i) => { giPill(c, lab(s), x, 140, pillF, giOnTeal(), GI.teal); x += ws[i]; });
+    c.fillStyle = GI.ink; c.font = "800 150px " + GI_FONT; c.textAlign = cen ? "center" : "left"; const y = giWrap(c, p.name, cen ? GI.W/2 : 140, 450, 2100, 166, 2, cen ? "center" : "left");
+    c.fillStyle = GI.mute; c.font = "600 72px " + GI_FONT; c.textAlign = cen ? "center" : "left"; c.fillText((p.category || "Template") + " • " + L.dim, cen ? GI.W/2 : 140, y + 6);
+    const top = y + 60, h = GI.H - 170 - 50 - top;
+    if(cen){ giPhotoCard(c, ph[0], 200, top, 2000, h); return; }
+    giPhotoCard(c, ph[0], 140, top, 1480, h);
+    if(!giHas3d(p) && !ph[1]){ giPreviewCard(c, 1660, top, 600, h, svg, p); return; }
+    const hh = (h-30)/2; giPreviewCard(c, 1660, top, 600, hh, svg, p);
     if(giHas3d(p)){ giCard(c, 1660, top + hh + 30, 600, hh, 36); giBox3dSimple(c, p, 520, hh-70, 1960, top + hh + 30 + hh/2, GI.acc, giOnAcc()); }
-    else giCover(c, ph[1] || ph[0], 1660, top + hh + 30, 600, hh, 36, ph[1] ? 1 : 1.9, 0.35, 0.4);
+    else giPhotoCard(c, ph[1], 1660, top + hh + 30, 600, hh);
   },
   finished(c,p,L,svg,shop,logo,ctx){
-    const ph = ctx.photos.slice(0,4), x0 = 140, y0 = 560, W = 2120, H = 1010, g = 40;
-    if(ph.length === 1) giCover(c, ph[0], x0, y0, W, H, 44);
-    else if(ph.length === 2){ giCover(c, ph[0], x0, y0, (W-g)/2, H, 44); giCover(c, ph[1], x0+(W+g)/2, y0, (W-g)/2, H, 44); }
-    else if(ph.length === 3){ giCover(c, ph[0], x0, y0, W*0.6, H, 44); giCover(c, ph[1], x0+W*0.6+g, y0, W*0.4-g, (H-g)/2, 44); giCover(c, ph[2], x0+W*0.6+g, y0+(H+g)/2, W*0.4-g, (H-g)/2, 44); }
-    else ph.forEach((im,i) => giCover(c, im, x0+(i%2)*(W+g)/2, y0+Math.floor(i/2)*(H+g)/2, (W-g)/2, (H-g)/2, 44));
+    const ph = ctx.photos.slice(0,6), n = ph.length, x0 = 140, y0 = 560, W = 2120, H = 1010, g = 36, cols = n <= 1 ? 1 : (n === 2 || n === 4) ? 2 : 3, rows = Math.ceil(n/cols), cw = (W-(cols-1)*g)/cols, ch = (H-(rows-1)*g)/rows;
+    ph.forEach((im,i) => { const r = Math.floor(i/cols), cc = i % cols, inRow = r === rows-1 ? n - r*cols : cols, rowW = inRow*cw + (inRow-1)*g; giPhotoCard(c, im, x0 + (W-rowW)/2 + cc*(cw+g), y0 + r*(ch+g), cw, ch); });
   },
   ideas(c,p,L,svg,shop,logo,ctx){
-    const ph = ctx.photos, cw = 1040, ch = 480, g = 40, x0 = (GI.W-(2*cw+g))/2, foc = [[0.5,0.5],[0.25,0.35],[0.75,0.65],[0.5,0.2]];
-    L.ideas.slice(0,4).forEach((t,i) => { const x = x0+(i%2)*(cw+g), y = 540+Math.floor(i/2)*(ch+g), im = ph[i % ph.length], zoomed = i >= ph.length;
-      giCover(c, im, x, y, cw, ch, 36, zoomed ? 1.9 : 1, zoomed ? foc[i%4][0] : 0.5, zoomed ? foc[i%4][1] : 0.5);
-      c.fillStyle = "rgba(10,10,14,0.58)"; c.save(); giRR(c,x,y,cw,ch,36); c.clip(); c.fillRect(x, y+ch-110, cw, 110); c.restore();
-      c.fillStyle = "#ffffff"; c.font = "800 64px " + GI_FONT; c.textAlign = "left"; giWrap(c, t, x+36, y+ch-38, cw-72, 70, 1); });
+    if(ctx.photos.length < 2) return GI_DRAW.ideas(c,p,L,svg,shop,logo);
+    const ph = ctx.photos.slice(1,5), n = ph.length, cols = n === 1 ? 1 : 2, rows = Math.ceil(n/cols), g = 40, W = 2120, cw = (W-(cols-1)*g)/cols, ch = (1010-(rows-1)*g)/rows;
+    ph.forEach((im,i) => { const r = Math.floor(i/cols), cc = i % cols, inRow = r === rows-1 ? n - r*cols : cols, rowW = inRow*cw + (inRow-1)*g, x = 140 + (W-rowW)/2 + cc*(cw+g), y = 560 + r*(ch+g);
+      giCard(c, x, y, cw, ch, 36); giFit(c, im, x, y, cw, ch-120, 30, true);
+      c.fillStyle = GI.ink; c.font = "800 62px " + GI_FONT; c.textAlign = "center"; giWrap(c, L.ideas[i] || "", x+cw/2, y+ch-44, cw-60, 68, 1, "center"); });
   },
   promo(c,p,L,svg,shop,logo,ctx){
-    giPhotoBg(c, ctx.photos[ctx.photos.length > 1 ? 1 : 0]);
-    c.textAlign = "center"; c.fillStyle = "#ffffff"; c.font = "900 230px " + GI_FONT; c.fillText("INSTANT", GI.W/2, 760); c.fillText("DOWNLOAD", GI.W/2, 990);
-    c.font = "800 100px " + GI_FONT; giWrap(c, p.name, GI.W/2, 1200, GI.W-400, 118, 2, "center");
-    c.fillStyle = "rgba(255,255,255,0.85)"; c.font = "700 66px " + GI_FONT; c.fillText("Digital files only — nothing is shipped", GI.W/2, 1450);
+    c.textAlign = "center"; c.fillStyle = GI.acc; c.font = "900 190px " + GI_FONT; c.fillText("INSTANT DOWNLOAD", GI.W/2, 340);
+    c.fillStyle = GI.ink; c.font = "800 88px " + GI_FONT; giWrap(c, p.name, GI.W/2, 470, GI.W-400, 100, 1, "center");
+    giPhotoRow(c, ctx.photos, 560, 880);
+    c.fillStyle = GI.mute; c.font = "700 60px " + GI_FONT; c.fillText("Digital files only — nothing is shipped", GI.W/2, 1560);
   },
   thanks(c,p,L,svg,shop,logo,ctx){
-    giPhotoBg(c, ctx.photos[ctx.photos.length-1]);
-    c.textAlign = "center"; c.fillStyle = "#ffffff"; c.font = "900 260px " + GI_FONT; c.fillText("THANK YOU", GI.W/2, 860);
-    c.font = "800 96px " + GI_FONT; giWrap(c, "for choosing " + (p.name || "this template"), GI.W/2, 1040, GI.W-400, 112, 2, "center");
-    if(logo){ const lh = 200, lw = logo.width*lh/logo.height; c.drawImage(logo, (GI.W-lw)/2, 1260, lw, lh); }
+    c.textAlign = "center"; c.fillStyle = GI.acc; c.font = "900 220px " + GI_FONT; c.fillText("THANK YOU", GI.W/2, 360);
+    c.fillStyle = GI.ink; c.font = "800 84px " + GI_FONT; giWrap(c, "for choosing " + (p.name || "this template"), GI.W/2, 480, GI.W-400, 96, 1, "center");
+    giPhotoRow(c, ctx.photos.slice().reverse(), 560, 880);
+    c.fillStyle = GI.mute; c.font = "700 60px " + GI_FONT; c.fillText("A review helps other makers find it", GI.W/2, 1560);
   }
 };
 /* ---------- رابط: افزودن/حذف/اصلی‌کردن عکس‌ها ---------- */
@@ -9720,6 +9774,22 @@ function giBind3(){
   $("st-gAiTplFile").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if(f) giAnalyzeTemplate(f); };
 }
 giBind3();
+/* ---------- نام برند روی تصویرها، حاشیه‌ی امن/وسط‌چین (موبایل)، حذف پس‌زمینه‌ی عکس ---------- */
+function giShopName(){ const gs = (typeof giGet === "function") ? giGet() : {}; return String(gs.brandName || "").trim() || (typeof getShopName === "function" ? getShopName() : "") || ""; }
+function giUiRefresh4(){
+  const gs = giGet();
+  $("st-gBrand").value = gs.brandName || ""; $("st-gMargin").value = gs.margin == null ? 5 : gs.margin; $("st-gCenter").checked = !!gs.center;
+  $("st-gCutout").checked = gs.removeBg !== false; $("st-gCutTol").value = gs.cutTol || 48;
+}
+function giBind4(){
+  const upd = fn => () => { fn(giGet()); save(); giSig = ""; giQueuePreview(); };
+  $("st-gBrand").oninput = upd(g => { g.brandName = $("st-gBrand").value; });
+  $("st-gMargin").oninput = upd(g => { g.margin = Number($("st-gMargin").value); });
+  $("st-gCenter").onchange = upd(g => { g.center = $("st-gCenter").checked; });
+  $("st-gCutout").onchange = upd(g => { g.removeBg = $("st-gCutout").checked; });
+  $("st-gCutTol").oninput = upd(g => { g.cutTol = Number($("st-gCutTol").value); });
+}
+giBind4();
 $("st-btnTxt").onclick = async () => {
   const txt = listingText(cur());
   try{ await navigator.clipboard.writeText(txt); toast("متن لیستینگ کپی شد."); }
