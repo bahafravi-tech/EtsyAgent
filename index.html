@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.21.0 -->
+<!-- APP_VERSION: 1.22.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v134</div>
+        <div class="logo-badge">v135</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1652,6 +1652,7 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
         <button class="ghost mini" id="st-btnZip">فقط ZIP فایل محصول</button>
         <button class="ghost mini" id="st-btnTxt">کپی متن لیستینگ</button>
         <button class="ghost mini" id="st-btnMaster">ثبت به‌عنوان قالب مادر</button>
+        <label class="ghost mini" style="cursor:pointer" title="PDF (یا TXT) حاوی مشخصات محصول را بده تا اطلاعات خودکار پر شود">📄 پر کردن از فایل PDF<input type="file" id="st-pdfFile" accept=".pdf,.txt,application/pdf,text/plain" hidden></label>
         <button class="ghost mini" id="st-btnAiSeo">🤖 تولید سئو با AI</button>
         <button class="ghost mini" id="st-btnPushContent">📢 ارسال به محتوای معرفی</button>
         <button class="ghost mini cut" id="st-btnDel" style="background:transparent;color:var(--cut);border-color:var(--cut)">حذف محصول</button>
@@ -9301,6 +9302,58 @@ async function dzBuildRigidGuide(p){
   const fl = new File([blob], fname, {type:"application/pdf"}); await blobPut(key, fl); p.files.guide = {name: fname, size: fl.size, type: fl.type, key};
   save(); renderAll(); return blob;
 }
+
+/* ===================== پر کردن مشخصات محصول از روی فایل PDF (یا TXT) ===================== */
+const PDFJS_SRC = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js", PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+function pdfjsLoad(){
+  if(window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  return new Promise((res, rej) => { const s = document.createElement("script"); s.src = PDFJS_SRC; s.onload = () => { try{ window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER; res(window.pdfjsLib); }catch(e){ rej(e); } }; s.onerror = () => rej(new Error("کتابخانه‌ی خواندن PDF بارگذاری نشد (اینترنت یا دسترسی به cdnjs). متن PDF را کپی کنید و در فایل TXT بدهید.")); document.head.appendChild(s); });
+}
+async function pdfExtractText(file){
+  const lib = await pdfjsLoad(), doc = await lib.getDocument({data: new Uint8Array(await file.arrayBuffer())}).promise; let out = "";
+  for(let i = 1; i <= Math.min(doc.numPages, 30); i++){
+    const pg = await doc.getPage(i), tc = await pg.getTextContent(); let line = "", lastY = null;
+    tc.items.forEach(it => { const y = it.transform[5]; if(lastY !== null && Math.abs(y - lastY) > 3){ out += line.trim() + "\n"; line = ""; } line += it.str + " "; lastY = y; });
+    out += line.trim() + "\n\n--- صفحه " + i + " ---\n\n";
+  }
+  return out;
+}
+async function pdfFillProduct(file){
+  if(!file) return;
+  toast("⏳ در حال خواندن فایل...");
+  let text = "";
+  try{ text = /\.txt$/i.test(file.name) ? await file.text() : await pdfExtractText(file); }catch(e){ return toast("خواندن فایل ممکن نشد: " + (e && e.message ? e.message : e)); }
+  if(text.replace(/[\s\-—صفحه\d]/g, "").length < 40) return toast("از این فایل متنی بیرون نیامد (احتمالاً اسکن/عکس است). متن را در یک فایل TXT بدهید.");
+  toast("⏳ Claude دارد مشخصات را از فایل استخراج می‌کند...");
+  const prompt = "You are an Etsy listing specialist for digital cut-file templates (SVG/DXF/PDF for Cricut, Silhouette, laser). Below is the text of a document (PDF) that describes ONE product. Extract the product data and write the listing. The document may be in Persian or English; write all listing text in English.\n\nDOCUMENT TEXT:\n\"\"\"\n" + text.slice(0, 40000) + "\n\"\"\"\n\n" +
+    "RULES: use ONLY facts present in the document (never invent sizes, materials or claims). Convert every size to millimetres (1 in = 25.4 mm). If a value is missing use null. Finished size: w = length, h = width, d = height/depth of the finished product.\n" +
+    "LISTING RULES: title max 14 words and 140 chars, starts with a letter or number, no characters $ ^ ` . °, at most one each of % : &, no more than 3 ALL-CAPS words. tags: exactly 13, each max 20 chars, no underscores. materials: up to 13 short items. price: number in USD if the document states one, else null.\n" + DESC_FORMAT_RULES + "\n" +
+    'Return ONLY JSON: {"name":"short product name","code":null,"category":"...","material":"...","machines":["..."],"w":null,"h":null,"d":null,"price":null,"notes":"short Persian summary of what the document contains and anything important/missing","title":"...","tags":["..."],"description":"...","materials":["..."]}';
+  let d;
+  try{ d = parseJSON(await dzCall(prompt, 8000)); }catch(e){ return toast("استخراج با AI ناموفق بود: " + (e && e.message ? e.message : e)); }
+  let p = cur();
+  if(p.name !== "محصول تازه" || p.title || Object.keys(p.files).length || Object.keys(p.images).length){
+    if(confirm("محصول فعلی «" + p.name + "» قبلاً پر شده. برای این اطلاعات یک محصول تازه ساخته بشه؟\n(لغو = اطلاعات روی همین محصول نوشته شود)")){ p = blankProduct(); p.code = "BG-" + String(state.products.length + 1).padStart(3,"0"); state.products.push(p); state.active = p.id; }
+  }
+  const num = v => (v != null && isFinite(Number(v)) && Number(v) > 0) ? Math.round(Number(v)) : null;
+  if(d.name) p.name = String(d.name).slice(0,80);
+  if(d.code && /^[\w\-]{2,20}$/.test(String(d.code))) p.code = String(d.code);
+  if(d.category) p.category = String(d.category);
+  if(d.material) p.material = String(d.material);
+  if(Array.isArray(d.machines) && d.machines.length) p.machines = d.machines.join(" / ");
+  if(num(d.w)) p.w = num(d.w); if(num(d.h)) p.h = num(d.h); if(num(d.d)) p.d = num(d.d);
+  if(d.title) p.title = limitTitle(sanitizeEtsyTitle(d.title));
+  if(d.description) p.description = normalizeDescription(d.description);
+  if(Array.isArray(d.tags)) p.tags = d.tags.map(t => String(t).replace(/_/g," ").trim()).filter(t => t && t.length <= 20).filter((t,i,a) => a.findIndex(x => x.toLowerCase() === t.toLowerCase()) === i).slice(0,13).join(", ");
+  if(Array.isArray(d.materials) && d.materials.length) p.materials = sanitizeMaterials(d.materials, parseMaterials(p.materials)).join(", ");
+  if(Number(d.price) > 0) p.price = Number(d.price);
+  p.notes = ("از فایل «" + file.name + "»" + (d.notes ? " — " + d.notes : "") + (p.price ? "\nقیمت: $" + p.price : "")).trim();
+  fillAlt(p, true); save(); renderAll();
+  const miss = []; if(!num(d.w) || !num(d.h) || !num(d.d)) miss.push("ابعاد"); if(!(Number(d.price) > 0)) miss.push("قیمت"); if(!p.tags || p.tags.split(",").length < 13) miss.push("تگ‌ها (کمتر از ۱۳)");
+  document.querySelector("#page-studio .tab[data-p='st-p-product']").click();
+  toast("✅ مشخصات از فایل پر شد" + (miss.length ? " — ناقص: " + miss.join("، ") : "") + ". حالا فایل‌ها و تصویرها را اضافه کن.");
+}
+if($("st-pdfFile")) $("st-pdfFile").onchange = e => { const f = e.target.files[0]; e.target.value = ""; pdfFillProduct(f); };
 
 // ── ارسال کامل به Etsy: پیش‌نویس + فایل‌های دیجیتال + ۱۰ تصویر با ALT
 async function studioSendToEtsy(){
