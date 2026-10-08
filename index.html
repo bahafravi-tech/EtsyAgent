@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.27.2 -->
+<!-- APP_VERSION: 1.27.3 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v142</div>
+        <div class="logo-badge">v143</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -5383,7 +5383,7 @@ async function etsyUpdateListing(product, _isRetry){
 }
 
 // ── ارسال پیشنهاد تأییدشده به Etsy به‌صورت «پیش‌نویس» (Draft) — منتشر نمی‌شه؛ فایل و عکس‌ها رو خودت اون‌جا اضافه می‌کنی
-async function etsyCreateDraftListing(item, _isRetry){
+async function etsyCreateDraftListing(item, _isRetry, _noMat){
   if(!S.etsyApiKey||!S.etsyOAuthToken){
     alert('برای ارسال به Etsy، API Key و اتصال OAuth لازم است (تنظیمات → Etsy).'); nav('settings'); return false;
   }
@@ -5411,7 +5411,7 @@ async function etsyCreateDraftListing(item, _isRetry){
     tags
   };
   const mats=sanitizeMaterials(item.materials,[]);
-  if(mats.length) body.materials=mats;
+  if(mats.length && !_noMat){ body.materials=mats; log('ℹ️ متریال‌های ارسالی: '+mats.join(' | '),'info'); }
   log(`📤 در حال ساخت پیش‌نویس "${body.title}" روی Etsy...`,'info');
   try{
     const shopId=await resolveEtsyShopId();
@@ -5440,9 +5440,15 @@ async function etsyCreateDraftListing(item, _isRetry){
     }
     if(!_isRetry && (d.error==='invalid_token'||d.error_description==='invalid_token')){
       log('🔄 توکن منقضی شده — در حال تمدید خودکار...','warn');
-      if(await refreshEtsyOAuthToken()) return await etsyCreateDraftListing(item,true);
+      if(await refreshEtsyOAuthToken()) return await etsyCreateDraftListing(item,true,_noMat);
     }
-    log('✗ خطای Etsy: '+String(d.error||d.error_description||JSON.stringify(d)).slice(0,300),'err');
+    const errTxt=String(d.error||d.error_description||JSON.stringify(d));
+    // اگر Etsy فقط فیلد متریال را رد کرد، لیستینگ را بدون متریال بساز (بعداً دستی در Etsy اضافه می‌شود)
+    if(!_noMat && body.materials && /materials/i.test(errTxt)){
+      log('⚠ Etsy متریال‌ها را نپذیرفت — پیش‌نویس بدون متریال ساخته می‌شود؛ متریال را بعداً در خود Etsy وارد کن.','warn');
+      return await etsyCreateDraftListing(item,true,true);
+    }
+    log('✗ خطای Etsy: '+errTxt.slice(0,300),'err');
     return false;
   }catch(e){ log('✗ خطای ارسال به Etsy: '+e.message,'err'); return false; }
 }
