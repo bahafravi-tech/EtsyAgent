@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.22.0 -->
+<!-- APP_VERSION: 1.23.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v135</div>
+        <div class="logo-badge">v136</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -7504,23 +7504,34 @@ function renderFields(){
   document.querySelectorAll("[data-k]").forEach(el => { el.value = p[el.dataset.k] ?? ""; });
 }
 
+// هر جایگاه فایل می‌تواند چند فایل داشته باشد: اولی در p.files[slot]، بقیه در p.files[slot].more
+function fsAll(p, slot){ const v = p.files[slot]; if(!v) return []; const first = Object.assign({}, v); delete first.more; return [first].concat(v.more || []); }
+function fsSet(p, slot, list){ if(!list.length){ delete p.files[slot]; return; } const first = Object.assign({}, list[0]); if(list.length > 1) first.more = list.slice(1); else delete first.more; p.files[slot] = first; }
+async function fsAdd(slot, files){
+  const p = cur(), list = fsAll(p, slot);
+  for(const f of files){ const key = p.id + ":files:" + slot + ":" + uid(); await blobPut(key, f); list.push({name: f.name, size: f.size, type: f.type, key}); }
+  fsSet(p, slot, list); save(); renderAll(); toast(fa(files.length) + " فایل به جایگاه اضافه شد.");
+}
+async function fsRemove(slot, idx){ const p = cur(), list = fsAll(p, slot); if(!list[idx]) return; await blobDel(list[idx].key); list.splice(idx, 1); fsSet(p, slot, list); save(); renderAll(); }
+const fsDelEntry = async e => { if(!e) return; await blobDel(e.key); for(const m of (e.more || [])) await blobDel(m.key); };
 function renderFiles(){
   const p = cur(), box = $("st-fileSlots"); box.innerHTML = "";
   FILE_SLOTS.forEach(s => {
-    const v = p.files[s.k];
-    const d = document.createElement("div");
-    d.className = "slot" + (v ? " filled" : "");
+    const list = fsAll(p, s.k), d = document.createElement("div");
+    d.className = "slot" + (list.length ? " filled" : "");
     d.innerHTML =
-      '<div class="hd"><b>' + s.t + '</b><i>' + s.h + '</i></div>' +
-      '<div class="meta">' + (v ? esc(v.name) + '<br>' + kb(v.size) : "انتخاب نشده") + '</div>' +
+      '<div class="hd"><b>' + s.t + '</b><i>' + s.h + '</i>' + (list.length > 1 ? ' <span class="cnt">' + fa(list.length) + ' فایل</span>' : '') + '</div>' +
+      '<div class="meta" style="max-height:150px;overflow:auto">' + (list.length ? list.map((v,i) => '<div style="display:flex;gap:6px;align-items:center;justify-content:space-between;margin:2px 0"><span dir="ltr" style="text-align:left;word-break:break-all">' + esc(v.name) + ' · ' + kb(v.size) + '</span><button class="ghost mini" data-rm="' + i + '" title="حذف این فایل">✕</button></div>').join("") : "انتخاب نشده — چند فایل را با هم انتخاب یا رها کن") + '</div>' +
       '<div class="row">' +
-        '<label class="pick" tabindex="0">' + (v ? "جایگزینی" : "انتخاب فایل") +
-          '<input type="file" hidden></label>' +
-        (v ? '<button class="ghost mini" data-x="1">برداشتن</button>' : '') +
+        '<label class="pick" tabindex="0">' + (list.length ? "افزودن فایل(ها)" : "انتخاب فایل(ها)") + '<input type="file" multiple hidden></label>' +
+        (list.length ? '<button class="ghost mini" data-x="1">برداشتن همه</button>' : '') +
       '</div>';
-    d.querySelector('input[type=file]').onchange = e => pickFile("files", s.k, e.target.files[0]);
-    const x = d.querySelector('[data-x]');
-    if(x) x.onclick = () => dropSlot("files", s.k);
+    d.querySelector('input[type=file]').onchange = e => { const fl = [...e.target.files]; e.target.value = ""; if(fl.length) fsAdd(s.k, fl); };
+    d.querySelectorAll('[data-rm]').forEach(bt => bt.onclick = () => fsRemove(s.k, Number(bt.dataset.rm)));
+    const x = d.querySelector('[data-x]'); if(x) x.onclick = () => dropSlot("files", s.k);
+    d.addEventListener("dragover", e => { e.preventDefault(); d.style.outline = "2px dashed var(--crease)"; });
+    d.addEventListener("dragleave", () => { d.style.outline = ""; });
+    d.addEventListener("drop", e => { e.preventDefault(); d.style.outline = ""; const fl = [...e.dataTransfer.files]; if(fl.length) fsAdd(s.k, fl); });
     box.appendChild(d);
   });
 }
@@ -7577,7 +7588,7 @@ async function pickFile(kind, slot, file){
 }
 async function dropSlot(kind, slot){
   const p = cur(), v = p[kind][slot];
-  if(v) await blobDel(v.key);
+  if(v){ await blobDel(v.key); for(const m of (v.more || [])) await blobDel(m.key); }
   delete p[kind][slot];
   save(); renderAll();
 }
@@ -7684,9 +7695,9 @@ async function buildProductZip(p){
   const base = p.code + "-" + slug(p.name);
   const entries = [];
   for(const s of FILE_SLOTS){
-    const v = p.files[s.k]; if(!v) continue;
-    const b = await blobGet(v.key); if(!b) continue;
-    entries.push({path: base + "." + ext(v.name), data: await bytes(b)});
+    const list = fsAll(p, s.k);
+    for(const v of list){ const b = await blobGet(v.key); if(!b) continue;
+      entries.push({path: list.length > 1 ? v.name : base + "." + ext(v.name), data: await bytes(b)}); }
   }
   if(!entries.length) return null;
   // اگر دو فایل هم‌پسوند بود، نام تکراری نشود
@@ -7767,7 +7778,7 @@ $("st-btnDel").onclick = async () => {
   if(state.products.length === 1) return toast("دست‌کم یک محصول باید بماند.");
   if(!confirm("حذف «" + p.name + "» و همه فایل‌های پیوستش؟")) return;
   for(const kind of ["files","images","videos"])
-    for(const k in p[kind]) await blobDel(p[kind][k].key);
+    for(const k in p[kind]) await fsDelEntry(p[kind][k]);
   state.products = state.products.filter(x => x.id !== p.id);
   state.active = state.products[0].id;
   save(); renderAll(); toast("حذف شد.");
@@ -9356,13 +9367,31 @@ async function pdfFillProduct(file){
 if($("st-pdfFile")) $("st-pdfFile").onchange = e => { const f = e.target.files[0]; e.target.value = ""; pdfFillProduct(f); };
 
 // ── ارسال کامل به Etsy: پیش‌نویس + فایل‌های دیجیتال + ۱۰ تصویر با ALT
+async function fsEtsyPayload(p){
+  const items = []; // {t,name,blob}
+  const zipOf = async (list, zname) => { const used = {}, entries = []; for(const v of list){ const b = await blobGet(v.key); if(!b) continue; let nm = v.name; if(used[nm]) nm = nm.replace(/(\.[^.]+)$/, "-" + (++used[v.name]) + "$1"); else used[nm] = 1; entries.push({path: nm, data: await bytes(b)}); } return new File([makeZip(entries)], zname, {type:"application/zip"}); };
+  const slots = FILE_SLOTS.map(s => ({s, list: fsAll(p, s.k)})).filter(x => x.list.length);
+  const total = slots.reduce((a,x) => a + x.list.length, 0), base = slug(p.name);
+  if(total <= 5){ for(const x of slots) for(const v of x.list){ const b = await blobGet(v.key); if(b) items.push({t: x.s.t, name: v.name, blob: b}); } return items; }
+  for(const x of slots){
+    if(x.list.length > 1){ const f = await zipOf(x.list, base + "-" + x.s.t.replace(/\W+/g,"") + "-files.zip"); items.push({t: x.s.t + " (ZIP)", name: f.name, blob: f}); }
+    else { const b = await blobGet(x.list[0].key); if(b) items.push({t: x.s.t, name: x.list[0].name, blob: b}); }
+  }
+  if(items.length > 5){
+    const guide = slots.find(x => x.s.k === "guide"), rest = slots.filter(x => x.s.k !== "guide"), flat = rest.flatMap(x => x.list);
+    const f = await zipOf(flat, base + "-all-files.zip"); const out = [{t: "همه‌ی فایل‌ها (ZIP)", name: f.name, blob: f}];
+    if(guide) for(const v of guide.list){ const b = await blobGet(v.key); if(b) out.push({t: "راهنما", name: v.name, blob: b}); }
+    log("ℹ️ Etsy فقط ۵ فایل دیجیتال می‌پذیرد — فایل‌ها در " + out.length + " فایل بسته‌بندی شد", "warn"); return out;
+  }
+  log("ℹ️ Etsy فقط ۵ فایل دیجیتال می‌پذیرد — فایل‌های چندتایی هر جایگاه در یک ZIP قرار گرفت", "warn"); return items;
+}
 async function studioSendToEtsy(){
   const p = cur();
   if(!p.title || !tagList(p).length) return toast("عنوان و تگ‌ها خالی است — اول تب «سئو اتسی» را کامل کن.");
   let price = parseFloat(p.price) || parseFloat(((String(p.notes||"").match(/\$\s*([0-9]+(?:\.[0-9]+)?)/)||[])[1]));
   if(!(price > 0)){ price = parseFloat(prompt("قیمت لیستینگ (USD):", "4.5")); if(!(price > 0)) return; }
   p.price = price; save();
-  const files = FILE_SLOTS.filter(s => p.files[s.k]), imgs = IMG_SLOTS.filter(s => p.images[s.k]);
+  const files = await fsEtsyPayload(p), imgs = IMG_SLOTS.filter(s => p.images[s.k]);
   const vidList = VID_SLOTS.filter(s => vids(p)[s.k]);
   if(!confirm("«" + p.title + "»\nقیمت: $" + price + "\n" + files.length + " فایل، " + imgs.length + " تصویر و " + vidList.length + " ویدیو به‌صورت پیش‌نویس (Draft) روی Etsy ساخته بشه؟\n(منتشر نمی‌شود؛ خودت در Etsy بررسی و Publish می‌کنی.)")) return;
   const item = {title: p.title, tags: tagList(p), description: p.description, price, materials: matList(p)};
@@ -9373,7 +9402,7 @@ async function studioSendToEtsy(){
   let fOk = 0, iOk = 0, errs = [];
   for(const [i, s] of files.entries()){
     try{
-      const v = p.files[s.k], b = await blobGet(v.key);
+      const v = {name: s.name}, b = s.blob;
       await etsyMultipartPost("listings/" + lid + "/files", {name: v.name, rank: i+1}, "file", b, v.name);
       fOk++; toast("⬆ فایل " + fa(fOk) + "/" + fa(files.length) + " آپلود شد");
     }catch(e){ errs.push(s.t + ": " + e.message); }
@@ -9544,11 +9573,11 @@ $("st-btnReset").onclick = async () => {
   const usedElsewhere = new Set();
   Object.keys(localStorage).filter(k => (k === LS || k.startsWith(LS + ".")) && k !== curKey).forEach(k => {
     const st = readState(k); if(!st) return;
-    st.products.forEach(p => ["files","images","videos"].forEach(kind => Object.values(p[kind]||{}).forEach(f => { if(f && f.key) usedElsewhere.add(f.key); })));
+    st.products.forEach(p => ["files","images","videos"].forEach(kind => Object.values(p[kind]||{}).forEach(f => { if(f && f.key) usedElsewhere.add(f.key); if(f && f.more) f.more.forEach(m => usedElsewhere.add(m.key)); })));
   });
   for(const p of state.products)
     for(const kind of ["files","images","videos"])
-      for(const k in p[kind]) if(!usedElsewhere.has(p[kind][k].key)) await blobDel(p[kind][k].key);
+      for(const k in p[kind]) { const e = p[kind][k]; if(!usedElsewhere.has(e.key)) await blobDel(e.key); for(const m of (e.more || [])) if(!usedElsewhere.has(m.key)) await blobDel(m.key); }
   const b = blankProduct();
   state = {products:[b], active:b.id};
   save(); renderAll(); toast("استودیوی این فروشگاه خالی شد.");
