@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.29.0 -->
+<!-- APP_VERSION: 1.30.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v145</div>
+        <div class="logo-badge">v146</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1843,6 +1843,7 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
           <canvas id="st-gPrev" width="600" height="450" style="width:100%;max-width:600px;border:1px solid var(--rule);border-radius:8px;margin-top:6px"></canvas>
           <div style="margin-top:10px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
             <button type="button" class="ghost mini" id="st-btnGenImgs">🎨 ساخت تصویرهای انتخاب‌شده</button>
+            <button type="button" class="ghost mini" id="st-btnImgZip">⬇ دانلود همه‌ی تصویرهای این محصول (ZIP)</button>
             <label style="font-size:13px"><input type="checkbox" id="st-gOver"> جایگزینی تصویرهای موجود</label>
           </div>
         </div>
@@ -7553,13 +7554,16 @@ function renderFiles(){
     d.className = "slot" + (list.length ? " filled" : "");
     d.innerHTML =
       '<div class="hd"><b>' + s.t + '</b><i>' + s.h + '</i>' + (list.length > 1 ? ' <span class="cnt">' + fa(list.length) + ' فایل</span>' : '') + '</div>' +
-      '<div class="meta" style="max-height:150px;overflow:auto">' + (list.length ? list.map((v,i) => '<div style="display:flex;gap:6px;align-items:center;justify-content:space-between;margin:2px 0"><span dir="ltr" style="text-align:left;word-break:break-all">' + esc(v.name) + ' · ' + kb(v.size) + '</span><button class="ghost mini" data-rm="' + i + '" title="حذف این فایل">✕</button></div>').join("") : "انتخاب نشده — چند فایل را با هم انتخاب یا رها کن") + '</div>' +
+      '<div class="meta" style="max-height:150px;overflow:auto">' + (list.length ? list.map((v,i) => '<div style="display:flex;gap:6px;align-items:center;justify-content:space-between;margin:2px 0"><span dir="ltr" style="text-align:left;word-break:break-all">' + esc(v.name) + ' · ' + kb(v.size) + '</span><span style="white-space:nowrap"><button class="ghost mini" data-dl="' + i + '" title="دانلود برای کنترل">⬇</button> <button class="ghost mini" data-rm="' + i + '" title="حذف این فایل">✕</button></span></div>').join("") : "انتخاب نشده — چند فایل را با هم انتخاب یا رها کن") + '</div>' +
       '<div class="row">' +
         '<label class="pick" tabindex="0">' + (list.length ? "افزودن فایل(ها)" : "انتخاب فایل(ها)") + '<input type="file" multiple hidden></label>' +
+        (list.length > 1 ? '<button class="ghost mini" data-dlall="1">⬇ همه (ZIP)</button>' : '') +
         (list.length ? '<button class="ghost mini" data-x="1">برداشتن همه</button>' : '') +
       '</div>';
     d.querySelector('input[type=file]').onchange = e => { const fl = [...e.target.files]; e.target.value = ""; if(fl.length) fsAdd(s.k, fl); };
     d.querySelectorAll('[data-rm]').forEach(bt => bt.onclick = () => fsRemove(s.k, Number(bt.dataset.rm)));
+    d.querySelectorAll('[data-dl]').forEach(bt => bt.onclick = async () => { const v = list[Number(bt.dataset.dl)], b = v && await blobGet(v.key); if(b) download(b, v.name); else toast("فایل پیدا نشد."); });
+    const dla = d.querySelector('[data-dlall]'); if(dla) dla.onclick = async () => { const ent = []; for(const v of list){ const b = await blobGet(v.key); if(b) ent.push({path: v.name, data: await bytes(b)}); } if(ent.length) download(makeZip(ent), slug(p.name) + "-" + s.t + "-files.zip"); };
     const x = d.querySelector('[data-x]'); if(x) x.onclick = () => dropSlot("files", s.k);
     d.addEventListener("dragover", e => { e.preventDefault(); d.style.outline = "2px dashed var(--crease)"; });
     d.addEventListener("dragleave", () => { d.style.outline = ""; });
@@ -7583,7 +7587,7 @@ function renderImages(){
       '<div class="meta">' + (v ? kb(v.size) : s.f + '.jpg') + '</div>' +
       (v ? '<div class="meta" dir="ltr" style="text-align:left;line-height:1.5;margin-top:4px" title="ALT">ALT: ' + altResolved(p)[i].replace(/&/g,"&amp;").replace(/</g,"&lt;") + '</div>' : '') +
       '<div class="row">' +
-        (v ? '<button class="ghost mini" data-copy="alt:' + i + '">کپی ALT</button>' : '') +
+        (v ? '<button class="ghost mini" data-copy="alt:' + i + '">کپی ALT</button><button class="ghost mini" data-dlimg="1" title="دانلود تصویر">⬇</button>' : '') +
         '<label class="pick" tabindex="0">' + (v ? "تعویض" : "انتخاب") +
           '<input type="file" accept="image/*" hidden></label>' +
         (v ? '<button class="ghost mini" data-x="1">برداشتن</button>' : '') +
@@ -7592,6 +7596,7 @@ function renderImages(){
     if(v){ thumb.style.cursor = "zoom-in"; thumb.title = "برای بزرگنمایی کلیک کن"; thumb.addEventListener("click", () => giOpenSlotsViewer(s.k)); }
     if(v) blobGet(v.key).then(b => { if(b) d.querySelector("img").src = URL.createObjectURL(b); });
     d.querySelector('input[type=file]').onchange = e => pickFile("images", s.k, e.target.files[0]);
+    const dli = d.querySelector('[data-dlimg]'); if(dli) dli.onclick = async () => { const b = await blobGet(v.key); if(b) download(b, v.name || (s.f + ".jpg")); };
     const x = d.querySelector('[data-x]');
     if(x) x.onclick = () => dropSlot("images", s.k);
     thumb.addEventListener("dragover", e => { e.preventDefault(); thumb.classList.add("drop"); });
@@ -8591,6 +8596,7 @@ function giBind(){
   $("st-gEmpty").onclick = () => { const p = giProduct(); setSel(IMG_SLOTS.filter(s => !p.images[s.k]).map(s => s.k)); };
   $("st-gReset").onclick = () => { const sel = giGet().sel; state.imgGen = Object.assign(giDefaults(), {sel}); save(); giSig = ""; giUiRefresh(); };
   $("st-btnGenImgs").onclick = () => generateListingImages({product: giProduct(), overwrite: $("st-gOver").checked});
+  $("st-btnImgZip").onclick = async () => { const p = giProduct(), alts = altResolved(p), ent = []; for(const [i, s2] of IMG_SLOTS.entries()){ const v = p.images[s2.k]; if(!v) continue; const b = await blobGet(v.key); if(b) ent.push({path: s2.f + "." + ext(v.name), data: embedAlt(await bytes(b), alts[i])}); } if(!ent.length) return toast("این محصول هنوز تصویری ندارد."); download(makeZip(ent), p.code + "-" + slug(p.name) + "-images.zip"); toast(fa(ent.length) + " تصویر دانلود شد."); };
 }
 
 giBind();
@@ -9721,10 +9727,11 @@ function renderVideos(){
       (v ? "<video controls playsinline style='width:100%;border-radius:8px;background:#000;max-height:260px'></video><div class='meta' style='margin:4px 0'>" + dzEsc(v.name) + " · " + kb(v.size) + "</div>" : "<div class='help'>هنوز ویدیویی نیست.</div>") +
       "<div style='display:flex;gap:6px;flex-wrap:wrap;margin-top:6px'><button type='button' class='ghost mini' data-vmake='" + s.k + "'>🎬 ساخت خودکار</button>" +
       "<label class='pick ghost mini' tabindex='0'>انتخاب فایل<input type='file' accept='video/*' hidden></label>" +
-      (v ? "<button type='button' class='ghost mini' data-vx='" + s.k + "'>برداشتن</button>" : "") + "</div>";
+      (v ? "<button type='button' class='ghost mini' data-vdl='" + s.k + "'>⬇ دانلود</button><button type='button' class='ghost mini' data-vx='" + s.k + "'>برداشتن</button>" : "") + "</div>";
     if(v) blobGet(v.key).then(b => { if(b) d.querySelector("video").src = URL.createObjectURL(b); });
     d.querySelector("[data-vmake]").onclick = () => vidMake(s.k);
     d.querySelector("input[type=file]").onchange = e => vidPick(s.k, e.target.files[0]);
+    const vd = d.querySelector("[data-vdl]"); if(vd) vd.onclick = async () => { const b = await blobGet(v.key); if(b) download(b, v.name); };
     const x = d.querySelector("[data-vx]"); if(x) x.onclick = () => vidDrop(s.k);
     box.appendChild(d);
   });
