@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.28.0 -->
+<!-- APP_VERSION: 1.29.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v144</div>
+        <div class="logo-badge">v145</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1676,6 +1676,7 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
         <p class="help">ایده‌ات را بنویس. Claude چند سؤال کوتاه می‌پرسد، جعبه را طراحی می‌کند و فایل‌های <b>SVG، DXF، PDF و راهنمای مونتاژ</b> را می‌سازد؛ عنوان، تگ، توضیحات، قیمت و ۱۰ تصویر هم خودکار پر می‌شود. در آخر فقط «ارسال کامل به Etsy» را می‌زنی.</p>
         <label class="fld"><span>ایده‌ی محصول</span><textarea id="st-dzBrief" style="min-height:90px" placeholder="مثلاً: یک جعبه‌ی هدیه‌ی کوچک برای جواهرات دست‌ساز، مناسب Cricut و لیزر"></textarea></label>
         <label class="fld" style="max-width:380px;margin-top:8px"><span>مدل طراحی</span><select id="st-dzModel"><option value="opus">Claude Opus (سرور) — دقیق‌ترین ⭐</option><option value="sonnet">Claude Sonnet (سرور) — سریع‌تر</option><option value="app">همان مدل تنظیمات برنامه</option></select></label>
+        <label style="display:block;font-size:12.5px;margin-top:6px"><input type="checkbox" id="st-dzReview" checked> بازبینی بصری خودکار — Claude طرح را «می‌بیند»، اشکال‌هایش را پیدا و اصلاح می‌کند (دقیق‌تر، کندتر؛ فقط با مدل سرور)</label>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
           <button type="button" class="ghost mini" id="st-dzAsk">❓ Claude سؤال بپرسد</button>
           <button type="button" class="ghost mini" id="st-dzSkip">⚡ بدون سؤال، خودت تصمیم بگیر</button>
@@ -8713,6 +8714,26 @@ function dlChain(segs){
   return out;
 }
 // net = {panels:[{x,y,w,h}], flaps:[{panel,edge,depth,shape,from,to,gap,inset,insetStart,insetEnd,radius}]}  (میلی‌متر، محور y به پایین)
+function netPolyFlap(g, P){
+  const pi = Number(g.panel), p = P[pi]; if(!p) throw new Error("چندضلعی: پنل " + g.panel + " وجود ندارد");
+  const edge = String(g.edge); if(!["top","bottom","left","right"].includes(edge)) throw new Error("چندضلعی: edge نامعتبر");
+  const n = Math.max(3, Math.min(12, Math.round(Number(g.sides) || 6))), horiz = edge === "top" || edge === "bottom", elen = horiz ? p.w : p.h;
+  const from = dlNum(g.from, 0, elen-3, 0), len = dlNum(g.len, 3, elen-from, elen-from);
+  let A, B, nrm;
+  if(edge === "top"){ A = [p.x+from, p.y]; B = [p.x+from+len, p.y]; nrm = [0,-1]; }
+  else if(edge === "bottom"){ A = [p.x+from, p.y+p.h]; B = [p.x+from+len, p.y+p.h]; nrm = [0,1]; }
+  else if(edge === "left"){ A = [p.x, p.y+from]; B = [p.x, p.y+from+len]; nrm = [-1,0]; }
+  else { A = [p.x+p.w, p.y+from]; B = [p.x+p.w, p.y+from+len]; nrm = [1,0]; }
+  const sd = Math.hypot(B[0]-A[0], B[1]-A[1]); let dir = [(B[0]-A[0])/sd, (B[1]-A[1])/sd];
+  const sign = (dir[0]*nrm[1] - dir[1]*nrm[0]) > 0 ? 1 : -1, ang = sign*2*Math.PI/n, pts = [A, B];
+  for(let k = 2; k < n; k++){ const c = Math.cos(ang), sn = Math.sin(ang); dir = [dir[0]*c - dir[1]*sn, dir[0]*sn + dir[1]*c]; const last = pts[pts.length-1]; pts.push([last[0]+dir[0]*sd, last[1]+dir[1]*sd]); }
+  const cx = pts.reduce((a,q) => a+q[0],0)/n, cy = pts.reduce((a,q) => a+q[1],0)/n, xy = [], tab = g.tab, tk = tab ? Math.max(1, Math.min(n-1, Math.round(Number(tab.edge)))) : -1;
+  for(let k = 1; k < n; k++){ xy.push(pts[k]);
+    if(k === tk){ const a = pts[k], b = pts[(k+1) % n], ex = b[0]-a[0], ey = b[1]-a[1], el = Math.hypot(ex,ey) || 1, ux = ex/el, uy = ey/el, mx = (a[0]+b[0])/2 - cx, my = (a[1]+b[1])/2 - cy, ml = Math.hypot(mx,my) || 1, ox = mx/ml, oy = my/ml, dep = dlNum(tab.depth, 2, 100, 10), ins = dlNum(tab.inset, 0, el/2.5, Math.min(4, el*0.15));
+      xy.push([a[0]+ox*dep+ux*ins, a[1]+oy*dep+uy*ins], [b[0]+ox*dep-ux*ins, b[1]+oy*dep-uy*ins]); } }
+  xy.push(pts[0]);
+  return {pi, edge, horiz, a: horiz ? Math.min(A[0],B[0]) : Math.min(A[1],B[1]), b: horiz ? Math.max(A[0],B[0]) : Math.max(A[1],B[1]), xy};
+}
 function netBuild(net){
   const P = (net && net.panels || []).map(p => ({x:Number(p.x), y:Number(p.y), w:Number(p.w), h:Number(p.h)}));
   if(P.length < 1 || P.length > 24) throw new Error("تعداد پنل‌ها نامعتبر است (۱ تا ۲۴)");
@@ -8741,6 +8762,7 @@ function netBuild(net){
     const xy = pts.map(q => horiz ? [start+q[0], base+nrm*q[1]] : [base+nrm*q[1], start+q[0]]);
     return {pi, edge, horiz, a: start+s0, b: start+s1, xy};
   });
+  (net.polys || []).forEach(g => flaps.push(netPolyFlap(g, P)));
   const hMap = new Map(), vMap = new Map(), addScore = (map, c, a, b) => { const k = Math.round(c*100); if(!map.has(k)) map.set(k, {c, iv:[]}); map.get(k).iv.push([a,b]); };
   const cutSegs = [];
   const edgesOf = P.map((p,i) => [{h:true, c:p.y, a:p.x, b:p.x+p.w, side:"top"},{h:true, c:p.y+p.h, a:p.x, b:p.x+p.w, side:"bottom"},{h:false, c:p.x, a:p.y, b:p.y+p.h, side:"left"},{h:false, c:p.x+p.w, a:p.y, b:p.y+p.h, side:"right"}]);
@@ -8779,6 +8801,17 @@ function dlNetSleeve(A, B, Ls, g){
   g = g || 12; const gi = Math.min(8, Ls*0.18);
   return {panels:[{x:0,y:0,w:A,h:Ls},{x:A,y:0,w:B,h:Ls},{x:A+B,y:0,w:A,h:Ls},{x:2*A+B,y:0,w:B,h:Ls}], flaps:[{panel:0,edge:"left",depth:g,shape:"trapezoid",insetStart:gi,insetEnd:gi}]};
 }
+function dlNetPrism(n, sd, H, g, spec){
+  n = Math.round(dlNum(n, 3, 12, 6)); const top = spec.top === "open" ? "open" : "lid", bot = spec.bottom === "open" ? "open" : "base", lp = 1, bp = Math.max(0, n-2);
+  const panels = [], flaps = [], polys = [], ear = Math.min(9, sd*0.4), tabH = Math.min(12, sd*0.5), cot = Math.max(0, 1/Math.tan(2*Math.PI/n)), gi = Math.min(8, H*0.1);
+  for(let i = 0; i < n; i++) panels.push({x: i*sd, y: 0, w: sd, h: H});
+  flaps.push({panel: n-1, edge: "right", depth: g, shape: "trapezoid", insetStart: gi, insetEnd: gi});
+  const ring = (edge, depth, at) => { for(let i = 0; i < n; i++){ const big = depth*cot + 1.5, small = Math.min(3, sd*0.12);
+    flaps.push({panel: i, edge, depth, shape: "trapezoid", insetStart: i === at+1 ? big : small, insetEnd: i === at-1 ? big : small}); } };
+  if(top === "lid"){ polys.push({panel: lp, edge: "top", sides: n, tab: {edge: Math.floor(n/2), depth: Math.min(12, sd*0.55), inset: Math.min(4, sd*0.15)}}); ring("top", ear, lp); flaps.splice(flaps.length - n + lp, 1); }
+  if(bot === "base"){ polys.push({panel: bp, edge: "bottom", sides: n}); ring("bottom", tabH, bp); flaps.splice(flaps.length - n + bp, 1); }
+  return {panels, flaps, polys};
+}
 function dlSpecToNet(spec){
   const L = dlNum(spec.length, 10, 400, 100), Wd = dlNum(spec.width, 10, 400, 70), Ht = dlNum(spec.height, 8, 300, 30), thk = dlNum(spec.thickness, 0.1, 3, 0.3), g = dlNum(spec.glue_flap, 6, 25, 12);
   const style = spec.style;
@@ -8792,8 +8825,9 @@ function dlSpecToNet(spec){
     const c = 2*thk + 1, Ls = dlNum(spec.sleeve_length, 10, L, L*0.6), tray = dlNetTray(L, Wd, Ht), sleeve = dlNetSleeve(Wd+c, Ht+c, Ls, g);
     return dlJoinNets([tray, dlShiftNet(sleeve, 2*Ht + L + 15, 0, 0)]);
   }
+  if(style === "prism_tube"){ const n = Math.round(dlNum(spec.sides, 3, 12, 6)), sd = Number(spec.side) > 0 ? dlNum(spec.side, 5, 300, 22) : 2*(L/2)*Math.sin(Math.PI/n); return dlNetPrism(n, sd, Ht, g, spec); }
   if(style === "net"){ if(!spec.net) throw new Error("برای style=net بخش net لازم است"); return spec.net; }
-  throw new Error("نوع طرح «" + style + "» نامعتبر است — فقط tuck_end, tray_lid, sleeve, drawer_sleeve, net");
+  throw new Error("نوع طرح «" + style + "» نامعتبر است — فقط tuck_end, tray_lid, sleeve, drawer_sleeve, prism_tube, net (و shape_box / rigid_shape)");
 }
 function dlBuild(spec){
   let paths = spec.style === "shape_box" ? dlShapeBox(spec) : netBuild(dlSpecToNet(spec));
@@ -8868,6 +8902,12 @@ function dlGuidePdf(spec, d){
 
 // ── Claude: سؤال‌ها و طرح (نسخه‌ی ۲)
 const dzState = {brief:"", qs:[], qa:[], spec:null, dl:null, kit:null, userOutline:null};
+function dzNgon(n){ const pts = []; for(let i = 0; i < n; i++){ const t = -Math.PI/2 + i*2*Math.PI/n; pts.push([Math.cos(t), Math.sin(t)]); } return pts; }
+function dzPrismDims(sp){
+  const n = Math.round(dlNum(sp.sides, 3, 12, 6)), R = Number(sp.side) > 0 ? Number(sp.side)/(2*Math.sin(Math.PI/n)) : (Number(sp.length) || 44)/2, pts = dzNgon(n), xs = pts.map(q => q[0]), ys = pts.map(q => q[1]);
+  return {w: R*(Math.max(...xs)-Math.min(...xs)), h: R*(Math.max(...ys)-Math.min(...ys)), pts};
+}
+function dzPrismProduct(sp){ const q = dzPrismDims(sp); return {name: sp.name, w: q.w, h: q.h, d: Number(sp.height) || 30, dzShape: {shape: "custom", outline: q.pts, smooth: false, lidFrac: 0.12}}; }
 // ایده‌ی محصول انتخاب‌شده خودکار در کادر «ایده‌ی محصول» طراحی با Claude قرار می‌گیرد (با عوض‌شدن محصول، دوباره پر می‌شود)
 let dzBriefFor = null;
 function dzBriefFromProduct(p){
@@ -8940,6 +8980,8 @@ const DZ_NET_DOC =
 "   The code draws the cut outline (red) and fold lines (blue dashed) from this; so the numbers must be geometrically consistent (adjacent panels share exact edges: e.g. panel widths add up, heights equal where they touch).\n" +
 "   Example (a simple sleeve-like net): {\"panels\":[{\"x\":0,\"y\":0,\"w\":60,\"h\":40},{\"x\":60,\"y\":0,\"w\":30,\"h\":40},{\"x\":90,\"y\":0,\"w\":60,\"h\":40},{\"x\":150,\"y\":0,\"w\":30,\"h\":40}],\"flaps\":[{\"panel\":0,\"edge\":\"left\",\"depth\":12,\"shape\":\"trapezoid\"},{\"panel\":0,\"edge\":\"top\",\"depth\":28,\"shape\":\"tuck\"}]}\n" +
 "6) \"shape_box\": box with a NON-rectangular outline (heart, circle, ellipse, rounded_rect, hexagon, octagon, pentagon, triangle, star, or custom). Two pieces: base + lid, each built from a wall strip with glue tabs. Params: shape, length = overall shape width, width = overall shape depth, height = wall height, height_lid = lid rim height. For shape=\"custom\" also give outline_svg: ONE closed SVG path string (commands M L H V C S Q T A Z allowed, must not cross itself, any units, y grows down) drawing a smooth, elegant organic outline exactly like a designer would (e.g. mermaid tail, leaf, cloud, flower, animal silhouette). Keep it simple: 6-14 curve segments. Alternatively give outline: 12-40 control points [x,y] around the shape (auto-smoothed).\n" +
+"8) \"prism_tube\": regular-polygon tube/box with 3-12 sides (hexagon candy tube, triangular prism, octagon box...) with a polygon lid and a polygon base attached to the wall strip. Params: sides (3-12), length = ACROSS-CORNERS diameter in mm (side length = length * sin(180/sides)), height = wall height in mm, glue_flap, top = \"lid\"|\"open\", bottom = \"base\"|\"open\". Example: hexagon candy tube, sides 6, length 44, height 140.\n" +
+"   In style net you may also add net.polys = [{panel, edge, sides, len?, from?, tab:{edge,depth,inset}}]: a REGULAR polygon with that many sides attached to a panel edge (its side length = len, default the whole edge, so it must equal the panel width) — use it for any prism-like nets with polygon ends.\n" +
 "7) \"rigid_shape\": RIGID luxury box built from layered chipboard parts (lid top board, double walls, bottom board) wrapped with decorative paper covers and liners; delivered as about 18 separate SVG parts plus a parts-list guide. Best for gift boxes with a custom outline (heart, flower, logo shape, or the seller's uploaded shape). Params: shape (preset or custom), length = lid top width in mm (e.g. 300), height = base wall height in mm, height_lid = lid wall height in mm, board_thickness = chipboard thickness in mm (default 1), units = \"in\" or \"mm\" for the files (default in).\n" +
 "STYLE CHOICE (hard / rigid / luxury / chipboard / layered box = rigid_shape; light foldable cardstock = the other styles): pick the style that truly matches what the seller asked for (a heart box = shape_box with shape heart). Do NOT default to tuck_end. If the request needs something the engine cannot draw (pillow box with curved ends, gable box), choose the closest alternative and say so in notes_fa.";
 function dzBuildAll(spec){
@@ -8950,6 +8992,31 @@ function dzParseShapeSvg(txt){
   const ps = [...String(txt).matchAll(/<path\b[^>]*?\sd="([^"]+)"/g)].map(m => m[1]).sort((a,b) => b.length - a.length); if(ps.length) return ps[0];
   const pg = String(txt).match(/<polygon\b[^>]*?\spoints="([^"]+)"/); if(pg){ const n = pg[1].trim().split(/[\s,]+/).map(Number); let d = "M"; for(let i = 0; i+1 < n.length; i += 2) d += (i ? " L" : "") + n[i] + " " + n[i+1]; return d + " Z"; }
   return null;
+}
+async function dzDielineJpeg(d){
+  const sw = Math.max(0.6, d.w/260), url = URL.createObjectURL(new Blob([dlSvg(d, sw)], {type: "image/svg+xml"}));
+  const im = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+  const k = Math.min(1400/im.naturalWidth, 1400/im.naturalHeight, 4), cv = document.createElement("canvas"); cv.width = Math.round(im.naturalWidth*k); cv.height = Math.round(im.naturalHeight*k);
+  const c = cv.getContext("2d"); c.fillStyle = "#fff"; c.fillRect(0,0,cv.width,cv.height); c.drawImage(im, 0, 0, cv.width, cv.height);
+  const b = await new Promise(r => cv.toBlob(r, "image/jpeg", 0.9)); return new Uint8Array(await b.arrayBuffer());
+}
+// بازبینی بصری: Claude تصویر دای‌لاین را می‌بیند، با درخواست مقایسه می‌کند و در صورت اشکال، طرح اصلاح‌شده می‌دهد
+async function dzReview(spec, d){
+  const b64 = u8ToB64(await dzDielineJpeg(d)), slim = JSON.stringify(spec, (k, v) => (k === "listing" || k === "guide") ? undefined : v).slice(0, 6000);
+  const qa = dzState.qa.map(x => "Q: " + x.q + "\nA: " + x.a).join("\n");
+  const prompt = "You are a senior packaging engineer REVIEWING an automatically generated box dieline. The image shows it: red = cut lines, blue dashed = fold/score lines.\nSeller request: " + dzState.brief + "\n" + (qa ? "Seller answers:\n" + qa + "\n" : "") +
+    "\nCurrent design spec (JSON): " + slim + "\n\nAvailable styles and their rules:\n" + DZ_NET_DOC +
+    "\n\nCHECK carefully: (1) does the box type/shape match the request? (2) are all parts present (lid, base/bottom, closing flaps, glue tabs, tuck/dust flaps)? (3) do panels connect with consistent fold lines, with no overlapping or crossing parts? (4) are proportions and sizes realistic (e.g. each polygon side equals the wall panel width)? (5) can a buyer cut and assemble it?\n" +
+    'Reply ONLY JSON: {"ok":true|false,"problems":["short English problem"],"notes_fa":"1-3 Persian sentences: what you checked / what you fixed","spec":{FULL corrected spec in the same format, only when ok=false}}';
+  const res = await fetch(crApiUrl("design_ai.php"), {method:"POST", headers: crHeaders(), body: JSON.stringify({prompt, max_tokens: 12000, model: $("st-dzModel").value, images: [{media_type: "image/jpeg", data: b64}]})});
+  const out = parseJSON((await mktParseResponse(res)).text);
+  if(out.ok !== false) return {note: out.notes_fa || "✓ طرح بازبینی شد و مشکلی نداشت."};
+  if(!out.spec) return {note: "⚠ مشکل‌هایی دیده شد ولی اصلاحی داده نشد: " + (out.problems || []).join("؛ ")};
+  const ns = Object.assign({}, spec, out.spec, {listing: out.spec.listing || spec.listing, guide: out.spec.guide || spec.guide});
+  if(ns.style === "shape_box" && typeof out.spec.outline_svg === "string" && out.spec.outline_svg.trim()){ ns.shape = "custom"; ns.outline = out.spec.outline_svg; }
+  if(dzState.userOutline && ["shape_box","rigid_shape"].includes(ns.style)){ ns.shape = "custom"; ns.outline = dzState.userOutline; }
+  const nd = dzBuildAll(ns);
+  return {spec: ns, d: nd, note: "🔧 Claude طرح را اصلاح کرد — " + ((out.problems || []).join("؛ ") || "") + " " + (out.notes_fa || "")};
 }
 async function dzDesign(feedback){
   $("st-dzOut").innerHTML = "<p class='help'>⏳ Claude دارد جعبه را طراحی و راهنما/متن لیستینگ را می‌نویسد (۳۰ تا ۱۲۰ ثانیه)...</p>";
@@ -8977,6 +9044,11 @@ async function dzDesign(feedback){
         d = dzBuildAll(spec); err = ""; break;
       }catch(e){ err = e.message; if(attempt === 1) throw new Error(err); }
     }
+    dzState.review = "";
+    if($("st-dzReview") && $("st-dzReview").checked && $("st-dzModel").value !== "app" && S.contentBackendUrl){
+      try{ $("st-dzOut").innerHTML = "<p class='help'>🔍 Claude در حال بازبینی بصری طرح است (اشکال‌یابی)...</p>"; const r = await dzReview(spec, d); if(r){ if(r.spec){ spec = r.spec; d = r.d; } dzState.review = r.note; } }
+      catch(e){ dzState.review = "(بازبینی بصری انجام نشد: " + (e && e.message ? e.message : e) + ")"; dzBuildAll(spec); }
+    }
     dzState.spec = spec; dzState.dl = d;
     dzRender();
   }catch(e){ $("st-dzOut").innerHTML = "<p class='help' style='color:var(--cut)'>خطا: " + dzEsc(e.message) + "</p>"; }
@@ -8986,12 +9058,12 @@ function dzRebuild(){
   const num = id => Number($(id).value);
   s.style = $("st-dzStyle").value; if($("st-dzShape")) s.shape = $("st-dzShape").value; s.length = num("st-dzL"); s.width = num("st-dzW"); s.height = num("st-dzH");
   if($("st-dzHl").value) s.height_lid = num("st-dzHl");
-  if($("st-dzUnits")) s.units = $("st-dzUnits").value; if($("st-dzT") && $("st-dzT").value) s.board_thickness = num("st-dzT");
+  if($("st-dzN") && $("st-dzN").value) s.sides = num("st-dzN"); if($("st-dzUnits")) s.units = $("st-dzUnits").value; if($("st-dzT") && $("st-dzT").value) s.board_thickness = num("st-dzT");
   try{ dzState.dl = dzBuildAll(s); dzRender(); }catch(e){ toast("طرح ساخته نشد: " + e.message); }
 }
 function dzRender(){
   const s = dzState.spec, d = dzState.dl, l = s.listing || {}, sw = Math.max(0.5, d.w/220);
-  const styles = [["tuck_end","جعبه‌ی تاشو (tuck end)"],["tray_lid","سینی + درب جدا"],["sleeve","آستین (sleeve)"],["drawer_sleeve","کشویی + آستین"],["shape_box","جعبه‌ی شکل‌دار (قلب، دایره، ستاره...)"],["rigid_shape","جعبه‌ی سخت چیپ‌برد + روکش کاغذی (شکل دلخواه)"]].concat(s.net ? [["net","طرح اختصاصی Claude"]] : []);
+  const styles = [["tuck_end","جعبه‌ی تاشو (tuck end)"],["tray_lid","سینی + درب جدا"],["sleeve","آستین (sleeve)"],["drawer_sleeve","کشویی + آستین"],["shape_box","جعبه‌ی شکل‌دار (قلب، دایره، ستاره...)"],["rigid_shape","جعبه‌ی سخت چیپ‌برد + روکش کاغذی (شکل دلخواه)"],["prism_tube","لوله/منشور چندضلعی با درب و کف (۳ تا ۱۲ ضلع)"]].concat(s.net ? [["net","طرح اختصاصی Claude"]] : []);
   $("st-dzOut").innerHTML =
     "<div style='margin-top:14px;padding:12px;border:1px solid var(--rule);border-radius:10px'>" +
     "<h3 style='margin:0 0 8px'>🧩 طرح پیشنهادی Claude</h3>" +
@@ -9008,18 +9080,19 @@ function dzRender(){
       "<label class='fld'><span>ارتفاع درب (mm)</span><input type='number' id='st-dzHl' value='" + dzEsc(s.height_lid || "") + "'></label>" +
       "<label class='fld'><span>واحد فایل‌ها</span><select id='st-dzUnits'><option value='in'" + (s.units !== "mm" ? " selected" : "") + ">اینچ (Cricut)</option><option value='mm'" + (s.units === "mm" ? " selected" : "") + ">میلی‌متر</option></select></label>" +
       "<label class='fld'><span>ضخامت برد (mm)</span><input type='number' step='0.1' id='st-dzT' value='" + dzEsc(s.board_thickness || "") + "' placeholder='1'></label>" +
+      "<label class='fld'><span>تعداد اضلاع (منشور)</span><input type='number' min='3' max='12' id='st-dzN' value='" + dzEsc(s.sides || "") + "' placeholder='6'></label>" +
     "</div>" +
     "<table style='font-size:13px;line-height:2;direction:rtl'><tr><td>متریال</td><td dir='ltr'>" + dzEsc(s.material) + "</td></tr><tr><td>قیمت پیشنهادی</td><td dir='ltr'>$" + dzEsc(s.price) + "</td></tr><tr><td>عنوان</td><td dir='ltr'>" + dzEsc(l.title) + "</td></tr></table>" +
-    "<p class='help'>" + dzEsc(s.notes_fa || "") + "</p>" +
+    "<p class='help'>" + dzEsc(s.notes_fa || "") + "</p>" + (dzState.review ? "<p class='help' style='color:var(--ink)'><b>بازبینی Claude:</b> " + dzEsc(dzState.review) + "</p>" : "") +
     "<p class='help' style='color:var(--cut)'>⚠ قبل از فروش، یک بار طرح را روی کاغذ معمولی برش بزن و جعبه را سوار کن.</p>" +
     "<div style='display:flex;gap:8px;flex-wrap:wrap;margin:8px 0'><button class='ghost mini' id='st-dzApply'>✔ ساخت فایل‌ها، راهنمای PDF، تصویرها و پر کردن همه‌چیز</button></div>" +
     "<label class='fld'><span>تغییر می‌خواهی؟ توضیح بده تا Claude اصلاح کند</span><input type='text' id='st-dzFeed' placeholder='مثلاً: درب لولایی داشته باشد، ۲ سانت بلندتر'></label>" +
     "<button class='ghost mini' id='st-dzRedo' style='margin-top:6px'>🔁 اصلاح طرح با Claude</button></div>";
   $("st-dzApply").onclick = dzApply;
   $("st-dzRedo").onclick = () => { const f = $("st-dzFeed").value.trim(); if(!f) return toast("اول بنویس چه تغییری می‌خواهی."); dzDesign(f); };
-  ["st-dzStyle","st-dzShape","st-dzL","st-dzW","st-dzH","st-dzHl","st-dzUnits","st-dzT"].forEach(id => $(id).onchange = dzRebuild);
+  ["st-dzStyle","st-dzShape","st-dzL","st-dzW","st-dzH","st-dzHl","st-dzUnits","st-dzT","st-dzN"].forEach(id => $(id).onchange = dzRebuild);
   try{ giApply(giGet()); const c = $("st-dz3d").getContext("2d"); c.fillStyle = "#fff"; c.fillRect(0,0,700,420);
-    giBox3dSimple(c, {name: s.name, w: dzState.kit ? dzState.kit.W : (Number(s.length)||100), h: dzState.kit ? dzState.kit.H : (Number(s.width)||70), d: dzState.kit ? dzState.kit.depth : (Number(s.height)||30), dzShape: (s.style === "shape_box" || s.style === "rigid_shape") ? {shape: s.shape || "heart", outline: s.outline, smooth: s.smooth !== false, lidFrac: dzState.kit ? Math.max(0.15, Math.min(0.6, dzState.kit.lidDepth/dzState.kit.depth)) : undefined} : null}, 620, 340, 350, 210, GI.acc, giOnAcc()); }catch(e){}
+    giBox3dSimple(c, s.style === "prism_tube" ? dzPrismProduct(s) : {name: s.name, w: dzState.kit ? dzState.kit.W : (Number(s.length)||100), h: dzState.kit ? dzState.kit.H : (Number(s.width)||70), d: dzState.kit ? dzState.kit.depth : (Number(s.height)||30), dzShape: (s.style === "shape_box" || s.style === "rigid_shape") ? {shape: s.shape || "heart", outline: s.outline, smooth: s.smooth !== false, lidFrac: dzState.kit ? Math.max(0.15, Math.min(0.6, dzState.kit.lidDepth/dzState.kit.depth)) : undefined} : null}, 620, 340, 350, 210, GI.acc, giOnAcc()); }catch(e){}
 }
 async function dzApply(){
   const s = dzState.spec, d = dzState.dl; if(!s || !d) return;
@@ -9032,6 +9105,7 @@ async function dzApply(){
   p.dzStyle = s.style;
   p.dzShape = (s.style === "shape_box" || s.style === "rigid_shape") ? {shape: s.shape || "heart", outline: s.outline || null, smooth: s.smooth !== false} : null;
   if(s.style === "rigid_shape" && dzState.kit){ const k = dzState.kit; p.w = Math.round(k.W); p.h = Math.round(k.H); p.d = Math.round(k.depth); p.dzShape.lidFrac = Math.max(0.15, Math.min(0.6, k.lidDepth/k.depth)); }
+  if(s.style === "prism_tube"){ const q = dzPrismDims(s); p.w = Math.round(q.w); p.h = Math.round(q.h); p.d = Math.round(dlNum(s.height, 8, 300, 30)); p.dzShape = {shape: "custom", outline: q.pts, smooth: false, lidFrac: 0.12}; }
   p.title = limitTitle(sanitizeEtsyTitle(l.title || p.name));
   p.description = normalizeDescription(l.description || "");
   p.tags = (l.tags || []).map(t => String(t).replace(/_/g," ").trim()).filter(t => t && t.length <= 20).slice(0,13).join(", ");
