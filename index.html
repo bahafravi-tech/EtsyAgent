@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.18.0 -->
+<!-- APP_VERSION: 1.21.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v131</div>
+        <div class="logo-badge">v134</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1678,6 +1678,7 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
           <button type="button" class="ghost mini" id="st-dzAsk">❓ Claude سؤال بپرسد</button>
           <button type="button" class="ghost mini" id="st-dzSkip">⚡ بدون سؤال، خودت تصمیم بگیر</button>
+          <label class="ghost mini" style="cursor:pointer">📐 فایل شکل من (SVG)<input type="file" id="st-dzShapeFile" accept=".svg,image/svg+xml" hidden></label><button type="button" class="ghost mini" id="st-dzShapeClear">✕ حذف شکل</button><span id="st-dzShapeInfo" class="help"></span>
           <button type="button" class="ghost mini" id="st-dzGuideBtn">📘 ساخت/به‌روزرسانی راهنمای PDF محصول فعال</button>
         </div>
         <div id="st-dzQs"></div>
@@ -7959,11 +7960,184 @@ function giBoxLabels(p,txtColor){
     right: g3Text(p.w + " x " + p.h + " x " + p.d + " mm", 0.55, txtColor)
   };
 }
-function giBox3dSimple(c,p,tw,th,cx,cy,hex,txtColor,scale){
-  const b = {L:p.w*(scale||1), W:p.h*(scale||1), H:p.d*(scale||1)}, o = g3Fit([b],tw,th,cx,cy,-0.62,0.52);
-  g3Closed(c,b,o,hex,giBoxLabels(p,txtColor));
-}
 
+/* ---------- جعبه‌های با شکل خاص (قلب، دایره، ستاره، ... و شکل آزاد با مسیر SVG) — دای‌لاین + ۳بعدی ---------- */
+function svgArcPts(x1, y1, rx, ry, phi, fa, fs, x2, y2){
+  rx = Math.abs(rx); ry = Math.abs(ry); if(!rx || !ry) return [[x2,y2]];
+  const cp = Math.cos(phi*Math.PI/180), sp = Math.sin(phi*Math.PI/180), dx = (x1-x2)/2, dy = (y1-y2)/2, x1p = cp*dx + sp*dy, y1p = -sp*dx + cp*dy;
+  const lam = (x1p*x1p)/(rx*rx) + (y1p*y1p)/(ry*ry); if(lam > 1){ const s = Math.sqrt(lam); rx *= s; ry *= s; }
+  const nm = rx*rx*ry*ry - rx*rx*y1p*y1p - ry*ry*x1p*x1p, dn = rx*rx*y1p*y1p + ry*ry*x1p*x1p; let co = Math.sqrt(Math.max(0, nm/dn)); if(fa === fs) co = -co;
+  const cxp = co*rx*y1p/ry, cyp = -co*ry*x1p/rx, cx = cp*cxp - sp*cyp + (x1+x2)/2, cy = sp*cxp + cp*cyp + (y1+y2)/2;
+  const ang = (ux,uy,vx,vy) => Math.atan2(ux*vy - uy*vx, ux*vx + uy*vy);
+  const th1 = ang(1,0,(x1p-cxp)/rx,(y1p-cyp)/ry); let dth = ang((x1p-cxp)/rx,(y1p-cyp)/ry,(-x1p-cxp)/rx,(-y1p-cyp)/ry);
+  if(!fs && dth > 0) dth -= 2*Math.PI; else if(fs && dth < 0) dth += 2*Math.PI;
+  const n = Math.max(8, Math.ceil(Math.abs(dth)/(Math.PI/18))), out = [];
+  for(let k = 1; k <= n; k++){ const t = th1 + dth*k/n, ex = rx*Math.cos(t), ey = ry*Math.sin(t); out.push([cp*ex - sp*ey + cx, sp*ex + cp*ey + cy]); }
+  return out;
+}
+// مسیر SVG (M L H V C S Q T A Z، مطلق و نسبی) ← چندضلعی (اولین زیرمسیر)
+function svgPathToPoints(d){
+  const toks = String(d).match(/[a-zA-Z]|[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/g) || [];
+  let i = 0, cmd = "", x = 0, y = 0, lcx = 0, lcy = 0, prev = ""; const pts = [], num = () => parseFloat(toks[i++]);
+  const bez = (p0,p1,p2,p3) => { for(let k = 1; k <= 18; k++){ const t = k/18, u = 1-t; pts.push([u*u*u*p0[0]+3*u*u*t*p1[0]+3*u*t*t*p2[0]+t*t*t*p3[0], u*u*u*p0[1]+3*u*u*t*p1[1]+3*u*t*t*p2[1]+t*t*t*p3[1]]); } };
+  while(i < toks.length){
+    if(/[a-zA-Z]/.test(toks[i])) cmd = toks[i++]; else if(!cmd) break;
+    const rel = cmd === cmd.toLowerCase(), C = cmd.toUpperCase(), ox = rel ? x : 0, oy = rel ? y : 0;
+    if(C === "Z") break;
+    if(C === "M"){ if(pts.length) break; x = num()+ox; y = num()+oy; pts.push([x,y]); cmd = rel ? "l" : "L"; prev = "M"; continue; }
+    if(C === "L"){ x = num()+ox; y = num()+oy; pts.push([x,y]); }
+    else if(C === "H"){ x = num()+ox; pts.push([x,y]); }
+    else if(C === "V"){ y = num()+oy; pts.push([x,y]); }
+    else if(C === "C"){ const p1 = [num()+ox,num()+oy], p2 = [num()+ox,num()+oy], p3 = [num()+ox,num()+oy]; bez([x,y],p1,p2,p3); lcx = p2[0]; lcy = p2[1]; x = p3[0]; y = p3[1]; }
+    else if(C === "S"){ const p1 = (prev === "C" || prev === "S") ? [2*x-lcx, 2*y-lcy] : [x,y], p2 = [num()+ox,num()+oy], p3 = [num()+ox,num()+oy]; bez([x,y],p1,p2,p3); lcx = p2[0]; lcy = p2[1]; x = p3[0]; y = p3[1]; }
+    else if(C === "Q" || C === "T"){ let q; if(C === "Q") q = [num()+ox,num()+oy]; else q = (prev === "Q" || prev === "T") ? [2*x-lcx, 2*y-lcy] : [x,y]; const p3 = [num()+ox,num()+oy];
+      bez([x,y],[x+2/3*(q[0]-x), y+2/3*(q[1]-y)],[p3[0]+2/3*(q[0]-p3[0]), p3[1]+2/3*(q[1]-p3[1])],p3); lcx = q[0]; lcy = q[1]; x = p3[0]; y = p3[1]; }
+    else if(C === "A"){ const rx = num(), ry = num(), phi = num(), fa = num(), fs = num(), nx = num()+ox, ny = num()+oy; svgArcPts(x,y,rx,ry,phi,fa,fs,nx,ny).forEach(q => pts.push(q)); x = nx; y = ny; }
+    else break;
+    prev = C;
+    if(pts.some(q => !isFinite(q[0]) || !isFinite(q[1]))) throw new Error("مسیر SVG نامعتبر است");
+  }
+  return pts;
+}
+function catmullClosed(ps, seg){
+  const n = ps.length, out = [];
+  for(let i = 0; i < n; i++){ const p0 = ps[(i+n-1)%n], p1 = ps[i], p2 = ps[(i+1)%n], p3 = ps[(i+2)%n];
+    for(let s = 0; s < seg; s++){ const t = s/seg, t2 = t*t, t3 = t2*t;
+      out.push([0,1].map(k => 0.5*((2*p1[k]) + (-p0[k]+p2[k])*t + (2*p0[k]-5*p1[k]+4*p2[k]-p3[k])*t2 + (-p0[k]+3*p1[k]-3*p2[k]+p3[k])*t3))); } }
+  return out;
+}
+function polySelfIntersects(pts){
+  const n = pts.length, ccw = (a,b,c) => (c[1]-a[1])*(b[0]-a[0]) > (b[1]-a[1])*(c[0]-a[0]);
+  for(let i = 0; i < n; i++){ const a = pts[i], b = pts[(i+1)%n];
+    for(let j = i+2; j < n; j++){ if(i === 0 && j === n-1) continue; const c = pts[j], d = pts[(j+1)%n];
+      if(ccw(a,c,d) !== ccw(b,c,d) && ccw(a,b,c) !== ccw(a,b,d)) return true; } }
+  return false;
+}
+function shapeOutline(name, custom, W, H, smooth){
+  let raw = []; const ell = (n, off) => { for(let i = 0; i < n; i++){ const t = off + i/n*2*Math.PI; raw.push([Math.cos(t), Math.sin(t)]); } };
+  switch(name){
+    case "heart": for(let i = 0; i < 200; i++){ const t = i/200*2*Math.PI; raw.push([16*Math.pow(Math.sin(t),3), -(13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t))]); } break;
+    case "circle": case "ellipse": case "oval": ell(120, 0); break;
+    case "hexagon": ell(6, -Math.PI/2); break; case "octagon": ell(8, -Math.PI/8); break;
+    case "pentagon": ell(5, -Math.PI/2); break; case "triangle": ell(3, -Math.PI/2); break;
+    case "star": for(let i = 0; i < 10; i++){ const t = -Math.PI/2 + i*Math.PI/5, r = i % 2 ? 0.45 : 1; raw.push([r*Math.cos(t), r*Math.sin(t)]); } break;
+    case "rounded_rect": { const r = 0.3, cs = [[1-r,-(1-r),-90],[1-r,1-r,0],[-(1-r),1-r,90],[-(1-r),-(1-r),180]];
+      cs.forEach(cc => { for(let k = 0; k <= 10; k++){ const a = (cc[2] + k*9)*Math.PI/180; raw.push([cc[0] + r*Math.cos(a), cc[1] + r*Math.sin(a)]); } }); break; }
+    case "custom": {
+      if(typeof custom === "string") raw = svgPathToPoints(custom);
+      else raw = (Array.isArray(custom) ? custom : []).filter(q => Array.isArray(q) && isFinite(q[0]) && isFinite(q[1])).map(q => [Number(q[0]), Number(q[1])]);
+      raw = raw.filter((q,i) => i === 0 || Math.hypot(q[0]-raw[i-1][0], q[1]-raw[i-1][1]) > 1e-6);
+      if(raw.length > 2 && Math.hypot(raw[0][0]-raw[raw.length-1][0], raw[0][1]-raw[raw.length-1][1]) < 1e-6) raw.pop();
+      if(raw.length < 4) throw new Error("برای شکل سفارشی، مسیر/نقطه‌ها کافی نیست (حداقل ۴ نقطه)");
+      if(typeof custom !== "string" && smooth !== false && raw.length <= 90) raw = catmullClosed(raw, 8);
+      if(raw.length > 700){ const k = Math.ceil(raw.length/700); raw = raw.filter((q,i) => i % k === 0); }
+      break; }
+    default: throw new Error("شکل «" + name + "» نامعتبر است — heart, circle, ellipse, rounded_rect, hexagon, octagon, pentagon, triangle, star, custom");
+  }
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; raw.forEach(q => { x0 = Math.min(x0,q[0]); x1 = Math.max(x1,q[0]); y0 = Math.min(y0,q[1]); y1 = Math.max(y1,q[1]); });
+  const w = (x1-x0) || 1, h = (y1-y0) || 1, sx = W/w, sy = H ? H/h : sx, out = raw.map(q => [(q[0]-(x0+x1)/2)*sx, (q[1]-(y0+y1)/2)*sy]);
+  if(name === "custom" && polySelfIntersects(out)) throw new Error("مسیر شکل خودش را قطع می‌کند (self-intersection) — یک شکل ساده و بسته بده");
+  return out;
+}
+function shapeLen(pts){ let P = 0; for(let i = 0; i < pts.length; i++){ const a = pts[i], b = pts[(i+1) % pts.length]; P += Math.hypot(b[0]-a[0], b[1]-a[1]); } return P; }
+function shapeCorners(pts){ // موقعیت (طول کمان) نقطه‌های تیز، برای خط تای عمودی روی نوار دیواره
+  const out = []; let s = 0;
+  for(let i = 0; i < pts.length; i++){
+    const a = pts[(i+pts.length-1) % pts.length], b = pts[i], c = pts[(i+1) % pts.length];
+    const a1 = Math.atan2(b[1]-a[1], b[0]-a[0]), a2 = Math.atan2(c[1]-b[1], c[0]-b[0]); let d = Math.abs(a2-a1); if(d > Math.PI) d = 2*Math.PI - d;
+    if(d > 0.6 && i > 0) out.push(s);
+    s += Math.hypot(c[0]-b[0], c[1]-b[1]);
+  }
+  return out;
+}
+function dlStrip(P, hgt, y0, corners, g){
+  const tabH = Math.min(10, Math.max(4, hgt*0.45)), n = Math.max(6, Math.round(P/8)), tw = P/n, gi = Math.min(6, hgt*0.2), yb = y0 + hgt;
+  const pts = [[0,y0],[P,y0],[P+g,y0+gi],[P+g,yb-gi],[P,yb]];
+  for(let k = n-1; k >= 0; k--){ const x1 = (k+1)*tw, x0 = k*tw; pts.push([x1-0.8, yb+tabH],[x0+0.8, yb+tabH],[x0, yb]); }
+  const paths = [{t:"cut", pts, closed:true}, {t:"score", pts:[[0,yb],[P,yb]]}, {t:"score", pts:[[P,y0],[P,yb]]}];
+  corners.forEach(s => { if(s > 3 && s < P-3) paths.push({t:"score", pts:[[s,y0],[s,yb]]}); });
+  return {paths, h: hgt + tabH};
+}
+function dlShapeBox(spec){
+  const W = dlNum(spec.length, 20, 300, 100), Hh = dlNum(spec.width, 20, 300, 90), H = dlNum(spec.height, 8, 200, 40), thk = dlNum(spec.thickness, 0.1, 3, 0.3);
+  const Hl = dlNum(spec.height_lid, 8, 150, Math.max(10, H*0.45)), g = dlNum(spec.glue_flap, 6, 25, 12), gap = thk + 0.6;
+  const pts = shapeOutline(spec.shape, spec.outline, W, Hh, spec.smooth), W2 = W + 2*gap, H2 = Hh + 2*gap;
+  const plan = pts.map(q => [q[0] + W/2, q[1] + Hh/2]), lid = pts.map(q => [q[0]*W2/W + W2/2, q[1]*H2/Hh + H2/2 + Hh + 15]);
+  const P = shapeLen(pts), P2 = shapeLen(lid);
+  const paths = [{t:"cut", pts:plan, closed:true}, {t:"cut", pts:lid, closed:true}];
+  let y = Hh + 15 + H2 + 15;
+  const s1 = dlStrip(P, H, y, shapeCorners(pts), g); paths.push(...s1.paths); y += s1.h + 15;
+  const s2 = dlStrip(P2, Hl, y, shapeCorners(lid), g); paths.push(...s2.paths);
+  return paths;
+}
+/* ---------- ۳بعدی: منشور با هر مقطع ---------- */
+function g3FitV(vs, tw, th, cx, cy, yaw, pitch, fixedS){
+  const o = {yaw, pitch, s:1, cx:0, cy:0}; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  vs.forEach(v => { const q = g3P(v,o); x0 = Math.min(x0,q[0]); x1 = Math.max(x1,q[0]); y0 = Math.min(y0,q[1]); y1 = Math.max(y1,q[1]); });
+  const s = fixedS || Math.min(tw/(x1-x0), th/(y1-y0));
+  return {yaw, pitch, s, cx: cx - s*(x0+x1)/2, cy: cy - s*(y0+y1)/2};
+}
+function g3PrismQuads(pts){
+  let area = 0; pts.forEach((a,i) => { const b = pts[(i+1) % pts.length]; area += a[0]*b[1] - b[0]*a[1]; }); const sg = area > 0 ? 1 : -1;
+  return pts.map((a,i) => { const b = pts[(i+1) % pts.length], ex = b[0]-a[0], ez = b[1]-a[1], l = Math.hypot(ex,ez) || 1; return {a, b, n:[ez/l*sg, 0, -ex/l*sg]}; });
+}
+function g3Shadow(c, pts, o, T){
+  T = T || [0,0,0]; c.save(); c.beginPath();
+  pts.forEach((q,i) => { const p = g3P([q[0]+T[0], T[1], q[1]+T[2]], o); i ? c.lineTo(p[0],p[1]) : c.moveTo(p[0],p[1]); }); c.closePath();
+  c.shadowColor = "rgba(0,0,0,0.30)"; c.shadowBlur = 55; c.shadowOffsetX = 26; c.shadowOffsetY = 20; c.fillStyle = "rgba(0,0,0,0.10)"; c.fill(); c.restore();
+}
+function g3PrismClosed(c, pts, H, o, hex, txt, name, T){
+  T = T || [0,0,0]; const rgb = g3.hex(hex), add = (x,y,z) => [x+T[0], y+T[1], z+T[2]], lit = n => G3_LIGHT[0]*n[0] + G3_LIGHT[1]*n[1] + G3_LIGHT[2]*n[2];
+  g3PrismQuads(pts).filter(q => g3NZ(q.n,o) > 0.01).map(q => {
+    const pp = [g3P(add(q.a[0],0,q.a[1]),o), g3P(add(q.b[0],0,q.b[1]),o), g3P(add(q.b[0],H,q.b[1]),o), g3P(add(q.a[0],H,q.a[1]),o)];
+    return {q, pp, z: pp.reduce((a,p) => a+p[2],0)/4};
+  }).sort((a,b) => a.z-b.z).forEach(v => {
+    const k = 0.55 + 0.45*Math.max(0, lit(v.q.n)); c.beginPath(); v.pp.forEach((p,i) => i ? c.lineTo(p[0],p[1]) : c.moveTo(p[0],p[1])); c.closePath();
+    c.fillStyle = g3.css(rgb,k); c.fill(); c.lineWidth = 1.5; c.strokeStyle = g3.css(rgb,k); c.stroke();
+  });
+  const top = pts.map(q => g3P(add(q[0],H,q[1]),o)), kt = 0.55 + 0.45*G3_LIGHT[1];
+  c.beginPath(); top.forEach((p,i) => i ? c.lineTo(p[0],p[1]) : c.moveTo(p[0],p[1])); c.closePath(); c.fillStyle = g3.css(rgb,kt); c.fill();
+  if(name){
+    const P0 = g3P(add(0,H,0),o), Pu = g3P(add(1,H,0),o), Pv = g3P(add(0,H,1),o);
+    let x0 = 1e9, x1 = -1e9; pts.forEach(q => { x0 = Math.min(x0,q[0]); x1 = Math.max(x1,q[0]); });
+    const bw = x1-x0, size = Math.min(bw*0.16, bw*0.5/(Math.max(4,String(name).length)*0.56));
+    c.save(); c.clip(); c.setTransform(Pu[0]-P0[0], Pu[1]-P0[1], Pv[0]-P0[0], Pv[1]-P0[1], P0[0], P0[1]);
+    c.fillStyle = txt; c.textAlign = "center"; c.textBaseline = "middle"; c.font = "800 " + size + "px " + GI_FONT; c.fillText(name, 0, 0); c.restore();
+  }
+  c.lineJoin = "round"; c.lineWidth = 3; c.strokeStyle = g3.css(rgb,0.78); c.beginPath(); top.forEach((p,i) => i ? c.lineTo(p[0],p[1]) : c.moveTo(p[0],p[1])); c.closePath(); c.stroke();
+}
+function g3PrismOpen(c, pts, H, o, hex, T){
+  T = T || [0,0,0]; const rgb = g3.hex(hex), add = (x,y,z) => [x+T[0], y+T[1], z+T[2]], lit = n => G3_LIGHT[0]*n[0] + G3_LIGHT[1]*n[1] + G3_LIGHT[2]*n[2];
+  const Q = g3PrismQuads(pts).map(q => {
+    const pp = [g3P(add(q.a[0],0,q.a[1]),o), g3P(add(q.b[0],0,q.b[1]),o), g3P(add(q.b[0],H,q.b[1]),o), g3P(add(q.a[0],H,q.a[1]),o)];
+    return {q, pp, z: pp.reduce((a,p) => a+p[2],0)/4, nz: g3NZ(q.n,o)};
+  }).sort((a,b) => a.z-b.z);
+  const poly = (pp, col) => { c.beginPath(); pp.forEach((p,i) => i ? c.lineTo(p[0],p[1]) : c.moveTo(p[0],p[1])); c.closePath(); c.fillStyle = col; c.fill(); c.lineWidth = 1.5; c.strokeStyle = col; c.stroke(); };
+  poly(pts.map(q => g3P(add(q[0],0,q[1]),o)), g3.css(rgb,0.42));
+  Q.filter(v => v.nz <= 0.01).forEach(v => poly(v.pp, g3.css(rgb, 0.4 + 0.3*Math.max(0, -lit(v.q.n)))));
+  Q.filter(v => v.nz > 0.01).forEach(v => poly(v.pp, g3.css(rgb, 0.55 + 0.45*Math.max(0, lit(v.q.n)))));
+  c.lineJoin = "round"; c.lineWidth = 3; c.strokeStyle = g3.css(rgb,1.12); c.beginPath(); pts.forEach((q,i) => { const p = g3P(add(q[0],H,q[1]),o); i ? c.lineTo(p[0],p[1]) : c.moveTo(p[0],p[1]); }); c.closePath(); c.stroke();
+}
+// شکل ۳بعدی محصول: جعبه‌ی مکعبی یا منشور (قلب، شکل آزاد و...) — یک رابط یکسان برای همه‌ی تصویرها/ویدیو
+function giShape(p, k){
+  k = k || 1; const sh = p.dzShape;
+  if(sh && sh.shape){
+    let pts; try{ pts = shapeOutline(sh.shape, sh.outline, p.w*k, p.h*k, sh.smooth); }catch(e){ pts = null; }
+    if(pts){ const lf = sh.lidFrac || 0.36, H = p.d*k, hb = H*(1-lf), hl = H*lf, lk = (p.w*k+4)/(p.w*k), lk2 = (p.h*k+4)/(p.h*k), lp = pts.map(q => [q[0]*lk, q[1]*lk2]);
+      return {kind:"prism", pts, H,
+        verts: t => { t = t || [0,0,0]; const v = []; pts.forEach(q => { v.push([q[0]+t[0], t[1], q[1]+t[2]], [q[0]+t[0], H+t[1], q[1]+t[2]]); }); return v; },
+        draw: (c,o,hex,txt,t) => { const T = t || [0,0,0]; g3Shadow(c, pts, o, T); g3PrismClosed(c, pts, hb, o, hex, null, null, T);
+          g3PrismClosed(c, lp, hl, o, vidMix(hex, "#ffffff", 0.2), txt, p.name, [T[0], T[1]+hb, T[2]]); } }; }
+  }
+  const b = {L:p.w*k, W:p.h*k, H:p.d*k};
+  return {kind:"box", b, H:b.H,
+    verts: t => { t = t || [0,0,0]; const v = []; for(const X of [-1,1]) for(const Y of [0,1]) for(const Z of [-1,1]) v.push([X*b.L/2+t[0], Y*b.H+t[1], Z*b.W/2+t[2]]); return v; },
+    draw: (c,o,hex,txt,t) => g3Closed(c, Object.assign({}, b, {t}), o, hex, giBoxLabels(Object.assign({}, p, {w:Math.round(p.w*k), h:Math.round(p.h*k), d:Math.round(p.d*k)}), txt))};
+}
+function giBox3dSimple(c,p,tw,th,cx,cy,hex,txtColor,scale){
+  const sh = giShape(p, scale || 1), o = g3FitV(sh.verts(), tw, th, cx, cy, -0.62, 0.52);
+  sh.draw(c, o, hex, txtColor, null);
+}
 const GI_DRAW = {
   hero(c,p,L,svgImg){
     const mode = GI_OPT.hero || "combo", pillF = "800 64px " + GI_FONT;
@@ -8056,6 +8230,13 @@ const GI_DRAW = {
   /* ----- ۱۱ تا ۲۰ ----- */
   box3d(c,p){ giBox3dSimple(c,p,1700,980,GI.W/2,1070,GI.acc,giOnAcc()); },
   box3d_open(c,p){
+    const so = giShape(p,1);
+    if(so.kind === "prism"){
+      const lk = (p.w+3)/p.w, lk2 = (p.h+3)/p.h, Hl = Math.max(8, p.d*((p.dzShape && p.dzShape.lidFrac) || 0.4)), T = [p.w*0.95, 0, p.h*0.12], lidPts = so.pts.map(q => [q[0]*lk, q[1]*lk2]);
+      const lidV = []; lidPts.forEach(q => lidV.push([q[0]+T[0], 0, q[1]+T[2]], [q[0]+T[0], Hl, q[1]+T[2]]));
+      const o = g3FitV(so.verts().concat(lidV), 1700, 980, GI.W/2, 1070, -0.62, 0.52);
+      g3Shadow(c, so.pts, o, null); g3Shadow(c, lidPts, o, T); g3PrismOpen(c, so.pts, so.H, o, GI.acc); g3PrismClosed(c, lidPts, Hl, o, GI.teal, giOnTeal(), p.name, T); return;
+    }
     const L = p.w, W = p.h, H = p.d, style = (GI_OPT.boxStyle && GI_OPT.boxStyle !== "auto") ? GI_OPT.boxStyle : (p.dzStyle === "tray_lid" ? "tray" : "tuck");
     if(style === "tray"){
       const Hl = Math.max(8, H*0.4), gap = Math.max(H*1.3, 32);
@@ -8122,10 +8303,10 @@ const GI_DRAW = {
   sizes(c,p){
     const scales = [[0.55,"Small"],[0.8,"Medium"],[1.1,"Large"]], slotW = 700, gap = 40, x0 = (GI.W-(3*slotW+2*gap))/2;
     const [r,g,b] = g3.hex(GI.teal), txt = (r*0.299+g*0.587+b*0.114) > 160 ? "#1a1a1a" : "#ffffff";
-    const ref = g3Fit([{L:p.w*1.1, W:p.h*1.1, H:p.d*1.1}], slotW-80, 560, 0, 0, -0.62, 0.52).s;
+    const ref = g3FitV(giShape(p,1.1).verts(), slotW-80, 560, 0, 0, -0.62, 0.52).s;
     scales.forEach(([k,name],i) => { const x = x0+i*(slotW+gap); giCard(c,x,540,slotW,860);
-      const bb = {L:p.w*k, W:p.h*k, H:p.d*k}, o = g3Fit([bb],0,0,x+slotW/2,900,-0.62,0.52,ref);
-      g3Closed(c,bb,o,GI.teal,giBoxLabels(Object.assign({},p,{w:Math.round(p.w*k),h:Math.round(p.h*k),d:Math.round(p.d*k)}),txt));
+      const sh = giShape(p,k), o = g3FitV(sh.verts(),0,0,x+slotW/2,900,-0.62,0.52,ref);
+      sh.draw(c,o,GI.teal,txt,null);
       c.fillStyle = GI.ink; c.font = "800 76px " + GI_FONT; c.textAlign = "center"; c.fillText(name, x+slotW/2, 1250);
       c.fillStyle = GI.mute; c.font = "600 60px " + GI_FONT; c.fillText(Math.round(p.w*k) + " mm", x+slotW/2, 1340);
     });
@@ -8191,7 +8372,7 @@ const GI_TITLES = {
   materials:["Works With Many Materials",""], download:["How It Works","Instant download in 3 steps"], software:["Compatible Software",""], faq:["Questions?",""], sizes:["Resize Freely","Small • Medium • Large"], thanks:null
 };
 async function giSvgImage(p){
-  const v = p.files && p.files.svg; if(!v) return null;
+  const v = p.dzPreview || (p.files && p.files.svg); if(!v) return null;
   try{
     const b = await blobGet(v.key); if(!b) return null;
     let txt = await b.text();
@@ -8225,7 +8406,8 @@ function giRender(c,p,slotKey,ctx){
   c.setLineDash([]); c.textBaseline = "alphabetic"; c.direction = "ltr"; c.setTransform(1,0,0,1,0,0);
   GI_BG = ctx.bgImg || null;
   let t = GI_TITLES[slotKey];
-  if(slotKey === "template" && ctx.svgImg && ctx.svgImg.sheet) t = ["Cutting Template", "Sheet " + ctx.svgImg.sheet.w + " × " + ctx.svgImg.sheet.h + " mm"];
+  if(slotKey === "template" && p.dzStyle === "rigid_shape") t = ["All Parts Included", "12 parts: chipboard + paper"];
+  else if(slotKey === "template" && ctx.svgImg && ctx.svgImg.sheet) t = ["Cutting Template", "Sheet " + ctx.svgImg.sheet.w + " × " + ctx.svgImg.sheet.h + " mm"];
   if(slotKey === "hero" && GI_OPT.hero === "center") t = [p.name, p.category || ""];
   giFrame(c, t ? t[0] : "", t ? t[1] : "", ctx.shop, ctx.logo);
   GI_DRAW[slotKey](c,p,ctx.L,ctx.svgImg,ctx.shop,ctx.logo);
@@ -8524,7 +8706,7 @@ function dlSpecToNet(spec){
   throw new Error("نوع طرح «" + style + "» نامعتبر است — فقط tuck_end, tray_lid, sleeve, drawer_sleeve, net");
 }
 function dlBuild(spec){
-  const net = dlSpecToNet(spec); let paths = netBuild(net);
+  let paths = spec.style === "shape_box" ? dlShapeBox(spec) : netBuild(dlSpecToNet(spec));
   let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
   paths.forEach(p => p.pts.forEach(q => { x0=Math.min(x0,q[0]); y0=Math.min(y0,q[1]); x1=Math.max(x1,q[0]); y1=Math.max(y1,q[1]); }));
   if(!isFinite(x0)) throw new Error("طرح خالی است");
@@ -8595,7 +8777,7 @@ function dlGuidePdf(spec, d){
 }
 
 // ── Claude: سؤال‌ها و طرح (نسخه‌ی ۲)
-const dzState = {brief:"", qs:[], qa:[], spec:null, dl:null};
+const dzState = {brief:"", qs:[], qa:[], spec:null, dl:null, kit:null, userOutline:null};
 const dzEsc = s => String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 // مدل طراحی: «Claude سرور» (Opus/Sonnet با کلید سرور، دقیق‌تر) یا همان مدل تنظیمات برنامه
 async function dzCall(prompt, maxTokens){
@@ -8617,7 +8799,7 @@ async function dzAsk(){
     const mine = (S.products||[]).slice(0,8).map(x => x.TITLE).filter(Boolean).join(" | ");
     const prompt = "You are a senior packaging engineer (dieline designer) and an Etsy digital-template coach. A Persian-speaking seller wants to create a NEW digital product (cut files SVG/DXF/PDF for Cricut, Silhouette and laser cutters; the buyer downloads files, nothing is shipped).\n" +
       "Seller idea: " + brief + "\nShop niche: " + (S.shopNicheVal||"-") + (mine ? "\nExisting listings (avoid duplicating): " + mine : "") +
-      "\n\nAsk the seller 4 to 6 SHORT questions, in Persian, that you genuinely need to design the right box (box type and closure: tuck-end carton / two-piece lid / hinged lid / sleeve / drawer / etc., real size or use case, material and thickness, extras like window/handle/insert, target buyer/occasion, machines). For each question give 3 to 5 suggested answers in Persian (the seller can also type their own).\n" +
+      "\n\nAsk the seller 4 to 6 SHORT questions, in Persian, that you genuinely need to design the right box (box type, SHAPE (rectangular / heart / round / star / hexagon ...) and closure: tuck-end carton / two-piece lid / hinged lid / sleeve / drawer / etc., real size or use case, material and thickness, extras like window/handle/insert, target buyer/occasion, machines). For each question give 3 to 5 suggested answers in Persian (the seller can also type their own).\n" +
       'Return ONLY JSON: {"questions":[{"q":"...","options":["...","..."]}]}';
     const d = parseJSON(await dzCall(prompt, 3000));
     dzState.qs = (d.questions || []).slice(0,6);
@@ -8638,7 +8820,7 @@ async function dzAsk(){
   }catch(e){ $("st-dzQs").innerHTML = "<p class='help' style='color:var(--cut)'>خطا: " + dzEsc(e.message) + "</p>"; }
 }
 const DZ_NET_DOC =
-"BOX GEOMETRY FORMAT — choose ONE style:\n" +
+"BOX GEOMETRY FORMAT — choose ONE style (tuck_end, tray_lid, sleeve, drawer_sleeve, shape_box, rigid_shape, net):\n" +
 "1) \"tuck_end\": straight-tuck-end carton (4 wall panels in a row, glue flap, tuck + dust flaps). Params: length, width, height.\n" +
 "2) \"tray_lid\": two-piece box, open tray base + separate lid. Params: length, width, height (base), height_lid.\n" +
 "3) \"sleeve\": open-ended wrap/belly band. Params: length = sleeve length, width/height = cross-section.\n" +
@@ -8648,7 +8830,18 @@ const DZ_NET_DOC =
 "   net.flaps = array of {panel, edge, depth, shape, ...} where panel = 0-based index into net.panels, edge = top|bottom|left|right, depth = how far the flap extends (mm), shape = trapezoid | rect | round | tuck (tuck = rounded with a small relief gap). Optional: from/to (mm offsets along that edge, default whole edge), inset / insetStart / insetEnd (taper at the free corners, trapezoid), radius, gap.\n" +
 "   The code draws the cut outline (red) and fold lines (blue dashed) from this; so the numbers must be geometrically consistent (adjacent panels share exact edges: e.g. panel widths add up, heights equal where they touch).\n" +
 "   Example (a simple sleeve-like net): {\"panels\":[{\"x\":0,\"y\":0,\"w\":60,\"h\":40},{\"x\":60,\"y\":0,\"w\":30,\"h\":40},{\"x\":90,\"y\":0,\"w\":60,\"h\":40},{\"x\":150,\"y\":0,\"w\":30,\"h\":40}],\"flaps\":[{\"panel\":0,\"edge\":\"left\",\"depth\":12,\"shape\":\"trapezoid\"},{\"panel\":0,\"edge\":\"top\",\"depth\":28,\"shape\":\"tuck\"}]}\n" +
-"STYLE CHOICE: pick the style that truly matches what the seller asked for. Do NOT default to tuck_end. If the request needs something the engine cannot draw (curved pillow box, gable, hexagon), choose the closest rectangular alternative and say so in notes_fa.";
+"6) \"shape_box\": box with a NON-rectangular outline (heart, circle, ellipse, rounded_rect, hexagon, octagon, pentagon, triangle, star, or custom). Two pieces: base + lid, each built from a wall strip with glue tabs. Params: shape, length = overall shape width, width = overall shape depth, height = wall height, height_lid = lid rim height. For shape=\"custom\" also give outline_svg: ONE closed SVG path string (commands M L H V C S Q T A Z allowed, must not cross itself, any units, y grows down) drawing a smooth, elegant organic outline exactly like a designer would (e.g. mermaid tail, leaf, cloud, flower, animal silhouette). Keep it simple: 6-14 curve segments. Alternatively give outline: 12-40 control points [x,y] around the shape (auto-smoothed).\n" +
+"7) \"rigid_shape\": RIGID luxury box built from layered chipboard parts (lid top board, double walls, bottom board) wrapped with decorative paper covers and liners; delivered as about 18 separate SVG parts plus a parts-list guide. Best for gift boxes with a custom outline (heart, flower, logo shape, or the seller's uploaded shape). Params: shape (preset or custom), length = lid top width in mm (e.g. 300), height = base wall height in mm, height_lid = lid wall height in mm, board_thickness = chipboard thickness in mm (default 1), units = \"in\" or \"mm\" for the files (default in).\n" +
+"STYLE CHOICE (hard / rigid / luxury / chipboard / layered box = rigid_shape; light foldable cardstock = the other styles): pick the style that truly matches what the seller asked for (a heart box = shape_box with shape heart). Do NOT default to tuck_end. If the request needs something the engine cannot draw (pillow box with curved ends, gable box), choose the closest alternative and say so in notes_fa.";
+function dzBuildAll(spec){
+  if(spec.style === "rigid_shape"){ dzState.kit = rsBuild(spec); return rsComposite(dzState.kit); }
+  dzState.kit = null; return dlBuild(spec);
+}
+function dzParseShapeSvg(txt){
+  const ps = [...String(txt).matchAll(/<path\b[^>]*?\sd="([^"]+)"/g)].map(m => m[1]).sort((a,b) => b.length - a.length); if(ps.length) return ps[0];
+  const pg = String(txt).match(/<polygon\b[^>]*?\spoints="([^"]+)"/); if(pg){ const n = pg[1].trim().split(/[\s,]+/).map(Number); let d = "M"; for(let i = 0; i+1 < n.length; i += 2) d += (i ? " L" : "") + n[i] + " " + n[i+1]; return d + " Z"; }
+  return null;
+}
 async function dzDesign(feedback){
   $("st-dzOut").innerHTML = "<p class='help'>⏳ Claude دارد جعبه را طراحی و راهنما/متن لیستینگ را می‌نویسد (۳۰ تا ۱۲۰ ثانیه)...</p>";
   try{
@@ -8656,19 +8849,23 @@ async function dzDesign(feedback){
     const base = "You are a senior packaging engineer who designs production-quality box dielines AND an expert Etsy SEO copywriter for digital cut-file templates (Cricut / Silhouette / Glowforge / laser).\n" +
       "Seller idea: " + dzState.brief + "\n" + (qa ? "Seller answers:\n" + qa + "\n" : "No questions were asked: decide sensible defaults yourself.\n") +
       (feedback && dzState.spec ? "\nPREVIOUS DESIGN (JSON): " + JSON.stringify(dzState.spec).slice(0,7000) + "\nSELLER FEEDBACK (apply it): " + feedback + "\n" : "") +
+      (dzState.userOutline ? "\nThe seller UPLOADED THEIR OWN SHAPE FILE (SVG outline). The app uses it automatically: choose style \"rigid_shape\" (rigid chipboard box with separate lid, layered walls, paper covers and a parts list) or \"shape_box\" (light cardstock box) and set shape to \"custom\" — do NOT draw an outline yourself. For rigid_shape give length = lid top width in mm (the shape keeps its own proportions), height = base wall height, height_lid = lid wall height, board_thickness = 1.\n" : "") +
       "\n" + DZ_NET_DOC + "\n\n" +
       "SIZE RULES: length/width/height are the FINISHED INNER box size in mm. Choose realistic numbers for the use case and material thickness (allow tolerances). Keep the whole sheet under ~500 mm.\n" +
       "GUIDE: write a friendly assembly guide for buyers: guide.steps = 5-8 items {title (max 4 words), text (1-2 short sentences), tip (optional short)}; guide.tools = 4-6 items; guide.tips = 4-6 items {title, text}. Plain English, no emojis.\n\n" +
       "LISTING RULES: title in English, max 14 words and 140 chars, must start with a letter or number, no characters $ ^ ` . °, at most one each of % : &, no more than 3 ALL-CAPS words (SVG/DXF/PDF count). tags: exactly 13, each max 20 chars, no underscores. materials: up to 13 short items. price: realistic USD number for this digital template.\n" + DESC_FORMAT_RULES + "\n" +
       "notes_fa: 2-4 Persian sentences telling the seller what was designed (style, sizes, material, closure) and what to test-cut.\n\n" +
-      'Return ONLY JSON: {"style":"tuck_end","name":"Short English product name","category":"Packaging Template","length":100,"width":70,"height":30,"height_lid":15,"sleeve_length":60,"glue_flap":12,"thickness":0.3,"material":"Cardstock 250-300 gsm","machines":["Cricut","Silhouette","Glowforge"],"net":null,"assembly_steps":["..."],"guide":{"steps":[{"title":"...","text":"...","tip":"..."}],"tools":["..."],"tips":[{"title":"...","text":"..."}]},"price":4.5,"notes_fa":"...","listing":{"title":"...","tags":["..."],"description":"...","materials":["..."]}}';
+      'Return ONLY JSON: {"style":"tuck_end","units":"in","board_thickness":1,"shape":null,"outline_svg":null,"outline":null,"smooth":true,"name":"Short English product name","category":"Packaging Template","length":100,"width":70,"height":30,"height_lid":15,"sleeve_length":60,"glue_flap":12,"thickness":0.3,"material":"Cardstock 250-300 gsm","machines":["Cricut","Silhouette","Glowforge"],"net":null,"assembly_steps":["..."],"guide":{"steps":[{"title":"...","text":"...","tip":"..."}],"tools":["..."],"tips":[{"title":"...","text":"..."}]},"price":4.5,"notes_fa":"...","listing":{"title":"...","tags":["..."],"description":"...","materials":["..."]}}';
     let spec = null, d = null, err = "";
     for(let attempt = 0; attempt < 2; attempt++){
       const text = await dzCall(base + (err ? "\n\nYOUR PREVIOUS ANSWER WAS REJECTED BY THE GEOMETRY CHECKER: " + err + "\nFix this and return the full corrected JSON." : ""), 12000);
       try{
         spec = parseJSON(text);
+        if(spec.style === "shape_box" && typeof spec.outline_svg === "string" && spec.outline_svg.trim()){ spec.shape = "custom"; spec.outline = spec.outline_svg; }
         if(!spec.listing) throw new Error("بخش listing در پاسخ نبود");
-        d = dlBuild(spec); err = ""; break;
+        if(dzState.userOutline && !["shape_box","rigid_shape"].includes(spec.style)){ spec.style = "rigid_shape"; spec.notes_fa = (spec.notes_fa || "") + " (چون فایل شکل خودتان را دادید، جعبه‌ی سخت بر پایه‌ی همان شکل طراحی شد.)"; }
+        if(dzState.userOutline && ["shape_box","rigid_shape"].includes(spec.style)){ spec.shape = "custom"; spec.outline = dzState.userOutline; }
+        d = dzBuildAll(spec); err = ""; break;
       }catch(e){ err = e.message; if(attempt === 1) throw new Error(err); }
     }
     dzState.spec = spec; dzState.dl = d;
@@ -8678,13 +8875,14 @@ async function dzDesign(feedback){
 function dzRebuild(){
   const s = dzState.spec; if(!s) return;
   const num = id => Number($(id).value);
-  s.style = $("st-dzStyle").value; s.length = num("st-dzL"); s.width = num("st-dzW"); s.height = num("st-dzH");
+  s.style = $("st-dzStyle").value; if($("st-dzShape")) s.shape = $("st-dzShape").value; s.length = num("st-dzL"); s.width = num("st-dzW"); s.height = num("st-dzH");
   if($("st-dzHl").value) s.height_lid = num("st-dzHl");
-  try{ dzState.dl = dlBuild(s); dzRender(); }catch(e){ toast("طرح ساخته نشد: " + e.message); }
+  if($("st-dzUnits")) s.units = $("st-dzUnits").value; if($("st-dzT") && $("st-dzT").value) s.board_thickness = num("st-dzT");
+  try{ dzState.dl = dzBuildAll(s); dzRender(); }catch(e){ toast("طرح ساخته نشد: " + e.message); }
 }
 function dzRender(){
   const s = dzState.spec, d = dzState.dl, l = s.listing || {}, sw = Math.max(0.5, d.w/220);
-  const styles = [["tuck_end","جعبه‌ی تاشو (tuck end)"],["tray_lid","سینی + درب جدا"],["sleeve","آستین (sleeve)"],["drawer_sleeve","کشویی + آستین"]].concat(s.net ? [["net","طرح اختصاصی Claude"]] : []);
+  const styles = [["tuck_end","جعبه‌ی تاشو (tuck end)"],["tray_lid","سینی + درب جدا"],["sleeve","آستین (sleeve)"],["drawer_sleeve","کشویی + آستین"],["shape_box","جعبه‌ی شکل‌دار (قلب، دایره، ستاره...)"],["rigid_shape","جعبه‌ی سخت چیپ‌برد + روکش کاغذی (شکل دلخواه)"]].concat(s.net ? [["net","طرح اختصاصی Claude"]] : []);
   $("st-dzOut").innerHTML =
     "<div style='margin-top:14px;padding:12px;border:1px solid var(--rule);border-radius:10px'>" +
     "<h3 style='margin:0 0 8px'>🧩 طرح پیشنهادی Claude</h3>" +
@@ -8694,10 +8892,13 @@ function dzRender(){
     "<p class='help'>پیش‌نمایش ۳بعدی تقریبی (جعبه‌ی بسته با ابعاد نهایی)</p>" +
     "<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin:8px 0'>" +
       "<label class='fld'><span>نوع</span><select id='st-dzStyle'>" + styles.map(x => "<option value='" + x[0] + "'" + (x[0] === s.style ? " selected" : "") + ">" + x[1] + "</option>").join("") + "</select></label>" +
+      "<label class='fld'><span>شکل (برای جعبه‌ی شکل‌دار)</span><select id='st-dzShape'>" + [["heart","قلب"],["circle","دایره"],["ellipse","بیضی"],["rounded_rect","مستطیل گوشه‌گرد"],["hexagon","شش‌ضلعی"],["octagon","هشت‌ضلعی"],["pentagon","پنج‌ضلعی"],["triangle","مثلث"],["star","ستاره"]].concat(s.shape === "custom" ? [["custom","سفارشی Claude"]] : []).map(x => "<option value='" + x[0] + "'" + (x[0] === (s.shape || "heart") ? " selected" : "") + ">" + x[1] + "</option>").join("") + "</select></label>" +
       "<label class='fld'><span>طول (mm)</span><input type='number' id='st-dzL' value='" + dzEsc(s.length) + "'></label>" +
       "<label class='fld'><span>عرض (mm)</span><input type='number' id='st-dzW' value='" + dzEsc(s.width) + "'></label>" +
       "<label class='fld'><span>ارتفاع (mm)</span><input type='number' id='st-dzH' value='" + dzEsc(s.height) + "'></label>" +
       "<label class='fld'><span>ارتفاع درب (mm)</span><input type='number' id='st-dzHl' value='" + dzEsc(s.height_lid || "") + "'></label>" +
+      "<label class='fld'><span>واحد فایل‌ها</span><select id='st-dzUnits'><option value='in'" + (s.units !== "mm" ? " selected" : "") + ">اینچ (Cricut)</option><option value='mm'" + (s.units === "mm" ? " selected" : "") + ">میلی‌متر</option></select></label>" +
+      "<label class='fld'><span>ضخامت برد (mm)</span><input type='number' step='0.1' id='st-dzT' value='" + dzEsc(s.board_thickness || "") + "' placeholder='1'></label>" +
     "</div>" +
     "<table style='font-size:13px;line-height:2;direction:rtl'><tr><td>متریال</td><td dir='ltr'>" + dzEsc(s.material) + "</td></tr><tr><td>قیمت پیشنهادی</td><td dir='ltr'>$" + dzEsc(s.price) + "</td></tr><tr><td>عنوان</td><td dir='ltr'>" + dzEsc(l.title) + "</td></tr></table>" +
     "<p class='help'>" + dzEsc(s.notes_fa || "") + "</p>" +
@@ -8707,9 +8908,9 @@ function dzRender(){
     "<button class='ghost mini' id='st-dzRedo' style='margin-top:6px'>🔁 اصلاح طرح با Claude</button></div>";
   $("st-dzApply").onclick = dzApply;
   $("st-dzRedo").onclick = () => { const f = $("st-dzFeed").value.trim(); if(!f) return toast("اول بنویس چه تغییری می‌خواهی."); dzDesign(f); };
-  ["st-dzStyle","st-dzL","st-dzW","st-dzH","st-dzHl"].forEach(id => $(id).onchange = dzRebuild);
+  ["st-dzStyle","st-dzShape","st-dzL","st-dzW","st-dzH","st-dzHl","st-dzUnits","st-dzT"].forEach(id => $(id).onchange = dzRebuild);
   try{ giApply(giGet()); const c = $("st-dz3d").getContext("2d"); c.fillStyle = "#fff"; c.fillRect(0,0,700,420);
-    giBox3dSimple(c, {name: s.name, w: Number(s.length)||100, h: Number(s.width)||70, d: Number(s.height)||30}, 620, 340, 350, 210, GI.acc, giOnAcc()); }catch(e){}
+    giBox3dSimple(c, {name: s.name, w: dzState.kit ? dzState.kit.W : (Number(s.length)||100), h: dzState.kit ? dzState.kit.H : (Number(s.width)||70), d: dzState.kit ? dzState.kit.depth : (Number(s.height)||30), dzShape: (s.style === "shape_box" || s.style === "rigid_shape") ? {shape: s.shape || "heart", outline: s.outline, smooth: s.smooth !== false, lidFrac: dzState.kit ? Math.max(0.15, Math.min(0.6, dzState.kit.lidDepth/dzState.kit.depth)) : undefined} : null}, 620, 340, 350, 210, GI.acc, giOnAcc()); }catch(e){}
 }
 async function dzApply(){
   const s = dzState.spec, d = dzState.dl; if(!s || !d) return;
@@ -8720,19 +8921,29 @@ async function dzApply(){
   p.category = s.category || "Packaging Template"; p.material = s.material || p.material;
   p.machines = (s.machines || []).join(" / ") || p.machines;
   p.dzStyle = s.style;
+  p.dzShape = (s.style === "shape_box" || s.style === "rigid_shape") ? {shape: s.shape || "heart", outline: s.outline || null, smooth: s.smooth !== false} : null;
+  if(s.style === "rigid_shape" && dzState.kit){ const k = dzState.kit; p.w = Math.round(k.W); p.h = Math.round(k.H); p.d = Math.round(k.depth); p.dzShape.lidFrac = Math.max(0.15, Math.min(0.6, k.lidDepth/k.depth)); }
   p.title = limitTitle(sanitizeEtsyTitle(l.title || p.name));
   p.description = normalizeDescription(l.description || "");
   p.tags = (l.tags || []).map(t => String(t).replace(/_/g," ").trim()).filter(t => t && t.length <= 20).slice(0,13).join(", ");
   p.materials = sanitizeMaterials(l.materials || [], parseMaterials(p.materials)).join(", ");
   p.price = Number(s.price) > 0 ? Number(s.price) : 4.5;
   p.notes = "ساخته‌شده با Claude · قیمت پیشنهادی: $" + p.price + (s.notes_fa ? "\n" + s.notes_fa : "");
-  p.dzSpec = {style:s.style, length:s.length, width:s.width, height:s.height, height_lid:s.height_lid, sleeve_length:s.sleeve_length, material:s.material, name:s.name, guide:s.guide, assembly_steps:s.assembly_steps};
+  p.dzSpec = {style:s.style, units:s.units, board_thickness:s.board_thickness, gap:s.gap, width:s.width, length:s.length, width:s.width, height:s.height, height_lid:s.height_lid, sleeve_length:s.sleeve_length, material:s.material, name:s.name, guide:s.guide, assembly_steps:s.assembly_steps};
   const put = async (slot, blob, name) => { const key = p.id + ":files:" + slot; const f = new File([blob], name, {type: blob.type}); await blobPut(key, f); p.files[slot] = {name, size: f.size, type: f.type, key}; };
   const base = slug(p.name);
-  await put("svg", new Blob([dlSvg(d)], {type:"image/svg+xml"}), base + ".svg");
-  await put("dxf", new Blob([dlDxf(d)], {type:"application/dxf"}), base + ".dxf");
-  await put("pdf", dlPdf(d), base + ".pdf");
-  await put("guide", dlGuidePdf(s, d), base + "-instructions.pdf");
+  if(s.style === "rigid_shape" && dzState.kit){
+    const z = rsKitZips(dzState.kit, base);
+    await put("svg", new Blob([z.svg], {type:"application/zip"}), base + "-SVG-parts.zip");
+    await put("dxf", new Blob([z.dxf], {type:"application/zip"}), base + "-DXF-parts.zip");
+    await put("preview", new Blob([dlSvg(d)], {type:"image/svg+xml"}), base + "-preview.svg"); p.dzPreview = p.files.preview; delete p.files.preview;
+    await put("guide", dlGuidePdf(s, d), base + "-instructions.pdf");
+  } else {
+    await put("svg", new Blob([dlSvg(d)], {type:"image/svg+xml"}), base + ".svg");
+    await put("dxf", new Blob([dlDxf(d)], {type:"application/dxf"}), base + ".dxf");
+    await put("pdf", dlPdf(d), base + ".pdf");
+    await put("guide", dlGuidePdf(s, d), base + "-instructions.pdf");
+  }
   state.products.push(p); state.active = p.id; save(); renderAll();
   await generateListingImages({product:p, slots:IMG_SLOTS.map(x => x.k), overwrite:false});
   try{ await dzBuildGuide(p); }catch(e){ console.warn("guide", e); }
@@ -8743,7 +8954,7 @@ async function dzApply(){
 
 /* ---------- راهنمای PDF زیبا (چندصفحه‌ای، رنگی، با تصویر) ---------- */
 function pdfStr(s){
-  const map = {"•":"\\225","–":"\\226","—":"\\227","’":"\\222","‘":"\\221","“":"\\223","”":"\\224","×":"\\327","°":"\\260","…":"\\205","✓":"v","→":"->","›":">","✔":"v","\u00A0":" "};
+  const map = {"•":"\\225","·":"\\267","–":"\\226","—":"\\227","’":"\\222","‘":"\\221","“":"\\223","”":"\\224","×":"\\327","°":"\\260","…":"\\205","✓":"v","→":"->","›":">","✔":"v","\u00A0":" "};
   return Array.from(String(s)).map(ch => { if(ch === "\\" || ch === "(" || ch === ")") return "\\" + ch; const c = ch.charCodeAt(0); if(c >= 32 && c < 127) return ch; return map[ch] || "?"; }).join("");
 }
 function pdfW(s, size, bold){
@@ -8751,7 +8962,7 @@ function pdfW(s, size, bold){
   return w * size * (bold ? 1.06 : 1);
 }
 class PdfDoc{
-  constructor(){ this.pages = []; this.images = []; this.W = 595.28; this.H = 841.89; }
+  constructor(W, H){ this.pages = []; this.images = []; this.W = W || 595.28; this.H = H || 841.89; }
   addImage(bytes, w, h){ this.images.push({bytes, w, h}); return this.images.length-1; }
   newPage(){ this.cur = {ops: [], imgs: new Set()}; this.pages.push(this.cur); return this; }
   hex(h){ return g3.hex(h).map(v => (v/255).toFixed(3)).join(" "); }
@@ -8802,6 +9013,7 @@ async function dzToJpeg(blobOrCanvas, maxW){
   return {bytes: new Uint8Array(await b.arrayBuffer()), w: cw, h: ch};
 }
 async function dzBuildGuide(p){
+  if(p.dzStyle === "rigid_shape") return dzBuildRigidGuide(p);
   const gs = giGet(); giApply(gs);
   const spec = p.dzSpec || {name: p.name, length: p.w, width: p.h, height: p.d, material: p.material, style: p.dzStyle};
   const pdf = new PdfDoc(), W = pdf.W, H = pdf.H, ink = GI.ink, mute = GI.mute, acc = GI.acc, teal = GI.teal;
@@ -8897,6 +9109,199 @@ async function dzGuideForCurrent(){
   try{ await dzBuildGuide(p); toast("✅ راهنمای PDF ساخته و در اسلات «راهنمای مونتاژ» قرار گرفت."); }
   catch(e){ toast("خطا در ساخت راهنما: " + (e && e.message ? e.message : e)); }
 }
+/* ===================== جعبه‌ی سخت (چیپ‌برد) با شکل دلخواه: قطعات مقوایی + روکش کاغذی + آستر (کیت چندقطعه‌ای) ===================== */
+// همه‌ی اندازه‌ها داخل برنامه به میلی‌متر؛ خروجی SVG/راهنما به «اینچ» یا «میلی‌متر» (spec.units)
+const rsV = {sub:(a,b) => [a[0]-b[0], a[1]-b[1]], add:(a,b) => [a[0]+b[0], a[1]+b[1]], mul:(a,k) => [a[0]*k, a[1]*k], len:a => Math.hypot(a[0],a[1])};
+const rsNorm = a => { const l = Math.hypot(a[0],a[1]) || 1; return [a[0]/l, a[1]/l]; };
+const rsArea = pts => pts.reduce((s,p,i) => { const q = pts[(i+1) % pts.length]; return s + p[0]*q[1] - q[0]*p[1]; }, 0) / 2;
+function rsOffset(pts, d){ // انحراف چندضلعی بسته (مثبت = بزرگ‌تر)، اندیس گوشه‌ها حفظ می‌شود
+  const n = pts.length, sgn = rsArea(pts) > 0 ? 1 : -1;
+  return pts.map((p,i) => {
+    const a = pts[(i-1+n) % n], b = pts[(i+1) % n], e1 = rsNorm(rsV.sub(p,a)), e2 = rsNorm(rsV.sub(b,p));
+    const n1 = [e1[1]*sgn, -e1[0]*sgn], n2 = [e2[1]*sgn, -e2[0]*sgn]; let m = rsV.add(n1,n2); const ml = rsV.len(m);
+    if(ml < 1e-9) return rsV.add(p, rsV.mul(n1,d));
+    m = rsV.mul(m, 1/ml); const cosh = Math.max(0.25, m[0]*n1[0] + m[1]*n1[1]);
+    return rsV.add(p, rsV.mul(m, d/cosh));
+  });
+}
+const rsCum = pts => { const c = [0]; for(let i = 1; i <= pts.length; i++) c.push(c[i-1] + rsV.len(rsV.sub(pts[i % pts.length], pts[i-1]))); return c; };
+function rsCorners(pts){ // گوشه‌های تیز: زاویه‌ی چرخش روی ±۲ نقطه > ۳۰° و بیشینه‌ی محلی
+  const n = pts.length, ang = pts.map((p,i) => { const a = pts[(i-2+n*2) % n], b = pts[(i+2) % n], u = rsNorm(rsV.sub(p,a)), v = rsNorm(rsV.sub(b,p)); return Math.acos(Math.max(-1, Math.min(1, u[0]*v[0] + u[1]*v[1])))*180/Math.PI; });
+  const out = []; for(let i = 0; i < n; i++){ if(ang[i] < 30) continue; let ok = true; for(let d = -3; d <= 3; d++){ if(d && ang[(i+d+n) % n] > ang[i]) ok = false; } if(ok) out.push(i); }
+  return out;
+}
+function rsBuild(spec){
+  const W = dlNum(spec.length, 60, 1200, 300), depth = dlNum(spec.height, 20, 500, 100), lidDepth = dlNum(spec.height_lid, 8, 200, Math.min(40, depth*0.3));
+  const t = dlNum(spec.board_thickness, 0.3, 6, 1), gap = dlNum(spec.gap, 0.1, 3, 0.8), unit = spec.units === "mm" ? "mm" : "in";
+  const tab = 12.7, coverTab = 11.4, flap = 12.7, maxStrip = unit === "mm" ? 580 : 584.2, linerInset = 1;
+  const raw = shapeOutline(spec.shape || "custom", spec.outline, W, spec.width ? dlNum(spec.width, 40, 1200, W*0.65) : 0, spec.smooth);
+  const mx = Math.min(...raw.map(p => p[0])), my = Math.min(...raw.map(p => p[1])), S0 = raw.map(p => [p[0]-mx, p[1]-my]);
+  const shapeH = Math.max(...S0.map(p => p[1]));
+  let cIdx = rsCorners(S0); const start = cIdx[0] || 0, rot = a => a.slice(start).concat(a.slice(0,start));
+  const shape = rot(S0), corners = cIdx.length ? cIdx.map(i => (i-start+S0.length) % S0.length).sort((a,b) => a-b) : [0];
+  const parts = [];
+  const mv = (pts, bx, by) => pts.map(p => [p[0]-bx, p[1]-by]);
+  const piece = (file, w, h, paths) => ({file, w, h, paths});
+  const flatPiece = d => { const pts = rsOffset(shape, d), bx = Math.min(...pts.map(p => p[0])), by = Math.min(...pts.map(p => p[1])), m = mv(pts,bx,by);
+    return [piece("", Math.max(...m.map(p => p[0])), Math.max(...m.map(p => p[1])), [{t:"cut", pts:m, closed:true}])]; };
+  const tabbed = (d, tabH) => {
+    const ring = rsOffset(shape, d), outer = rsOffset(shape, d + tabH), cl = rsCum(ring), cuts = new Set(), cs = corners.concat([ring.length]);
+    for(let c = 0; c < cs.length-1; c++){ const a = cs[c], b = cs[c+1], L = cl[b]-cl[a], n = Math.max(1, Math.round(L/8.9));
+      for(let k = 0; k < n; k++){ const target = cl[a] + L*k/n; let j = a; while(j < b && cl[j] < target) j++; cuts.add(j % ring.length); } }
+    const cutArr = [...cuts].sort((a,b) => a-b), out = [], taper = 0.25, K = Math.max(4, Math.round(ring.length*0.02));
+    for(let k = 0; k < cutArr.length; k++){
+      const i0 = cutArr[k], i1 = k+1 < cutArr.length ? cutArr[k+1] : cutArr[0] + ring.length, idx = []; for(let j = i0; j <= i1; j++) idx.push(j % ring.length);
+      const m = idx.length-1, lo = Math.round(m*taper), hi = Math.round(m*(1-taper)); let h = 1;
+      for(const j of idx){ const a = ring[(j-K+ring.length*2) % ring.length], b = ring[(j+K) % ring.length], p = ring[j], nrm = rsV.sub(outer[j], p), mid = rsV.mul(rsV.add(a,b),0.5), sag = rsV.sub(mid,p);
+        if(sag[0]*nrm[0] + sag[1]*nrm[1] > 0){ const c = rsV.len(rsV.sub(b,a))/2, s = rsV.len(sag), R = (c*c + s*s)/(2*s || 1e-9); h = Math.min(h, (0.6*R)/tabH); } }
+      h = Math.max(h, 0.25); out.push(ring[idx[0]]);
+      for(let j = lo; j <= hi; j++) out.push(rsV.add(ring[idx[j]], rsV.mul(rsV.sub(outer[idx[j]], ring[idx[j]]), h)));
+    }
+    const bx = Math.min(...outer.map(p => p[0])), by = Math.min(...outer.map(p => p[1])), w = Math.max(...outer.map(p => p[0]))-bx, h = Math.max(...outer.map(p => p[1]))-by;
+    return [piece("", w, h, [{t:"cut", pts:mv(out,bx,by), closed:true}, {t:"score", pts:mv(ring,bx,by), closed:true}])];
+  };
+  const strip = (d, height, tabsTop, tabsBottom, opt) => {
+    opt = opt || {}; const scoreCorners = opt.scoreCorners !== false, ring = rsOffset(shape, d), cl = rsCum(ring), total = cl[ring.length], cpos = corners.map(i => cl[i]).concat([total]);
+    const nParts = Math.ceil((total + flap)/maxStrip), res = [];
+    for(let pi = 0; pi < nParts; pi++){
+      const a = total*pi/nParts, b = total*(pi+1)/nParts, L = b-a, Wd = L+flap, y0 = tabsTop, y1 = tabsTop+height, Ht = y1+tabsBottom;
+      const inner = cpos.filter(c => c > a+1e-6 && c < b-1e-6).map(c => c-a), bounds = [0];
+      [...inner, L].forEach(e => { const st = bounds[bounds.length-1], n = Math.max(1, Math.round((e-st)/15.24)); for(let k = 1; k <= n; k++) bounds.push(st + (e-st)*k/n); });
+      const tabRow = (yBase, dir) => { const pts = []; for(let k = 0; k < bounds.length-1; k++){ const x0 = bounds[k], x1 = bounds[k+1], tp = Math.min(3.05, (x1-x0)*0.25), hh = dir*(dir < 0 ? tabsTop : tabsBottom); pts.push([x0,yBase],[x0+tp,yBase+hh],[x1-tp,yBase+hh],[x1,yBase]); } return pts; };
+      const top = tabsTop ? tabRow(y0,-1) : [[0,y0],[L,y0]], bot = tabsBottom ? tabRow(y1,1).reverse() : [[L,y1],[0,y1]], fi = Math.min(3.8, height*0.2);
+      const outline = [...top, [L,y0],[Wd,y0+fi],[Wd,y1-fi],[L,y1], ...bot], paths = [{t:"cut", pts:outline, closed:true}];
+      if(tabsTop) paths.push({t:"score", pts:[[0,y0],[L,y0]]}); if(tabsBottom) paths.push({t:"score", pts:[[0,y1],[L,y1]]}); paths.push({t:"score", pts:[[L,y0],[L,y1]]});
+      if(scoreCorners) inner.forEach(x => paths.push({t:"score", pts:[[x,y0],[x,y1]]}));
+      res.push(piece("", Wd, Ht, paths));
+    }
+    return res;
+  };
+  const add = (n, slug, title, mat, desc, pieces) => { pieces.forEach((pc,i) => { pc.file = n + "-" + slug + (pieces.length > 1 ? "-part" + (i+1) + "of" + pieces.length : ""); }); parts.push({n, slug, title, mat, desc, pieces}); };
+  const baseOuter = -t - gap;
+  add("01","lid-top-board","Lid top board","Chipboard","The lid top, in the shape of your design.", flatPiece(0));
+  add("02","lid-wall","Lid main wall","Chipboard","Top tabs fold inward and glue under the lid top board.", strip(t/2, lidDepth, tab, 0));
+  add("03","lid-reinforce-wall","Lid reinforcing wall","Chipboard","Glued inside the main wall, under the top board.", strip(-t/2, lidDepth-t, 0, 0));
+  add("04","base-bottom-board","Base bottom board","Chipboard","Slightly smaller than the lid so the base fits inside it.", flatPiece(baseOuter - t));
+  add("05","base-wall","Base main wall","Chipboard","Bottom tabs fold inward and glue under the bottom board.", strip(baseOuter - t/2, depth, 0, tab));
+  add("06","base-reinforce-wall","Base reinforcing wall","Chipboard","Glued inside the main wall, standing on the bottom board.", strip(baseOuter - 1.5*t, depth-t, 0, 0));
+  add("07","cover-lid-top","Lid top cover","Decorative paper","Blue line = lid edge. Tabs fold down onto the lid wall.", tabbed(t, coverTab));
+  add("08","cover-lid-wall","Lid wall cover","Decorative paper","Top edge flush with the lid top; bottom tabs wrap inside the lid.", strip(t, lidDepth, 0, t+coverTab, {scoreCorners:false}));
+  add("09","liner-lid-inside","Lid inside liner","Decorative paper","Hides the tabs on the inside of the lid.", flatPiece(-t - linerInset));
+  add("10","cover-base-wall","Base wall cover","Decorative paper","Top tabs wrap inside the box; bottom tabs fold under the base.", strip(baseOuter, depth, t+coverTab, coverTab, {scoreCorners:false}));
+  add("11","cover-base-bottom","Base underside cover","Decorative paper","Finishes the bottom of the box.", flatPiece(baseOuter - linerInset));
+  add("12","liner-base-inside","Base inside liner","Decorative paper","Finishes the inside floor of the box.", flatPiece(baseOuter - 2*t - linerInset));
+  return {parts, shape, W, H: shapeH, depth, lidDepth, t, gap, unit, nWalls: parts[1].pieces.length};
+}
+const rsUnitK = unit => unit === "in" ? 1/25.4 : 1;
+const rsFmt = (mm, unit) => unit === "in" ? (Math.round(mm/25.4*100)/100) + " in" : Math.round(mm*10)/10 + " mm";
+function rsSvg(pc, unit){
+  const k = rsUnitK(unit), m = unit === "in" ? 0.25 : 6, f = v => (v*k).toFixed(4), pd = ps => ps.map(p => "M" + p.pts.map(q => f(q[0]) + " " + f(q[1])).join(" L") + (p.closed ? " Z" : ""));
+  const cut = pc.paths.filter(p => p.t === "cut"), sc = pc.paths.filter(p => p.t === "score"), W = pc.w*k, H = pc.h*k, sw = unit === "in" ? 0.01 : 0.25;
+  return '<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="' + (W+2*m).toFixed(4) + unit + '" height="' + (H+2*m).toFixed(4) + unit + '" viewBox="' + (-m) + " " + (-m) + " " + (W+2*m).toFixed(4) + " " + (H+2*m).toFixed(4) + '">\n' +
+    '  <g id="CUT" fill="none" stroke="#000000" stroke-width="' + sw + '">\n' + pd(cut).map(d => '    <path d="' + d + '"/>').join("\n") + '\n  </g>' +
+    (sc.length ? '\n  <g id="SCORE" fill="none" stroke="#0066FF" stroke-width="' + sw + '">\n' + pd(sc).map(d => '    <path d="' + d + '"/>').join("\n") + '\n  </g>' : "") + '\n</svg>\n';
+}
+function rsKitZips(kit, base){
+  const enc = new TextEncoder(), svgE = [], dxfE = [];
+  kit.parts.forEach(pt => pt.pieces.forEach(pc => {
+    svgE.push({path: base + "-SVG/" + pc.file + ".svg", data: enc.encode(rsSvg(pc, kit.unit))});
+    dxfE.push({path: base + "-DXF/" + pc.file + ".dxf", data: enc.encode(dlDxf({paths: pc.paths, w: pc.w, h: pc.h}))});
+  }));
+  const readme = "Box parts for " + base + "\n\nBlack line = cut, blue line = score/fold.\nSVG files are in " + (kit.unit === "in" ? "inches" : "millimetres") + " and open at the correct size.\nParts 01-06: chipboard / heavy cardstock. Parts 07-12: decorative paper.\n";
+  svgE.push({path: base + "-SVG/README.txt", data: enc.encode(readme)}); dxfE.push({path: base + "-DXF/README.txt", data: enc.encode(readme)});
+  return {svg: makeZip(svgE), dxf: makeZip(dxfE)};
+}
+function rsComposite(kit){ // چیدمان واحد برای پیش‌نمایش (ردیف‌به‌ردیف، تقریباً افقی)
+  const all = []; kit.parts.forEach(pt => pt.pieces.forEach(pc => all.push(pc)));
+  const area = all.reduce((a,pc) => a + pc.w*pc.h, 0), maxW = Math.max(...all.map(pc => pc.w)), Tw = Math.max(maxW, Math.sqrt(area*1.8)), paths = [];
+  let x = 0, y = 0, rowH = 0, W = 0;
+  all.forEach(pc => { if(x > 0 && x + pc.w > Tw){ x = 0; y += rowH + 12; rowH = 0; }
+    pc.paths.forEach(p => paths.push({t:p.t, closed:p.closed, pts:p.pts.map(q => [q[0]+x+10, q[1]+y+10])}));
+    x += pc.w + 12; rowH = Math.max(rowH, pc.h); W = Math.max(W, x); });
+  return {paths, w: Math.ceil(W+8), h: Math.ceil(y+rowH+20)};
+}
+/* ---------- راهنمای PDF برای کیت جعبه‌ی سخت ---------- */
+PdfDoc.prototype.poly = function(pts, color, lw, closed, dash){
+  if(pts.length < 2) return; const H = this.H, f = v => v.toFixed(2);
+  this.cur.ops.push(this.hex(color) + " RG " + (lw || 1) + " w " + (dash ? "[" + dash + "] 0 d" : "[] 0 d") + " " + f(pts[0][0]) + " " + f(H-pts[0][1]) + " m " + pts.slice(1).map(q => f(q[0]) + " " + f(H-q[1]) + " l").join(" ") + (closed ? " h" : "") + " S [] 0 d");
+};
+async function rsRender3d(p){
+  giApply(giGet()); const sh = giShape(p, 1), W = 1300, H = 760, mk = () => { const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const c = cv.getContext("2d"); c.fillStyle = "#ffffff"; c.fillRect(0,0,W,H); c.direction = "ltr"; return [cv,c]; };
+  const [cv1,c1] = mk(); giBox3dSimple(c1, p, W-160, H-140, W/2, H/2, GI.acc, giOnAcc());
+  const [cv2,c2] = mk(); const so = giShape(p,1);
+  if(so.kind === "prism"){
+    const lk = (p.w+3)/p.w, lk2 = (p.h+3)/p.h, Hl = Math.max(8, p.d*0.3), T = [p.w*0.95, 0, p.h*0.14], lidPts = so.pts.map(q => [q[0]*lk, q[1]*lk2]), lidV = []; lidPts.forEach(q => lidV.push([q[0]+T[0],0,q[1]+T[2]],[q[0]+T[0],Hl,q[1]+T[2]]));
+    const o = g3FitV(so.verts().concat(lidV), W-120, H-120, W/2, H/2, -0.62, 0.52);
+    g3Shadow(c2, so.pts, o, null); g3Shadow(c2, lidPts, o, T); g3PrismOpen(c2, so.pts, so.H, o, GI.acc); g3PrismClosed(c2, lidPts, Hl, o, vidMix(GI.acc,"#ffffff",0.2), giOnAcc(), p.name, T);
+  } else giBox3dSimple(c2, p, W-160, H-140, W/2, H/2, GI.teal, giOnTeal());
+  return [await dzToJpeg(cv1, 1300), await dzToJpeg(cv2, 1300)];
+}
+async function dzBuildRigidGuide(p){
+  const spec = p.dzSpec || {}, kit = rsBuild(Object.assign({}, spec, {outline: p.dzShape && p.dzShape.outline, shape: p.dzShape && p.dzShape.shape, smooth: p.dzShape && p.dzShape.smooth}));
+  const gs = giGet(); giApply(gs); const unit = kit.unit, letter = unit === "in", PW = letter ? 612 : 595.28, PH = letter ? 792 : 841.89, MX = 44;
+  const pdf = new PdfDoc(PW, PH), shop = (typeof getShopName === "function" ? getShopName() : "") || "", name = spec.name || p.name;
+  const dark = giLum(GI.bg) < 120, pageBg = "#ffffff", accC = GI.acc, txt = "#1e2a32", soft = "#5b6770", accSoft = vidMix(accC, "#ffffff", 0.9), line = "#e3e0d8";
+  const [imgA, imgB] = await rsRender3d(p), iA = pdf.addImage(imgA.bytes, imgA.w, imgA.h), iB = pdf.addImage(imgB.bytes, imgB.w, imgB.h);
+  let pageN = 0, y = 0;
+  const newPage = () => { pdf.newPage(); pageN++; pdf.rect(0,0,PW,PH,{fill:pageBg}); pdf.text(shop, MX, PH-24, {size:8.5, color:soft}); pdf.text(String(pageN), PW-MX, PH-24, {size:8.5, color:soft, align:"right"}); y = 56; };
+  const need = h => { if(y + h > PH - 52) newPage(); };
+  const h2 = (t) => { need(60); pdf.text(t, MX, y+14, {size:19, font:"F2", color:accC}); pdf.rect(MX, y+24, PW-2*MX, 1.4, {fill:vidMix(accC,"#ffffff",0.7)}); y += 56; };
+  const card = (x,yy,w,h) => pdf.rect(x,yy,w,h,{fill:"#ffffff", stroke:line, lw:0.8, r:9});
+  // ۱) جلد
+  newPage();
+  pdf.text(name, MX, 78, {size:30, font:"F2", color:accC, width:PW-2*MX, lh:34}); y = 78 + 34*Math.max(1, pdf.wrap(name, PW-2*MX, 30, true).length) - 8;
+  pdf.text("Shaped Box with Lid — Cutting & Assembly Guide", MX, y, {size:12, color:soft}); y += 18;
+  const panelH = 190; pdf.rect(MX, y, PW-2*MX, panelH, {fill:accSoft, r:12});
+  const iw = (PW-2*MX-36)/2, ih = Math.min(panelH-46, iw*imgA.h/imgA.w); pdf.image(iA, MX+12, y+10, iw, ih); pdf.image(iB, MX+24+iw, y+10, iw, ih);
+  pdf.text("Closed", MX+12+iw/2, y+panelH-12, {size:8.5, color:soft, align:"center"}); pdf.text("Open — lid off", MX+24+iw*1.5, y+panelH-12, {size:8.5, color:soft, align:"center"}); y += panelH + 16;
+  const colW = (PW-2*MX-14)/2, rows = [["Shape (lid top)", rsFmt(kit.W,unit) + " × " + rsFmt(kit.H,unit)],["Box depth", rsFmt(kit.depth,unit)],["Lid wall height", rsFmt(kit.lidDepth,unit)],["Board thickness", rsFmt(kit.t,unit)],["Lid clearance", rsFmt(kit.gap,unit)]];
+  card(MX, y, colW, 150); pdf.text("Finished size", MX+12, y+22, {size:12, font:"F2", color:txt});
+  rows.forEach((r,i) => { pdf.text(r[0], MX+12, y+44+i*20, {size:10, color:soft}); pdf.text(r[1], MX+colW-12, y+44+i*20, {size:10, font:"F2", color:txt, align:"right"}); pdf.line(MX+12, y+50+i*20, MX+colW-12, y+50+i*20, "#eeeeee", 0.5); });
+  const x2 = MX + colW + 14; card(x2, y, colW, 150); pdf.text("Line legend", x2+12, y+22, {size:12, font:"F2", color:txt});
+  pdf.line(x2+12, y+40, x2+44, y+40, "#000000", 2); pdf.text("Black — Cut", x2+54, y+44, {size:10, color:txt}); pdf.line(x2+12, y+58, x2+44, y+58, "#0066ff", 1.6, "4 3"); pdf.text("Blue — Score / fold", x2+54, y+62, {size:10, color:txt});
+  pdf.text("You will need", x2+12, y+86, {size:12, font:"F2", color:txt}); pdf.text("Cutting machine (Cricut Maker or similar) with a 12×24 in mat, 1 mm chipboard or heavy cardstock, decorative paper, strong craft glue, bone folder, ruler.", x2+12, y+102, {size:9, color:soft, width:colW-24, lh:11.5});
+  y += 166;
+  // مقطع
+  need(190); pdf.text("How the box is built", MX, y+10, {size:13, font:"F2", color:txt}); y += 20;
+  const fx = MX + 70, fy = y, fw = 240; const R = (x,yy,w,h,c) => pdf.rect(fx+x, fy+yy, w, h, {fill:c});
+  const chip = "#d9bd8c", chip2 = "#c9a96a", paperC = "#d4568e";
+  R(0,0,fw,9,chip); R(0,9,7,38,chip); R(fw-7,9,7,38,chip); R(7,9,6,32,chip2); R(fw-13,9,6,32,chip2);
+  R(18,26,7,100,chip); R(fw-25,26,7,100,chip); R(25,26,6,94,chip2); R(fw-31,26,6,94,chip2); R(18,126,fw-36,9,chip);
+  pdf.rect(fx-3, fy-3, fw+6, 53, {stroke:paperC, lw:1.2}); pdf.rect(fx+15, fy+23, fw-30, 116, {stroke:paperC, lw:1.2});
+  const lab = (t, ly, lx, al) => pdf.text(t, lx, ly, {size:8, color:soft, align:al || "left"});
+  lab("Lid top board (01) + cover (07)", fy+6, fx+fw+12); lab("Lid main wall (02)", fy+26, fx+fw+12); lab("Lid reinforcing wall (03)", fy+36, fx+fw+12);
+  lab("Base main wall (05)", fy+70, fx+fw+12); lab("Base reinforcing wall (06)", fy+80, fx+fw+12); lab("Bottom board (04)", fy+132, fx+fw+12); lab("Cover paper (pink line)", fy+64, fx-10, "right");
+  pdf.text("Cross-section of the closed box (schematic, not to scale)", fx+fw/2, fy+156, {size:8, font:"F3", color:soft, align:"center"}); y += 176;
+  // فهرست قطعات
+  const partCard = pt => { const pc = pt.pieces[0], ch = 84; need(ch+10); card(MX, y, PW-2*MX, ch);
+    const tw = 150, th = 60, k = Math.min(tw/pc.w, th/pc.h), ox = MX+14 + (tw-pc.w*k)/2, oy = y + (ch-pc.h*k)/2;
+    pc.paths.forEach(pp => pdf.poly(pp.pts.map(q => [ox+q[0]*k, oy+q[1]*k]), pp.t === "cut" ? "#000000" : "#0066ff", pp.t === "cut" ? 0.9 : 0.6, pp.closed, pp.t === "score" ? "2 1.5" : ""));
+    const cx = MX+190; pdf.circle(cx+10, y+22, 10, pt.mat === "Chipboard" ? accC : "#b8467d"); pdf.text(pt.n, cx+10, y+26, {size:10, font:"F2", color:giOnAcc(), align:"center"});
+    pdf.text(pt.title, cx+28, y+26, {size:12, font:"F2", color:txt});
+    pdf.text(rsFmt(pc.w,unit) + " × " + rsFmt(pc.h,unit) + "  ·  Qty " + pt.pieces.length + (pt.pieces.length > 1 ? " (part 1 & 2)" : "") + "  ·  " + (pt.mat === "Chipboard" ? "Chipboard / heavy card" : "Decorative paper"), cx+28, y+42, {size:8.5, font:"F2", color:accC});
+    pdf.text(pt.desc, cx+28, y+57, {size:9.5, color:txt, width:PW-MX-cx-40, lh:12}); pdf.text(pc.file + ".svg", cx+28, y+ch-8, {size:7.5, color:soft}); y += ch + 8; };
+  newPage(); h2("Part list — Structure"); pdf.text("Cut from chipboard or heavy cardstock." + (kit.nWalls > 1 ? " Long walls are split into parts so they fit a 12×24 in mat." : ""), MX, y-16, {size:10, color:soft});
+  kit.parts.filter(pt => pt.mat === "Chipboard").forEach(partCard);
+  y += 6; h2("Part list — Covers & liners"); pdf.text("Cut from decorative paper. Place the paper pattern side up on the mat.", MX, y-16, {size:10, color:soft});
+  kit.parts.filter(pt => pt.mat !== "Chipboard").forEach(partCard);
+  // کریکات
+  const bullets = (arr) => arr.forEach((t,i) => { const lines = pdf.wrap(t, PW-2*MX-34, 10.5, false), hh = lines.length*14 + 8; need(hh); pdf.circle(MX+9, y+8, 9, accC); pdf.text(String(i+1), MX+9, y+12, {size:10, font:"F2", color:giOnAcc(), align:"center"}); pdf.text(t, MX+26, y+12, {size:10.5, color:txt, width:PW-2*MX-34, lh:14}); y += hh; });
+  const callout = (t, b) => { const lines = pdf.wrap(b, PW-2*MX-28, 10.5, false), hh = 26 + lines.length*14; need(hh+8); pdf.rect(MX, y, PW-2*MX, hh, {fill:accSoft, r:8}); pdf.rect(MX, y, 3.5, hh, {fill:accC}); pdf.text(t, MX+14, y+17, {size:10.5, font:"F2", color:accC}); pdf.text(b, MX+14, y+33, {size:10.5, color:txt, width:PW-2*MX-28, lh:14}); y += hh + 10; };
+  const longest = Math.max(...kit.parts.flatMap(pt => pt.pieces.map(pc => pc.w)));
+  y += 8; h2("Cricut Design Space setup");
+  bullets(["Upload each SVG file (files are in " + (unit === "in" ? "inches" : "millimetres") + " and open at the correct size — do not resize).","Ungroup the design. Select the blue layer and change its Operation from Basic Cut to Score.","Select both layers and click Attach, so the score lines stay in place on the piece.","Choose 12 × 24 in mat size. The longest part is " + rsFmt(longest,unit) + " wide" + (longest/25.4 > 11.6 ? " — rotate it 90° so it fits." : "."),"Set the material (chipboard for parts 01–06, cardstock/paper for 07–12) and cut."]);
+  y += 4; callout("Test first:", "cut one lid wall from plain paper and wrap it around the lid top board to confirm the fit before cutting chipboard.");
+  y += 6; h2("Assembly — Lid");
+  bullets([(kit.nWalls > 1 ? "Glue the two lid main wall parts (02) together at the flap to make one long strip." : "Close the lid main wall (02) into a loop using its glue flap.") + " The vertical fold lines mark the sharp corners of the shape.","Wrap the strip around the lid top board (01). Fold the top tabs inward and glue them under the top board.","Glue the lid reinforcing wall (03) inside the main wall, directly under the top board. Offset its seams from the main wall seams for strength.","Glue the lid top cover (07) on top, aligning the blue line with the lid edge. Fold the tabs down onto the wall.","Wrap the lid wall cover (08) around the wall, top edge flush with the lid top. Fold the bottom tabs up inside the lid.","Glue the lid inside liner (09) to the inside ceiling to hide all tabs."]);
+  y += 6; h2("Assembly — Base");
+  bullets([kit.nWalls > 1 ? "Join the two base main wall parts (05) into one loop." : "Close the base main wall (05) into a loop.","Fit the base bottom board (04) into the loop. Fold the bottom tabs inward and glue them to the underside of the board.","Glue the base reinforcing wall (06) inside the main wall, standing on the bottom board.","Wrap the base wall cover (10) around the outside. Fold the top tabs over the rim into the box and the bottom tabs under the base.","Glue the base underside cover (11) to the bottom, then the base inside liner (12) to the inside floor.","Let everything dry fully, then test the lid fit."]);
+  y += 8; callout("Tip:", "to change the size, scale all parts by the same percentage — or contact the shop for a custom size.");
+  const blob = pdf.build(), key = p.id + ":files:guide", fname = slug(p.name) + "-assembly-guide.pdf";
+  if(p.files.guide) await blobDel(p.files.guide.key);
+  const fl = new File([blob], fname, {type:"application/pdf"}); await blobPut(key, fl); p.files.guide = {name: fname, size: fl.size, type: fl.type, key};
+  save(); renderAll(); return blob;
+}
+
 // ── ارسال کامل به Etsy: پیش‌نویس + فایل‌های دیجیتال + ۱۰ تصویر با ALT
 async function studioSendToEtsy(){
   const p = cur();
@@ -8943,6 +9348,15 @@ async function studioSendToEtsy(){
 }
 if($("st-dzAsk")) $("st-dzAsk").onclick = dzAsk;
 if($("st-dzGuideBtn")) $("st-dzGuideBtn").onclick = dzGuideForCurrent;
+if($("st-dzShapeFile")) $("st-dzShapeFile").onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ""; if(!f) return;
+  try{ const d = dzParseShapeSvg(await f.text()); if(!d) throw new Error("مسیر (path) یا چندضلعی در فایل پیدا نشد");
+    const pts = shapeOutline("custom", d, 100, 0); dzState.userOutline = d;
+    const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]), asp = (Math.max(...ys)-Math.min(...ys))/(Math.max(...xs)-Math.min(...xs));
+    $("st-dzShapeInfo").textContent = "✓ شکل «" + f.name + "» خوانده شد (نسبت ارتفاع/عرض " + asp.toFixed(2) + ")"; toast("شکل شما خوانده شد — حالا طراحی را شروع کن.");
+  }catch(err){ dzState.userOutline = null; $("st-dzShapeInfo").textContent = ""; toast("خواندن شکل ممکن نشد: " + err.message); }
+};
+if($("st-dzShapeClear")) $("st-dzShapeClear").onclick = () => { dzState.userOutline = null; $("st-dzShapeInfo").textContent = ""; };
 if($("st-dzSkip")) $("st-dzSkip").onclick = () => { const b = $("st-dzBrief").value.trim(); if(!b) return toast("اول ایده‌ی محصول رو بنویس."); dzState.brief = b; dzState.qa = []; $("st-dzQs").innerHTML = ""; dzDesign(""); };
 if($("st-btnSendEtsy")) $("st-btnSendEtsy").onclick = studioSendToEtsy;
 /* ===================== ویدیوهای لیستینگ (۲ ویدیو، ساخته‌شده در مرورگر با Canvas + MediaRecorder) ===================== */
@@ -8990,18 +9404,18 @@ function vidPrepText(c, p, shop, u){
 async function vidBuild3d(p, seconds, onProgress){
   const gs = giGet(); giApply(gs);
   const shop = (typeof getShopName === "function" ? getShopName() : "") || "Shop";
-  const b = {L:p.w, W:p.h, H:p.d}, pitch = 0.45;
+  const sh = giShape(p,1), pitch = 0.45;
   // مقیاس ثابت: کوچک‌ترین مقیاسی که در همه‌ی زاویه‌های چرخش جا می‌شود
-  let sMin = 1e9; for(let a = 0; a < 12; a++) sMin = Math.min(sMin, g3Fit([b],760,640,0,0,a*Math.PI/6,pitch).s);
+  let sMin = 1e9; for(let a = 0; a < 12; a++) sMin = Math.min(sMin, g3FitV(sh.verts(),760,640,0,0,a*Math.PI/6,pitch).s);
   const colors = [GI.acc].concat(GI_COLORWAYS.map(x => x[0]).filter(x => x.toLowerCase() !== GI.acc.toLowerCase())).slice(0,4);
   const draw = (c, u, t) => {
     vidPrepText(c, p, shop, u);
     const yaw = -0.62 + u*Math.PI*2, seg = u*colors.length, i = Math.min(colors.length-1, Math.floor(seg)), f = vidEase(Math.max(0, Math.min(1, (seg - i - 0.7)/0.3)));
     const hex = vidMix(colors[i], colors[(i+1) % colors.length], i === colors.length-1 ? 0 : f);
-    const o = {yaw, pitch, s: sMin, cx: 1380, cy: 540 + sMin*(b.H/2)*Math.cos(pitch)};
+    const o = {yaw, pitch, s: sMin, cx: 1380, cy: 540 + sMin*(sh.H/2)*Math.cos(pitch)};
     const [r,g,bb] = g3.hex(hex), txt = (r*0.299 + g*0.587 + bb*0.114) > 160 ? "#1a1a1a" : "#ffffff";
     c.fillStyle = GI.card; giRR(c,960,150,860,780,40); c.fill(); c.strokeStyle = GI.line; c.lineWidth = 4; c.stroke();
-    c.save(); giRR(c,960,150,860,780,40); c.clip(); g3Closed(c, b, o, hex, giBoxLabels(p, txt)); c.restore();
+    c.save(); giRR(c,960,150,860,780,40); c.clip(); sh.draw(c, o, hex, txt, null); c.restore();
   };
   return vidRecord(draw, seconds, onProgress);
 }
