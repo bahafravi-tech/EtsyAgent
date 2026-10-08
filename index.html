@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.30.0 -->
+<!-- APP_VERSION: 1.30.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v146</div>
+        <div class="logo-badge">v147</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -8733,12 +8733,12 @@ function netPolyFlap(g, P){
   const sd = Math.hypot(B[0]-A[0], B[1]-A[1]); let dir = [(B[0]-A[0])/sd, (B[1]-A[1])/sd];
   const sign = (dir[0]*nrm[1] - dir[1]*nrm[0]) > 0 ? 1 : -1, ang = sign*2*Math.PI/n, pts = [A, B];
   for(let k = 2; k < n; k++){ const c = Math.cos(ang), sn = Math.sin(ang); dir = [dir[0]*c - dir[1]*sn, dir[0]*sn + dir[1]*c]; const last = pts[pts.length-1]; pts.push([last[0]+dir[0]*sd, last[1]+dir[1]*sd]); }
-  const cx = pts.reduce((a,q) => a+q[0],0)/n, cy = pts.reduce((a,q) => a+q[1],0)/n, xy = [], tab = g.tab, tk = tab ? Math.max(1, Math.min(n-1, Math.round(Number(tab.edge)))) : -1;
+  let tabScore = null; const cx = pts.reduce((a,q) => a+q[0],0)/n, cy = pts.reduce((a,q) => a+q[1],0)/n, xy = [], tab = g.tab, tk = tab ? Math.max(1, Math.min(n-1, Math.round(Number(tab.edge)))) : -1;
   for(let k = 1; k < n; k++){ xy.push(pts[k]);
     if(k === tk){ const a = pts[k], b = pts[(k+1) % n], ex = b[0]-a[0], ey = b[1]-a[1], el = Math.hypot(ex,ey) || 1, ux = ex/el, uy = ey/el, mx = (a[0]+b[0])/2 - cx, my = (a[1]+b[1])/2 - cy, ml = Math.hypot(mx,my) || 1, ox = mx/ml, oy = my/ml, dep = dlNum(tab.depth, 2, 100, 10), ins = dlNum(tab.inset, 0, el/2.5, Math.min(4, el*0.15));
-      xy.push([a[0]+ox*dep+ux*ins, a[1]+oy*dep+uy*ins], [b[0]+ox*dep-ux*ins, b[1]+oy*dep-uy*ins]); } }
+      xy.push([a[0]+ox*dep+ux*ins, a[1]+oy*dep+uy*ins], [b[0]+ox*dep-ux*ins, b[1]+oy*dep-uy*ins]); tabScore = [a, b]; } }
   xy.push(pts[0]);
-  return {pi, edge, horiz, a: horiz ? Math.min(A[0],B[0]) : Math.min(A[1],B[1]), b: horiz ? Math.max(A[0],B[0]) : Math.max(A[1],B[1]), xy};
+  return {pi, edge, horiz, a: horiz ? Math.min(A[0],B[0]) : Math.min(A[1],B[1]), b: horiz ? Math.max(A[0],B[0]) : Math.max(A[1],B[1]), xy, score: tabScore};
 }
 function netBuild(net){
   const P = (net && net.panels || []).map(p => ({x:Number(p.x), y:Number(p.y), w:Number(p.w), h:Number(p.h)}));
@@ -8782,6 +8782,7 @@ function netBuild(net){
   }));
   flaps.forEach(f => { for(let k = 0; k < f.xy.length-1; k++) cutSegs.push([f.xy[k], f.xy[k+1]]); });
   const paths = dlChain(cutSegs);
+  flaps.forEach(f => { if(f.score) paths.push({t:"score", pts:f.score}); }); // خط تای زبانه‌ی روی درب چندضلعی
   [[hMap,true],[vMap,false]].forEach(([map,h]) => map.forEach(v => ivMerge(v.iv).forEach(iv => paths.push({t:"score", pts: h ? [[iv[0],v.c],[iv[1],v.c]] : [[v.c,iv[0]],[v.c,iv[1]]]}))));
   return paths;
 }
