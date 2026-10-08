@@ -25,6 +25,16 @@ if($prompt === '' || strlen($prompt) > 60000) jsonResponse(['ok'=>false, 'error'
 $modelKey = (($in['model'] ?? 'opus') === 'sonnet') ? 'sonnet' : 'opus';
 $maxTokens = max(8000, min(16000, (int)($in['max_tokens'] ?? 12000)));
 
+// تصویرهای ورودی (مثلاً یک قالب نمونه) برای تحلیل بصری
+$images = [];
+foreach((array)($in['images'] ?? []) as $im){
+  $mt = is_array($im) ? ($im['media_type'] ?? '') : ''; $dt = is_array($im) ? ($im['data'] ?? '') : '';
+  if(in_array($mt, ['image/jpeg','image/png','image/webp'], true) && is_string($dt) && strlen($dt) < 6000000 && count($images) < 3){
+    $images[] = ['type'=>'image', 'source'=>['type'=>'base64', 'media_type'=>$mt, 'data'=>$dt]];
+  }
+}
+$userContent = $images ? array_merge($images, [['type'=>'text', 'text'=>$prompt]]) : $prompt;
+
 $apiKey = anthropicApiKey();
 if($apiKey === '') jsonResponse(['ok'=>false, 'error'=>'ANTHROPIC_API_KEY توی config.php تنظیم نشده'], 500);
 
@@ -33,7 +43,7 @@ $isOpus = strpos($model, 'opus') !== false;
 $body = [
   'model' => $model,
   'max_tokens' => $maxTokens,
-  'messages' => [['role'=>'user', 'content'=>$prompt]],
+  'messages' => [['role'=>'user', 'content'=>$userContent]],
   'thinking' => ['type'=>'adaptive'],
   'output_config' => ['effort'=>$isOpus ? 'high' : 'medium'],
 ];

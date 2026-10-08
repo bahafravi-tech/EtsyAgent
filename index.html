@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.24.0 -->
+<!-- APP_VERSION: 1.25.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v137</div>
+        <div class="logo-badge">v138</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1796,6 +1796,7 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
             <label class="fld"><span>قاب تصویر</span><select id="st-gFrame"><option value="bar">نوار رنگی بالا</option><option value="border">کادر دورتادور</option><option value="none">بدون قاب</option></select></label>
             <label class="fld"><span>تراز عنوان</span><select id="st-gAlign"><option value="center">وسط</option><option value="left">چپ</option></select></label>
             <label class="fld"><span>نوع جعبه در تصویر ۳بعدی باز</span><select id="st-gBoxStyle"><option value="auto">خودکار (از طرح)</option><option value="tuck">جعبه تاشو با درب بازشده</option><option value="tray">سینی + درب جدا</option></select></label>
+            <label class="fld"><span>شکل ۳بعدی (برای محصولات بدون طرح Claude)</span><select id="st-g3d"><option value="none">بدون ۳بعدی (پیش‌فرض)</option><option value="box">جعبه‌ی مستطیلی</option><option value="heart">قلب</option><option value="circle">دایره</option><option value="ellipse">بیضی</option><option value="rounded_rect">مستطیل گوشه‌گرد</option><option value="hexagon">شش‌ضلعی</option><option value="octagon">هشت‌ضلعی</option><option value="star">ستاره</option></select></label>
           </div>
           <div style="border:1px dashed var(--rule);border-radius:8px;padding:10px;margin:10px 0">
             <b style="font-size:13px">🎭 قالب طراحی من</b>
@@ -1807,6 +1808,11 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
               <label style="font-size:12.5px">شفافیت رنگ روی پس‌زمینه <input type="range" id="st-gBgAlpha" min="0" max="100" style="vertical-align:middle"></label>
               <span id="st-gBgInfo" class="help"></span>
             </div>
+            <div style="margin-top:8px;font-size:12.5px"><b>حالت پس‌زمینه‌ی دلخواه:</b>
+              <label><input type="radio" name="st-gBgMode" value="overlay"> لایه‌ی رنگی روی پس‌زمینه</label>
+              <label style="margin-inline-start:10px"><input type="radio" name="st-gBgMode" value="full"> قالب کامل (طرح من دست‌نخورده می‌ماند و محتوا داخل کادر امن می‌آید)</label></div>
+            <div id="st-gSafeRow" style="display:none;gap:10px;flex-wrap:wrap;align-items:center;font-size:12px;margin-top:4px">حاشیه‌ی کادر امن (٪) — چپ <input type="range" id="st-gSfL" min="0" max="35"> بالا <input type="range" id="st-gSfT" min="0" max="35"> راست <input type="range" id="st-gSfR" min="0" max="35"> پایین <input type="range" id="st-gSfB" min="0" max="35"></div>
+            <div style="margin-top:8px"><label class="ghost mini" style="cursor:pointer">🤖 شبیه این قالب بساز (Claude تصویر نمونه را می‌بیند)<input type="file" id="st-gAiTplFile" accept="image/*" hidden></label> <span id="st-gAiTplInfo" class="help"></span></div>
             <div id="st-gPal" style="margin-top:6px"></div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px">
               <input type="text" id="st-gTplName" placeholder="نام قالب (مثلاً: قالب لوکس من)" style="flex:1;min-width:160px">
@@ -1819,6 +1825,7 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
           <div style="display:flex;gap:16px;flex-wrap:wrap;margin:8px 0;font-size:13px">
             <label><input type="checkbox" id="st-gFooter"> نوار پایین (نام فروشگاه)</label>
             <label><input type="checkbox" id="st-gLogoOn"> لوگوی برند</label>
+            <label><input type="checkbox" id="st-gPlain"> پس‌زمینه‌ی بی‌رنگ (سفید)</label>
             <button type="button" class="ghost mini" id="st-gReset">↺ بازنشانی تنظیمات</button>
           </div>
           <div style="margin-top:6px;font-size:13px"><b>کدام تصویرها ساخته شود؟</b>
@@ -7843,7 +7850,9 @@ let GI_OPT = {theme:"cream", font:"sans", hero:"split", frame:"bar", align:"cent
 function giDefaults(){ const t = GI_THEMES.cream; return {theme:"cream", bg:t.bg, ink:t.ink, acc:t.acc, font:t.font, hero:"combo", frame:"bar", align:"center", footer:true, logo:true, sel:null, boxStyle:"auto", bgAlpha:0.85, bgKey:null, teal:null}; }
 function giApply(o){
   const t = GI_THEMES[o.theme] || GI_THEMES.cream;
-  Object.assign(GI, {bg:o.bg||t.bg, ink:o.ink||t.ink, acc:o.acc||t.acc, mute:t.mute, teal:o.teal||t.teal, card:t.card, line:t.line});
+  const col = {bg:o.bg||t.bg, ink:o.ink||t.ink, acc:o.acc||t.acc, mute:o.mute||t.mute, teal:o.teal||t.teal, card:o.card||t.card, line:o.line||t.line};
+  if(o.plain !== false){ col.bg = "#ffffff"; col.card = "#f6f6f6"; col.line = "#e4e4e4"; if(giLum(col.ink) > 140){ col.ink = "#1e2a32"; col.mute = "#5b6770"; } }
+  Object.assign(GI, col, {rScale: (o.cardR == null ? 36 : o.cardR)/36, pillR: o.pillShape === "square" ? 14 : null, shadow: !!o.shadow});
   GI_FONT = (GI_FONTS[o.font||t.font] || GI_FONTS.sans) + GI_EMOJI;
   GI_OPT = o;
 }
@@ -7859,22 +7868,24 @@ function giWrap(c,text,x,y,maxW,lh,maxLines,align){
 }
 function giPill(c,text,x,y,font,fg,bg){
   c.font = font; const w = c.measureText(text).width + 64, h = 84;
-  c.fillStyle = bg; giRR(c,x,y,w,h,42); c.fill();
+  c.fillStyle = bg; giRR(c,x,y,w,h,GI.pillR == null ? 42 : GI.pillR); c.fill();
   c.fillStyle = fg; c.textAlign="left"; c.textBaseline="middle"; c.fillText(text,x+32,y+h/2+2); c.textBaseline="alphabetic";
   return w;
 }
 const giOnAcc = () => { const [r,g,b] = g3.hex(GI.acc); return (r*0.299+g*0.587+b*0.114) > 160 ? "#1a1a1a" : "#ffffff"; };
 const giOnTeal = () => { const [r,g,b] = g3.hex(GI.teal); return (r*0.299+g*0.587+b*0.114) > 160 ? "#1a1a1a" : "#ffffff"; };
-function giCard(c,x,y,w,h,r){ c.fillStyle=GI.card; giRR(c,x,y,w,h,r||36); c.fill(); c.strokeStyle=GI.line; c.lineWidth=4; c.stroke(); }
-let GI_BG = null;
+function giCard(c,x,y,w,h,r){ const rr = (r||36)*(GI.rScale == null ? 1 : GI.rScale); c.save(); if(GI.shadow){ c.shadowColor = "rgba(0,0,0,0.16)"; c.shadowBlur = 36; c.shadowOffsetY = 14; } c.fillStyle=GI.card; giRR(c,x,y,w,h,rr); c.fill(); c.restore(); c.strokeStyle=GI.line; c.lineWidth=4; giRR(c,x,y,w,h,rr); c.stroke(); }
+let GI_BG = null, GI_TRANSP = false;
 function giFrame(c,title,sub,shop,logo){
   const o = GI_OPT, left = o.align === "left", tx0 = left ? 140 : GI.W/2, al = left ? "left" : "center";
-  if(GI_BG){
+  if(GI_TRANSP){
+  } else if(GI_BG){
     const k = Math.max(GI.W/GI_BG.width, GI.H/GI_BG.height), w = GI_BG.width*k, h = GI_BG.height*k;
     c.drawImage(GI_BG, (GI.W-w)/2, (GI.H-h)/2, w, h);
     c.globalAlpha = o.bgAlpha == null ? 0.85 : o.bgAlpha; c.fillStyle = GI.bg; c.fillRect(0,0,GI.W,GI.H); c.globalAlpha = 1;
   } else { c.fillStyle = GI.bg; c.fillRect(0,0,GI.W,GI.H); }
-  if(o.frame === "bar"){ c.fillStyle = GI.acc; c.fillRect(0,0,GI.W,28); }
+  if(GI_TRANSP){}
+  else if(o.frame === "bar"){ c.fillStyle = GI.acc; c.fillRect(0,0,GI.W,28); }
   else if(o.frame === "border"){ c.strokeStyle = GI.acc; c.lineWidth = 26; giRR(c,40,40,GI.W-80,GI.H-80,40); c.stroke(); }
   if(title){
     c.fillStyle = GI.ink; c.font = "800 140px " + GI_FONT;
@@ -8145,7 +8156,7 @@ function g3PrismOpen(c, pts, H, o, hex, T){
 }
 // شکل ۳بعدی محصول: جعبه‌ی مکعبی یا منشور (قلب، شکل آزاد و...) — یک رابط یکسان برای همه‌ی تصویرها/ویدیو
 function giShape(p, k){
-  k = k || 1; const sh = p.dzShape;
+  k = k || 1; let sh = p.dzShape; if(!sh && !p.dzStyle && GI_OPT.shape3d && !["none","box"].includes(GI_OPT.shape3d)) sh = {shape: GI_OPT.shape3d};
   if(sh && sh.shape){
     let pts; try{ pts = shapeOutline(sh.shape, sh.outline, p.w*k, p.h*k, sh.smooth); }catch(e){ pts = null; }
     if(pts){ const lf = sh.lidFrac || 0.36, H = p.d*k, hb = H*(1-lf), hl = H*lf, lk = (p.w*k+4)/(p.w*k), lk2 = (p.h*k+4)/(p.h*k), lp = pts.map(q => [q[0]*lk, q[1]*lk2]);
@@ -8165,7 +8176,7 @@ function giBox3dSimple(c,p,tw,th,cx,cy,hex,txtColor,scale){
 }
 const GI_DRAW = {
   hero(c,p,L,svgImg){
-    const mode = GI_OPT.hero || "combo", pillF = "800 64px " + GI_FONT;
+    let mode = GI_OPT.hero || "combo"; const pillF = "800 64px " + GI_FONT; if((mode === "combo" || mode === "3d") && !giHas3d(p)) mode = "split";
     if(mode === "combo"){
       let x = 140; L.fmts.slice(0,3).forEach(s => { x += giPill(c,s.k === "guide" ? "GUIDE" : s.t.toUpperCase(),x,140,pillF,giOnTeal(),GI.teal) + 24; });
       c.fillStyle = GI.ink; c.font = "800 160px " + GI_FONT; c.textAlign = "left";
@@ -8428,13 +8439,24 @@ function giList(p){
 }
 // یک اسلاید رو روی canvas می‌کشه (نیاز: giApply از قبل صدا زده شده)
 function giRender(c,p,slotKey,ctx){
+  if(ctx.bgImg && GI_OPT.bgMode === "full"){
+    const tmp = document.createElement("canvas"); tmp.width = GI.W; tmp.height = GI.H; GI_TRANSP = true;
+    try{ giRenderCore(tmp.getContext("2d"), p, slotKey, Object.assign({}, ctx, {bgImg: null})); }finally{ GI_TRANSP = false; }
+    c.setTransform(1,0,0,1,0,0); const im = ctx.bgImg, k = Math.max(GI.W/im.width, GI.H/im.height); c.drawImage(im, (GI.W-im.width*k)/2, (GI.H-im.height*k)/2, im.width*k, im.height*k);
+    const sf = GI_OPT.safe || {l:6,t:6,r:6,b:6}, sx = GI.W*sf.l/100, sy = GI.H*sf.t/100, sw = GI.W*(1-(sf.l+sf.r)/100), sh = GI.H*(1-(sf.t+sf.b)/100), kk = Math.min(sw/GI.W, sh/GI.H);
+    c.drawImage(tmp, sx + (sw-GI.W*kk)/2, sy + (sh-GI.H*kk)/2, GI.W*kk, GI.H*kk); return;
+  }
+  giRenderCore(c,p,slotKey,ctx);
+}
+function giRenderCore(c,p,slotKey,ctx){
   c.setLineDash([]); c.textBaseline = "alphabetic"; c.direction = "ltr"; c.setTransform(1,0,0,1,0,0);
   GI_BG = ctx.bgImg || null;
   let t = GI_TITLES[slotKey];
   if(slotKey === "finished" && giPhotoOn("finished", ctx)) t = ["Finished Product", ctx.L.dim];
   if(slotKey === "template" && p.dzStyle === "rigid_shape") t = ["All Parts Included", "12 parts: chipboard + paper"];
   else if(slotKey === "template" && ctx.svgImg && ctx.svgImg.sheet) t = ["Cutting Template", "Sheet " + ctx.svgImg.sheet.w + " × " + ctx.svgImg.sheet.h + " mm"];
-  if(slotKey === "hero" && GI_OPT.hero === "center") t = [p.name, p.category || ""];
+  if(slotKey === "hero" && GI_OPT.hero === "center" && !giPhotoOn("hero", ctx)) t = [p.name, p.category || ""];
+  if(GI_3D_SLOTS.includes(slotKey) && !giHas3d(p)){ giFrame(c, "3D shape not set", "Choose a 3D shape in the image settings", ctx.shop, ctx.logo); return; }
   giFrame(c, t ? t[0] : "", t ? t[1] : "", ctx.shop, ctx.logo);
   (giPhotoOn(slotKey, ctx) ? GI_PHOTO : GI_DRAW)[slotKey](c,p,ctx.L,ctx.svgImg,ctx.shop,ctx.logo,ctx);
 }
@@ -8447,8 +8469,9 @@ async function giContext(p){
 async function generateListingImages(opts){
   opts = opts || {};
   const p = opts.product || cur(); if(!p) return;
-  const gs = giGet(), keys = opts.slots || gs.sel || IMG_SLOTS.map(s => s.k);
-  const targets = IMG_SLOTS.filter(s => keys.includes(s.k) && (opts.overwrite || !p.images[s.k]));
+  const gs = giGet(), keys = opts.slots || gs.sel || IMG_SLOTS.map(s => s.k); giApply(gs);
+  const skip3d = !giHas3d(p), targets = IMG_SLOTS.filter(s => keys.includes(s.k) && (opts.overwrite || !p.images[s.k]) && !(skip3d && GI_3D_SLOTS.includes(s.k)));
+  if(skip3d && keys.some(k => GI_3D_SLOTS.includes(k))) toast("تصویرهای ۳بعدی ساخته نشد چون شکل ۳بعدی محصول معلوم نیست — از «شکل ۳بعدی» انتخاب کن.");
   if(!targets.length) return toast("اسلات‌های انتخاب‌شده همه پر هستند — تیک «جایگزینی تصویرهای موجود» را بزن یا اسلات دیگری انتخاب کن.");
   toast("⏳ در حال ساخت " + fa(targets.length) + " تصویر...");
   giApply(gs);
@@ -8601,6 +8624,7 @@ async function giImportTpl(file){
 }
 function giUiRefresh2(){
   if(typeof refUiRefresh === "function") refUiRefresh();
+  if(typeof giUiRefresh3 === "function") giUiRefresh3();
   const gs = giGet();
   $("st-gBoxStyle").value = gs.boxStyle || "auto"; $("st-gBgAlpha").value = Math.round((gs.bgAlpha == null ? 0.85 : gs.bgAlpha)*100);
   $("st-gBgInfo").textContent = gs.bgKey ? "پس‌زمینه‌ی دلخواه فعال است." : "";
@@ -9500,6 +9524,7 @@ function vidPrepText(c, p, shop, u){
 }
 async function vidBuild3d(p, seconds, onProgress){
   const gs = giGet(); giApply(gs);
+  if(!giHas3d(p)) throw new Error("برای ویدیوی ۳بعدی، اول در تنظیمات تصویرها «شکل ۳بعدی» را انتخاب کن");
   const shop = (typeof getShopName === "function" ? getShopName() : "") || "Shop";
   const sh = giShape(p,1), pitch = 0.45;
   // مقیاس ثابت: کوچک‌ترین مقیاسی که در همه‌ی زاویه‌های چرخش جا می‌شود
@@ -9595,12 +9620,13 @@ const GI_PHOTO = {
   hero(c,p,L,svg,shop,logo,ctx){
     const ph = ctx.photos, pillF = "800 64px " + GI_FONT; let x = 140;
     L.fmts.slice(0,3).forEach(s => { x += giPill(c, s.k === "guide" ? "GUIDE" : s.t.toUpperCase(), x, 140, pillF, giOnTeal(), GI.teal) + 24; });
-    c.fillStyle = GI.ink; c.font = "800 150px " + GI_FONT; c.textAlign = "left"; const y = giWrap(c, p.name, 140, 410, 2100, 166, 2);
+    c.fillStyle = GI.ink; c.font = "800 150px " + GI_FONT; c.textAlign = "left"; const y = giWrap(c, p.name, 140, 450, 2100, 166, 2);
     c.fillStyle = GI.mute; c.font = "600 72px " + GI_FONT; c.fillText((p.category || "Template") + " • " + L.dim, 140, y + 6);
     const top = y + 60, h = GI.H - 170 - 50 - top, hh = (h-30)/2;
     giCover(c, ph[0], 140, top, 1480, h, 44);
     giPreviewCard(c, 1660, top, 600, hh, svg, p);
-    giCard(c, 1660, top + hh + 30, 600, hh, 36); giBox3dSimple(c, p, 520, hh-70, 1960, top + hh + 30 + hh/2, GI.acc, giOnAcc());
+    if(giHas3d(p)){ giCard(c, 1660, top + hh + 30, 600, hh, 36); giBox3dSimple(c, p, 520, hh-70, 1960, top + hh + 30 + hh/2, GI.acc, giOnAcc()); }
+    else giCover(c, ph[1] || ph[0], 1660, top + hh + 30, 600, hh, 36, ph[1] ? 1 : 1.9, 0.35, 0.4);
   },
   finished(c,p,L,svg,shop,logo,ctx){
     const ph = ctx.photos.slice(0,4), x0 = 140, y0 = 560, W = 2120, H = 1010, g = 40;
@@ -9657,6 +9683,43 @@ async function refPalette(){
 $("st-refFile").onchange = e => { const fl = [...e.target.files]; e.target.value = ""; if(fl.length) refAdd(fl); };
 $("st-refPalette").onclick = refPalette;
 $("st-refUse").onchange = e => { const k = e.target.dataset.ps; if(!k) return; const gs = giGet(); gs.photoSlots = Object.assign({}, GI_PHOTO_DEFAULT, gs.photoSlots || {}); gs.photoSlots[k] = e.target.checked; save(); giQueuePreview(); };
+/* ---------- ۳بعدی فقط وقتی شکل محصول معلوم است؛ قالب کامل؛ تحلیل سبک با Claude ---------- */
+const GI_3D_SLOTS = ["box3d","box3d_open","colors","sizes"];
+function giHas3d(p){ return !!(p.dzShape || p.dzStyle || (GI_OPT.shape3d && GI_OPT.shape3d !== "none")); }
+function giUiRefresh3(){
+  const gs = giGet();
+  $("st-gPlain").checked = gs.plain !== false; $("st-g3d").value = gs.shape3d || "none";
+  document.querySelectorAll("input[name='st-gBgMode']").forEach(r => r.checked = r.value === (gs.bgMode || "overlay"));
+  const sf = gs.safe || {l:6,t:6,r:6,b:6}; $("st-gSfL").value = sf.l; $("st-gSfT").value = sf.t; $("st-gSfR").value = sf.r; $("st-gSfB").value = sf.b;
+  $("st-gSafeRow").style.display = (gs.bgMode === "full") ? "flex" : "none";
+}
+async function giAnalyzeTemplate(file){
+  if(!S.contentBackendUrl) return toast("برای تحلیل تصویر با Claude، آدرس بک‌اند باید در تنظیمات وارد شده باشد.");
+  $("st-gAiTplInfo").textContent = "⏳ Claude در حال دیدن قالب است...";
+  try{
+    const j = await dzToJpeg(file, 1100), b64 = u8ToB64(j.bytes);
+    const prompt = "You are a senior graphic designer. The attached image is a REFERENCE design (an Etsy listing image / template the seller likes). Describe its visual style as parameters for an automatic image generator that makes infographic-style listing images (cards, pills, big titles, a footer line). Be faithful: pick the real colors you see.\n" +
+      'Return ONLY JSON: {"bg":"#rrggbb main background","ink":"#rrggbb main text","mute":"#rrggbb secondary text","acc":"#rrggbb main accent","teal":"#rrggbb secondary accent","card":"#rrggbb panel/card fill","line":"#rrggbb thin border","font":"sans|serif|round","frame":"bar|border|none","align":"center|left","hero":"combo|split|center|3d","card_radius":0-80,"pill_shape":"round|square","shadow":true|false,"use_plain_white_background":true|false,"notes_fa":"1-2 Persian sentences: what you matched and what cannot be reproduced automatically"}';
+    const res = await fetch(crApiUrl("design_ai.php"), {method:"POST", headers: crHeaders(), body: JSON.stringify({prompt, max_tokens: 3000, model: "sonnet", images: [{media_type: "image/jpeg", data: b64}]})});
+    const d = await mktParseResponse(res), st = parseJSON(d.text), hex = v => /^#[0-9a-f]{6}$/i.test(String(v)) ? String(v).toLowerCase() : null;
+    const gs = giGet(), pick = (k, v) => { if(v) gs[k] = v; };
+    ["bg","ink","mute","acc","teal","card","line"].forEach(k => pick(k, hex(st[k])));
+    if(["sans","serif","round"].includes(st.font)) gs.font = st.font; if(["bar","border","none"].includes(st.frame)) gs.frame = st.frame; if(["center","left"].includes(st.align)) gs.align = st.align;
+    if(["combo","split","center","3d"].includes(st.hero)) gs.hero = st.hero;
+    if(isFinite(st.card_radius)) gs.cardR = Math.max(0, Math.min(80, Number(st.card_radius))); gs.pillShape = st.pill_shape === "square" ? "square" : "round"; gs.shadow = !!st.shadow;
+    gs.plain = st.use_plain_white_background === true; gs.theme = "cream"; gs.bgKey = gs.bgKey; save(); giSig = ""; giUiRefresh();
+    $("st-gAiTplInfo").textContent = "✓ " + (st.notes_fa || "سبک قالب اعمال شد."); toast("سبک قالب اعمال شد — پیش‌نمایش را ببین.");
+  }catch(e){ $("st-gAiTplInfo").textContent = ""; toast("تحلیل قالب ناموفق بود: " + (e && e.message ? e.message : e)); }
+}
+function giBind3(){
+  $("st-gPlain").onchange = () => { giGet().plain = $("st-gPlain").checked; save(); giQueuePreview(); };
+  $("st-g3d").onchange = () => { giGet().shape3d = $("st-g3d").value; save(); giQueuePreview(); };
+  $("st-gBg").addEventListener("input", () => { giGet().plain = false; $("st-gPlain").checked = false; });
+  document.querySelectorAll("input[name='st-gBgMode']").forEach(r => r.onchange = () => { if(!r.checked) return; giGet().bgMode = r.value; save(); giUiRefresh3(); giQueuePreview(); });
+  ["L","T","R","B"].forEach(k => $("st-gSf" + k).oninput = () => { const gs = giGet(); gs.safe = {l:Number($("st-gSfL").value), t:Number($("st-gSfT").value), r:Number($("st-gSfR").value), b:Number($("st-gSfB").value)}; save(); giQueuePreview(); });
+  $("st-gAiTplFile").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if(f) giAnalyzeTemplate(f); };
+}
+giBind3();
 $("st-btnTxt").onclick = async () => {
   const txt = listingText(cur());
   try{ await navigator.clipboard.writeText(txt); toast("متن لیستینگ کپی شد."); }
