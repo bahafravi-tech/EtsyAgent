@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.26.0 -->
+<!-- APP_VERSION: 1.27.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v139</div>
+        <div class="logo-badge">v140</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1798,7 +1798,7 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
             <label class="fld"><span>قاب تصویر</span><select id="st-gFrame"><option value="bar">نوار رنگی بالا</option><option value="border">کادر دورتادور</option><option value="none">بدون قاب</option></select></label>
             <label class="fld"><span>تراز عنوان</span><select id="st-gAlign"><option value="center">وسط</option><option value="left">چپ</option></select></label>
             <label class="fld"><span>نوع جعبه در تصویر ۳بعدی باز</span><select id="st-gBoxStyle"><option value="auto">خودکار (از طرح)</option><option value="tuck">جعبه تاشو با درب بازشده</option><option value="tray">سینی + درب جدا</option></select></label>
-            <label class="fld"><span>شکل ۳بعدی (برای محصولات بدون طرح Claude)</span><select id="st-g3d"><option value="none">بدون ۳بعدی (پیش‌فرض)</option><option value="box">جعبه‌ی مستطیلی</option><option value="heart">قلب</option><option value="circle">دایره</option><option value="ellipse">بیضی</option><option value="rounded_rect">مستطیل گوشه‌گرد</option><option value="hexagon">شش‌ضلعی</option><option value="octagon">هشت‌ضلعی</option><option value="star">ستاره</option></select></label>
+            <label class="fld"><span>شکل ۳بعدی (برای محصولات بدون طرح Claude)</span><select id="st-g3d"><option value="auto">خودکار (از نام محصول: قلب، دایره، ستاره...)</option><option value="none">بدون ۳بعدی</option><option value="box">جعبه‌ی مستطیلی</option><option value="heart">قلب</option><option value="circle">دایره</option><option value="ellipse">بیضی</option><option value="rounded_rect">مستطیل گوشه‌گرد</option><option value="hexagon">شش‌ضلعی</option><option value="octagon">هشت‌ضلعی</option><option value="star">ستاره</option></select></label>
           </div>
           <div style="border:1px dashed var(--rule);border-radius:8px;padding:10px;margin:10px 0">
             <b style="font-size:13px">🎭 قالب طراحی من</b>
@@ -8161,7 +8161,7 @@ function g3PrismOpen(c, pts, H, o, hex, T){
 }
 // شکل ۳بعدی محصول: جعبه‌ی مکعبی یا منشور (قلب، شکل آزاد و...) — یک رابط یکسان برای همه‌ی تصویرها/ویدیو
 function giShape(p, k){
-  k = k || 1; let sh = p.dzShape; if(!sh && !p.dzStyle && GI_OPT.shape3d && !["none","box"].includes(GI_OPT.shape3d)) sh = {shape: GI_OPT.shape3d};
+  k = k || 1; let sh = p.dzShape; if(!sh && !p.dzStyle){ const kd = gi3dKind(p); if(kd && kd !== "box") sh = {shape: kd}; }
   if(sh && sh.shape){
     let pts; try{ pts = shapeOutline(sh.shape, sh.outline, p.w*k, p.h*k, sh.smooth); }catch(e){ pts = null; }
     if(pts){ const lf = sh.lidFrac || 0.36, H = p.d*k, hb = H*(1-lf), hl = H*lf, lk = (p.w*k+4)/(p.w*k), lk2 = (p.h*k+4)/(p.h*k), lp = pts.map(q => [q[0]*lk, q[1]*lk2]);
@@ -8491,7 +8491,11 @@ async function generateListingImages(opts){
   opts = opts || {};
   const p = opts.product || cur(); if(!p) return;
   const gs = giGet(), keys = opts.slots || gs.sel || IMG_SLOTS.map(s => s.k); giApply(gs);
-  const skip3d = !giHas3d(p), targets = IMG_SLOTS.filter(s => keys.includes(s.k) && (opts.overwrite || !p.images[s.k]) && !(skip3d && GI_3D_SLOTS.includes(s.k)));
+  const skip3d = !giHas3d(p), kind3 = gi3dKind(p), sig3 = JSON.stringify([p.dzStyle, p.dzShape && p.dzShape.shape, kind3, p.w, p.h, p.d]);
+  if(skip3d){ for(const s of IMG_SLOTS.filter(x => GI_3D_SLOTS.includes(x.k))){ const v = p.images[s.k]; if(v && v.name && v.name.includes(s.f)){ await blobDel(v.key); delete p.images[s.k]; } } }
+  const force3d = !skip3d && ((p.img3dSig && p.img3dSig !== sig3) || (!p.img3dSig && !p.dzStyle && !p.dzShape));
+  const targets = IMG_SLOTS.filter(s => keys.includes(s.k) && (opts.overwrite || !p.images[s.k] || (force3d && GI_3D_SLOTS.includes(s.k))) && !(skip3d && GI_3D_SLOTS.includes(s.k)));
+  if(!skip3d && targets.some(s => GI_3D_SLOTS.includes(s.k))) p.img3dSig = sig3;
   if(skip3d && keys.some(k => GI_3D_SLOTS.includes(k))) toast("تصویرهای ۳بعدی ساخته نشد چون شکل ۳بعدی محصول معلوم نیست — از «شکل ۳بعدی» انتخاب کن.");
   if(!targets.length) return toast("اسلات‌های انتخاب‌شده همه پر هستند — تیک «جایگزینی تصویرهای موجود» را بزن یا اسلات دیگری انتخاب کن.");
   toast("⏳ در حال ساخت " + fa(targets.length) + " تصویر...");
@@ -9739,10 +9743,22 @@ $("st-refPalette").onclick = refPalette;
 $("st-refUse").onchange = e => { const k = e.target.dataset.ps; if(!k) return; const gs = giGet(); gs.photoSlots = Object.assign({}, GI_PHOTO_DEFAULT, gs.photoSlots || {}); gs.photoSlots[k] = e.target.checked; save(); giQueuePreview(); };
 /* ---------- ۳بعدی فقط وقتی شکل محصول معلوم است؛ قالب کامل؛ تحلیل سبک با Claude ---------- */
 const GI_3D_SLOTS = ["box3d","box3d_open","colors","sizes"];
-function giHas3d(p){ return !!(p.dzShape || p.dzStyle || (GI_OPT.shape3d && GI_OPT.shape3d !== "none")); }
+// شکل خودکار از روی نام/عنوان محصول (قلب، دایره، ستاره...)
+function giAutoShape(p){
+  const t = [p.name, p.title, p.category, p.notes].join(" ").toLowerCase();
+  if(/heart|قلب/.test(t)) return "heart"; if(/\bstar\b|ستاره/.test(t)) return "star"; if(/hexagon|شش.?ضلع/.test(t)) return "hexagon"; if(/octagon|هشت.?ضلع/.test(t)) return "octagon";
+  if(/\boval\b|ellipse|بیضی/.test(t)) return "ellipse"; if(/\bround\b|circle|دایره|گرد/.test(t)) return "circle";
+  return null;
+}
+// نوع ۳بعدی: "own" (طرح خود برنامه) | نام شکل | "box" | null (نامعلوم)
+function gi3dKind(p){
+  if(p.dzShape || p.dzStyle) return "own";
+  const m = GI_OPT.shape3d || "auto"; if(m === "none") return null; if(m === "auto") return giAutoShape(p); return m;
+}
+function giHas3d(p){ return !!gi3dKind(p); }
 function giUiRefresh3(){
   const gs = giGet();
-  $("st-gPlain").checked = gs.plain !== false; $("st-g3d").value = gs.shape3d || "none";
+  $("st-gPlain").checked = gs.plain !== false; $("st-g3d").value = gs.shape3d || "auto";
   document.querySelectorAll("input[name='st-gBgMode']").forEach(r => r.checked = r.value === (gs.bgMode || "overlay"));
   const sf = gs.safe || {l:6,t:6,r:6,b:6}; $("st-gSfL").value = sf.l; $("st-gSfT").value = sf.t; $("st-gSfR").value = sf.r; $("st-gSfB").value = sf.b;
   $("st-gSafeRow").style.display = (gs.bgMode === "full") ? "flex" : "none";
