@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.27.3 -->
+<!-- APP_VERSION: 1.28.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v143</div>
+        <div class="logo-badge">v144</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -7706,7 +7706,7 @@ function renderDiag(){
   const first = ShopManager.list()[0];
   el.textContent = "shop: " + (S.shopName || "?") + " [" + (S.shopId || "-") + "] · " + (first && first.id === S.shopId ? "FIRST" : "not-first") + " · key: " + curKey.replace(LS, "…") + " · " + state.products.length + " products";
 }
-function renderAll(){ renderRail(); renderFields(); renderFiles(); renderImages(); renderHero(); renderCounters(); renderChecks(); renderDiag(); }
+function renderAll(){ renderRail(); renderFields(); renderFiles(); renderImages(); renderHero(); renderCounters(); renderChecks(); renderDiag(); if(typeof dzSyncBrief === "function") dzSyncBrief(); }
 
 /* ===================== متن لیستینگ ===================== */
 function listingText(p){
@@ -7774,6 +7774,7 @@ document.querySelectorAll("#page-studio .tab").forEach(t => t.onclick = () => {
   document.querySelectorAll("#page-studio .tab").forEach(x => x.classList.toggle("on", x === t));
   document.querySelectorAll("#page-studio .panel").forEach(x => x.classList.toggle("on", x.id === t.dataset.p));
   if(t.dataset.p === "st-p-images" && typeof giUiRefresh === "function") giUiRefresh();
+  if(t.dataset.p === "st-p-design" && typeof dzSyncBrief === "function") dzSyncBrief();
 });
 document.addEventListener("input", e => {
   const k = e.target.dataset && e.target.dataset.k;
@@ -8867,6 +8868,25 @@ function dlGuidePdf(spec, d){
 
 // ── Claude: سؤال‌ها و طرح (نسخه‌ی ۲)
 const dzState = {brief:"", qs:[], qa:[], spec:null, dl:null, kit:null, userOutline:null};
+// ایده‌ی محصول انتخاب‌شده خودکار در کادر «ایده‌ی محصول» طراحی با Claude قرار می‌گیرد (با عوض‌شدن محصول، دوباره پر می‌شود)
+let dzBriefFor = null;
+function dzBriefFromProduct(p){
+  if(!p.title && (!p.name || p.name === "محصول تازه")) return "";
+  const parts = ["محصول تأییدشده (ایده‌ی تحقیق‌شده): " + (p.title || p.name)];
+  if(p.category) parts.push("دسته: " + p.category);
+  const desc = String(p.description || "").replace(/\s+/g, " ").trim(); if(desc) parts.push("توضیح پیشنهادی: " + desc.slice(0, 700));
+  const notes = String(p.notes || "").trim(); if(notes) parts.push("یادداشت‌ها: " + notes.slice(0, 500));
+  const tg = String(p.tags || "").trim(); if(tg) parts.push("تگ‌های پیشنهادی: " + tg);
+  if(p.dzSpec) parts.push("اندازه‌ی فعلی: " + p.w + " × " + p.h + " × " + p.d + " میلی‌متر");
+  parts.push("با رعایت همین ایده، جعبه/قالب را طراحی کن و فایل‌ها را بساز.");
+  return parts.join("\n");
+}
+function dzSyncBrief(){
+  const el = $("st-dzBrief"); if(!el) return; const p = cur(); if(!p || dzBriefFor === p.id) return;
+  dzBriefFor = p.id; el.value = dzBriefFromProduct(p); dzState.brief = el.value;
+  dzState.qs = []; dzState.qa = []; dzState.spec = null; dzState.dl = null; dzState.kit = null;
+  if($("st-dzQs")) $("st-dzQs").innerHTML = ""; if($("st-dzOut")) $("st-dzOut").innerHTML = "";
+}
 const dzEsc = s => String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 // مدل طراحی: «Claude سرور» (Opus/Sonnet با کلید سرور، دقیق‌تر) یا همان مدل تنظیمات برنامه
 async function dzCall(prompt, maxTokens){
