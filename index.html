@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.31.1 -->
+<!-- APP_VERSION: 1.31.2 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v149</div>
+        <div class="logo-badge">v150</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -4554,8 +4554,28 @@ function showDailyDetail(i) {
   document.getElementById('dailyModalContent').innerHTML = buildProductDetailHTML(p);
   document.getElementById('dailyModal').classList.add('open');
 }
-function approveProduct(){setDailyStatus(S.currentDaily,'approved');closeModal('dailyModal');}
-function rejectProduct(){setDailyStatus(S.currentDaily,'rejected');closeModal('dailyModal');}
+// تأیید/رد از پنجره‌ی جزئیات: هم برای کارت‌های امروز و هم برای ایده‌های آرشیو (که توی لیست «امروز» نیستند) کار می‌کند
+function decideDetailItem(status){
+  const it = currentDetailItem;
+  if(!it){ toast('ایده‌ای انتخاب نشده.'); return; }
+  const idx = S.dailyProducts.findIndex(x => x === it || (it.id != null && x.id === it.id));
+  if(idx >= 0) setDailyStatus(idx, status);
+  else { // ایده‌ی آرشیو: همان کارهای تأیید را مستقیم انجام بده
+    it.status = status;
+    if(it.id != null) updateArchiveStatus(it.id, status);
+    if(status === 'approved'){
+      try{ exportSingleProduct(it); }catch(e){ log('⚠ دانلود CSV ناموفق: ' + e.message, 'warn'); }
+      pushApprovedToBackend(it);
+      if(window.ProductStudio && window.ProductStudio.addDraftFromIdea){ window.ProductStudio.addDraftFromIdea(it); log('✓ ایده‌ی آرشیو تأیید شد و به استودیو محصولات اضافه شد', 'ok'); }
+      else log('✓ ایده‌ی آرشیو تأیید شد', 'ok');
+    } else log('✓ ایده رد شد', 'ok');
+    saveCurrentShop(); updateSidebar();
+    if(document.getElementById('archiveModal') && document.getElementById('archiveModal').classList.contains('open')) renderArchiveList();
+  }
+  closeModal('dailyModal');
+}
+function approveProduct(){ decideDetailItem('approved'); }
+function rejectProduct(){ decideDetailItem('rejected'); }
 
 // ══ SEO ══
 let seoShowWeak=false;
