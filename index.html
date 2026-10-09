@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.31.2 -->
+<!-- APP_VERSION: 1.32.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v150</div>
+        <div class="logo-badge">v151</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1845,6 +1845,14 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
             <button type="button" class="ghost mini" id="st-btnGenImgs">🎨 ساخت تصویرهای انتخاب‌شده</button>
             <button type="button" class="ghost mini" id="st-btnImgZip">⬇ دانلود همه‌ی تصویرهای این محصول (ZIP)</button>
             <label style="font-size:13px"><input type="checkbox" id="st-gOver"> جایگزینی تصویرهای موجود</label>
+          </div>
+        </div>
+        <div style="border:1px dashed var(--rule);border-radius:8px;padding:10px;margin-bottom:10px">
+          <b style="font-size:13px">📥 افزودن گروهی تصویرها (به ترتیب)</b>
+          <p class="help">چند تصویر را یک‌جا انتخاب کن. اگر اول نام فایل‌ها شماره باشد (01، 02، … ۲۰) هر تصویر دقیقاً در اسلات همان شماره می‌نشیند؛ وگرنه فایل‌ها بر اساس نام مرتب و از اسلات اول به ترتیب چیده می‌شوند. ALT هر اسلات خودکار پر می‌شود.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <label class="ghost mini" style="cursor:pointer">📥 انتخاب چند تصویر<input type="file" id="st-bulkImg" accept="image/*" multiple hidden></label>
+            <label style="font-size:12.5px"><input type="checkbox" id="st-bulkEmpty"> فقط در اسلات‌های خالی (جایگزین نکن)</label>
           </div>
         </div>
         <div class="slots img" id="st-imgSlots"></div>
@@ -7630,6 +7638,24 @@ function renderImages(){
   });
 }
 
+async function imgBulkAdd(files){
+  const p = cur(), list = [...files].filter(f => /^image\//.test(f.type)).sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
+  if(!list.length) return toast("تصویری انتخاب نشد.");
+  const nums = list.map(f => { const m = f.name.match(/^\D{0,3}(\d{1,2})(?!\d)/); return m ? Number(m[1]) : null; });
+  const numbered = nums.every(n => n && n >= 1 && n <= IMG_SLOTS.length) && new Set(nums).size === nums.length;
+  let slots;
+  if(numbered) slots = nums.map(n => IMG_SLOTS[n-1].k);
+  else { const emptyOnly = $("st-bulkEmpty").checked; slots = IMG_SLOTS.filter(sl => !emptyOnly || !p.images[sl.k]).map(sl => sl.k); }
+  const n = Math.min(list.length, slots.length), raw = altRaw(p);
+  for(let i = 0; i < n; i++){
+    const f = list[i], slot = slots[i], key = p.id + ":images:" + slot; await blobPut(key, f);
+    p.images[slot] = {name: f.name, size: f.size, type: f.type, key};
+    const idx = IMG_SLOTS.findIndex(x => x.k === slot); if(idx >= 0 && !raw[idx]) raw[idx] = ALT_DEFAULTS[slot];
+  }
+  p.alt = raw.join("\n"); save(); renderAll();
+  toast("✅ " + fa(n) + " تصویر " + (numbered ? "بر اساس شماره‌ی نام فایل" : "به ترتیب نام، از اسلات " + fa(IMG_SLOTS.findIndex(x => x.k === slots[0]) + 1)) + " قرار گرفت" + (list.length > n ? " — " + fa(list.length - n) + " تصویر جا نشد" : "") + ".");
+}
+$("st-bulkImg").onchange = e => { const fl = [...e.target.files]; e.target.value = ""; if(fl.length) imgBulkAdd(fl); };
 async function pickFile(kind, slot, file){
   if(!file) return;
   const p = cur();
@@ -9725,8 +9751,8 @@ if($("st-dzSkip")) $("st-dzSkip").onclick = () => { const b = $("st-dzBrief").va
 if($("st-btnSendEtsy")) $("st-btnSendEtsy").onclick = studioSendToEtsy;
 /* ===================== ویدیوهای لیستینگ (۲ ویدیو، ساخته‌شده در مرورگر با Canvas + MediaRecorder) ===================== */
 const VID_SLOTS = [
-  {k:"vid3d",   t:"ویدیو چرخش ۳بعدی",   f:"Video-01-Turntable",  d:"جعبه‌ی ۳بعدی که با رنگ‌های مختلف ۳۶۰ درجه می‌چرخد"},
-  {k:"vidtour", t:"ویدیو معرفی و مراحل", f:"Video-02-Walkthrough", d:"تصویر اصلی ← جعبه ۳بعدی ← الگو ← فرمت‌ها ← مونتاژ ← دانلود فوری"}
+  {k:"vid3d",   t:"ویدیو نمایش محصول",   f:"Video-01-Showcase",  d:"از عکس‌ها و تصویرهای خودت (با زوم نرم)؛ اگر عکسی نداری، چرخش ۳بعدی جعبه"},
+  {k:"vidtour", t:"ویدیو معرفی و مراحل", f:"Video-02-Walkthrough", d:"اول تصویرهایی که خودت آپلود کرده‌ای؛ برای بقیه از تصویرهای ساخته‌شده"}
 ];
 const vids = p => (p.videos = p.videos || {});
 const vidMime = () => ["video/mp4;codecs=avc1.42E01E","video/mp4","video/webm;codecs=vp9","video/webm"].find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || "";
@@ -9784,22 +9810,45 @@ async function vidBuild3d(p, seconds, onProgress){
   };
   return vidRecord(draw, seconds, onProgress);
 }
-async function vidBuildTour(p, seconds, onProgress){
-  const gs = giGet(); giApply(gs);
-  const ctx = await giContext(p), keys = (p.refImages && p.refImages.length) ? ["hero","finished","box3d","template","formats","assembly","promo"] : ["hero","box3d","template","formats","assembly","promo"];
-  const slides = keys.map(k => { const cv = document.createElement("canvas"); cv.width = GI.W; cv.height = GI.H; giRender(cv.getContext("2d"), p, k, ctx); return cv; });
-  const n = slides.length, seg = seconds / n, bg = GI.bg;
-  const drawSlide = (c, cv, alpha, local) => {
-    const sc = 1 + 0.05*local, h = 1080*sc, w = h*cv.width/cv.height;
-    c.globalAlpha = alpha; c.drawImage(cv, (1920-w)/2, (1080-h)/2, w, h); c.globalAlpha = 1;
-  };
-  const draw = (c, u, t) => {
-    c.fillStyle = bg; c.fillRect(0,0,1920,1080);
+// فریم‌های ویدیو از تصویرهای خود کاربر: ۱) عکس‌های اصلی (بی‌رنگ‌شده) ۲) تصویرهای لیستینگی که خودش آپلود کرده (نه ساخته‌ی اپ)
+async function vidLoadCanvas(blob){ const bmp = await createImageBitmap(blob), k = Math.min(1, 1800/Math.max(bmp.width, bmp.height)), cv = document.createElement("canvas"); cv.width = Math.round(bmp.width*k); cv.height = Math.round(bmp.height*k); cv.getContext("2d").drawImage(bmp, 0, 0, cv.width, cv.height); return cv; }
+async function vidUserFrames(p){
+  const out = []; (await giLoadPhotos(p)).forEach(cv => out.push({cv, photo: true}));
+  for(const sl of IMG_SLOTS){ const v = p.images[sl.k]; if(!v || (v.name && v.name.includes(sl.f))) continue; const b = await blobGet(v.key); if(b){ try{ out.push({cv: await vidLoadCanvas(b), photo: false}); }catch(e){} } }
+  return out;
+}
+async function vidGeneratedFrames(p, want){
+  const ctx = await giContext(p), has3 = giHas3d(p), keys = ["hero"].concat(p.refImages && p.refImages.length ? ["finished"] : [], has3 ? ["box3d"] : [], ["template","formats","assembly","promo"]), out = [];
+  for(const k of keys){ if(out.length >= want) break; const cv = document.createElement("canvas"); cv.width = GI.W; cv.height = GI.H; giRender(cv.getContext("2d"), p, k, ctx); out.push({cv, photo: false}); }
+  return out;
+}
+function vidDrawFrame(c, f, alpha, local, label){
+  const z = 1 + 0.07*vidEase(local), k = Math.min(1700/f.cv.width, 900/f.cv.height)*z, w = f.cv.width*k, h = f.cv.height*k;
+  c.save(); c.globalAlpha = alpha; if(f.photo){ c.shadowColor = "rgba(0,0,0,0.2)"; c.shadowBlur = 50; c.shadowOffsetY = 22; }
+  c.drawImage(f.cv, (1920-w)/2 + (local-0.5)*30, (1080-h)/2 - 28, w, h); c.restore();
+  if(label){ c.globalAlpha = alpha; c.fillStyle = GI.mute; c.font = "700 44px " + GI_FONT; c.textAlign = "center"; c.fillText(label, 960, 1030); c.globalAlpha = 1; }
+}
+function vidSlideshow(frames, seconds, bg, label){
+  const n = frames.length, seg = seconds/n;
+  return (c, u, t) => { c.fillStyle = bg; c.fillRect(0,0,1920,1080);
     const i = Math.min(n-1, Math.floor(t/seg)), local = Math.min(1, (t - i*seg)/seg), fadeIn = Math.min(1, (t - i*seg)/0.4);
-    if(i > 0 && fadeIn < 1) drawSlide(c, slides[i-1], 1, 1);
-    drawSlide(c, slides[i], i === 0 ? 1 : fadeIn, local);
-  };
-  return vidRecord(draw, seconds, onProgress);
+    if(i > 0 && fadeIn < 1) vidDrawFrame(c, frames[i-1], 1, 1, label);
+    vidDrawFrame(c, frames[i], i === 0 ? 1 : fadeIn, local, label); };
+}
+// ویدیوی نمایش: عکس‌ها/تصویرهای خود کاربر؛ بدون آن‌ها: چرخش ۳بعدی؛ در غیر این صورت راهنمایی
+async function vidBuildShowcase(p, seconds, onProgress){
+  const gs = giGet(); giApply(gs); let frames = await vidUserFrames(p);
+  if(!frames.length && giHas3d(p)) return vidBuild3d(p, seconds, onProgress);
+  if(!frames.length){ const g = await vidGeneratedFrames(p, 4); frames = g; }
+  if(!frames.length) throw new Error("عکس یا تصویری برای ویدیو پیدا نشد — عکس‌های اصلی یا تصویرهای محصول را اضافه کن");
+  return vidRecord(vidSlideshow(frames.slice(0,8), seconds, GI.bg, giShortName(p.name)), seconds, onProgress);
+}
+// ویدیوی معرفی: اولویت با تصویرهای خود کاربر؛ اگر کمتر از ۴ تا بود با تصویرهای ساخته‌شده‌ی اپ تکمیل می‌شود
+async function vidBuildTour(p, seconds, onProgress){
+  const gs = giGet(); giApply(gs); let frames = (await vidUserFrames(p)).slice(0,8);
+  if(frames.length < 4) frames = frames.concat(await vidGeneratedFrames(p, 7 - frames.length));
+  if(!frames.length) throw new Error("تصویری برای ویدیو نیست — تصویرها را اضافه یا بساز");
+  return vidRecord(vidSlideshow(frames, seconds, GI.bg, ""), seconds, onProgress);
 }
 async function vidMake(slot){
   const p = cur(), dur = Number($("st-vDur").value) || 10, btn = document.querySelector("[data-vmake='" + slot + "']");
@@ -9807,7 +9856,7 @@ async function vidMake(slot){
   try{
     toast("⏳ ضبط ویدیو شروع شد — این تب را باز نگه دار (" + fa(dur) + " ثانیه)");
     const prog = u => { if(btn) btn.textContent = "⏳ " + fa(Math.round(u*100)) + "٪"; };
-    const blob = slot === "vid3d" ? await vidBuild3d(p, dur, prog) : await vidBuildTour(p, dur, prog);
+    const blob = slot === "vid3d" ? await vidBuildShowcase(p, dur, prog) : await vidBuildTour(p, dur, prog);
     const s = VID_SLOTS.find(x => x.k === slot), name = s.f + "." + vidExt(blob.type), key = p.id + ":videos:" + slot;
     if(vids(p)[slot]) await blobDel(vids(p)[slot].key);
     await blobPut(key, blob); vids(p)[slot] = {name, size: blob.size, type: blob.type, key};
