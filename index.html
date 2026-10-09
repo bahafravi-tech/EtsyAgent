@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.30.1 -->
+<!-- APP_VERSION: 1.31.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v147</div>
+        <div class="logo-badge">v149</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -8232,6 +8232,13 @@ const GI_DRAW = {
     let x=140; const py=y+160; L.fmts.slice(0,3).forEach(s=>{ x += giPill(c,s.k === "guide" ? "GUIDE" : s.t.toUpperCase(),x,py,pillF,giOnTeal(),GI.teal)+20; });
   },
   dims(c,p,L){
+    if(p.sizes && p.sizes.length > 1){
+      const rows = p.sizes.slice(0,6), rh = Math.min(150, 1000/rows.length), y0 = 560; c.textAlign = "left";
+      rows.forEach((r,i) => { const y = y0 + i*(rh+14); giCard(c, 200, y, 2000, rh, 30); c.fillStyle = GI.acc; c.font = "800 70px " + GI_FONT; c.fillText(r.label, 260, y + rh/2 + 24);
+        c.fillStyle = GI.ink; c.font = "700 66px " + GI_FONT; c.fillText(Math.round(r.length) + " × " + Math.round(r.width) + " × " + Math.round(r.height) + " mm", 760, y + rh/2 + 22);
+        c.fillStyle = GI.mute; c.font = "600 56px " + GI_FONT; c.fillText((Math.round(r.length/25.4*10)/10) + " × " + (Math.round(r.width/25.4*10)/10) + " × " + (Math.round(r.height/25.4*10)/10) + " in", 1620, y + rh/2 + 20); });
+      return;
+    }
     const bw=1500, bh=Math.max(380,Math.min(620,bw*(p.h||70)/(p.w||100))), bx=(GI.W-bw)/2, by=760;
     c.fillStyle=GI.card; giRR(c,bx,by,bw,bh,28); c.fill(); c.strokeStyle=GI.ink; c.lineWidth=8; c.stroke();
     c.strokeStyle=GI.acc; c.fillStyle=GI.acc; c.lineWidth=8; c.font="800 96px " + GI_FONT; c.textAlign="center";
@@ -8363,6 +8370,14 @@ const GI_DRAW = {
       c.fillStyle = GI.ink; c.font = "600 66px " + GI_FONT; giWrap(c,it[1],x+60,y+290,cw-120,80,3); });
   },
   sizes(c,p){
+    if(p.sizes && p.sizes.length > 1){
+      const rows = p.sizes.slice(0,5), n = rows.length, g = 24, slotW = (2120-(n-1)*g)/n, big = rows.reduce((a,r) => r.length > a.length ? r : a, rows[0]);
+      const mkp = r => Object.assign({}, p, {w: r.length, h: r.width, d: r.height}), [rr,gg,bb] = g3.hex(GI.teal), txt = (rr*0.299+gg*0.587+bb*0.114) > 160 ? "#1a1a1a" : "#ffffff";
+      const ref = g3FitV(giShape(mkp(big),1).verts(), slotW-50, 640, 0, 0, -0.62, 0.52).s;
+      rows.forEach((r,i) => { const x = 140 + i*(slotW+g); giCard(c, x, 540, slotW, 900, 30); const sh = giShape(mkp(r),1), o = g3FitV(sh.verts(), 0, 0, x+slotW/2, 920, -0.62, 0.52, ref); sh.draw(c, o, GI.teal, txt, null);
+        c.fillStyle = GI.ink; c.font = "800 " + (n > 4 ? 54 : 64) + "px " + GI_FONT; c.textAlign = "center"; c.fillText(r.label, x+slotW/2, 1290); c.fillStyle = GI.mute; c.font = "600 " + (n > 4 ? 40 : 48) + "px " + GI_FONT; c.fillText(Math.round(r.length) + "×" + Math.round(r.width) + "×" + Math.round(r.height) + " mm", x+slotW/2, 1370); });
+      c.fillStyle = GI.mute; c.font = "700 66px " + GI_FONT; c.textAlign = "center"; c.fillText("All " + n + " sizes in one purchase", GI.W/2, 1560); return;
+    }
     const scales = [[0.55,"Small"],[0.8,"Medium"],[1.1,"Large"]], slotW = 700, gap = 40, x0 = (GI.W-(3*slotW+2*gap))/2;
     const [r,g,b] = g3.hex(GI.teal), txt = (r*0.299+g*0.587+b*0.114) > 160 ? "#1a1a1a" : "#ffffff";
     const ref = g3FitV(giShape(p,1.1).verts(), slotW-80, 560, 0, 0, -0.62, 0.52).s;
@@ -8492,6 +8507,8 @@ function giRenderCore(c,p,slotKey,ctx){
   c.setLineDash([]); c.textBaseline = "alphabetic"; c.direction = "ltr"; c.setTransform(1,0,0,1,0,0);
   GI_BG = ctx.bgImg || null;
   let t = GI_TITLES[slotKey];
+  if(slotKey === "dims" && p.sizes && p.sizes.length > 1) t = ["Sizes Included", p.sizes.length + " size options"];
+  if(slotKey === "sizes" && p.sizes && p.sizes.length > 1) t = ["Choose Your Size", p.sizes.length + " options in one file pack"];
   if(slotKey === "finished" && giPhotoOn("finished", ctx)) t = ["Finished Product", ctx.L.dim];
   if(slotKey === "template" && p.dzStyle === "rigid_shape") t = ["All Parts Included", "12 parts: chipboard + paper"];
   else if(slotKey === "template" && ctx.svgImg && ctx.svgImg.sheet) t = ["Cutting Template", "Sheet " + ctx.svgImg.sheet.w + " × " + ctx.svgImg.sheet.h + " mm"];
@@ -8908,7 +8925,7 @@ function dlGuidePdf(spec, d){
 }
 
 // ── Claude: سؤال‌ها و طرح (نسخه‌ی ۲)
-const dzState = {brief:"", qs:[], qa:[], spec:null, dl:null, kit:null, userOutline:null};
+const dzState = {brief:"", qs:[], qa:[], spec:null, dl:null, kit:null, userOutline:null, sizes:null, sizeN:1};
 function dzNgon(n){ const pts = []; for(let i = 0; i < n; i++){ const t = -Math.PI/2 + i*2*Math.PI/n; pts.push([Math.cos(t), Math.sin(t)]); } return pts; }
 function dzPrismDims(sp){
   const n = Math.round(dlNum(sp.sides, 3, 12, 6)), R = Number(sp.side) > 0 ? Number(sp.side)/(2*Math.sin(Math.PI/n)) : (Number(sp.length) || 44)/2, pts = dzNgon(n), xs = pts.map(q => q[0]), ys = pts.map(q => q[1]);
@@ -8936,8 +8953,8 @@ function dzSyncBrief(){
 }
 const dzEsc = s => String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 // مدل طراحی: «Claude سرور» (Opus/Sonnet با کلید سرور، دقیق‌تر) یا همان مدل تنظیمات برنامه
-async function dzCall(prompt, maxTokens){
-  const m = $("st-dzModel") ? $("st-dzModel").value : "app";
+async function dzCall(prompt, maxTokens, forceModel){
+  const m = forceModel || ($("st-dzModel") ? $("st-dzModel").value : "app");
   if(m !== "app" && S.contentBackendUrl){
     const res = await fetch(crApiUrl("design_ai.php"), {method:"POST", headers: crHeaders(), body: JSON.stringify({prompt, max_tokens: maxTokens, model: m})});
     const d = await mktParseResponse(res);
@@ -9056,7 +9073,7 @@ async function dzDesign(feedback){
       try{ $("st-dzOut").innerHTML = "<p class='help'>🔍 Claude در حال بازبینی بصری طرح است (اشکال‌یابی)...</p>"; const r = await dzReview(spec, d); if(r){ if(r.spec){ spec = r.spec; d = r.d; } dzState.review = r.note; } }
       catch(e){ dzState.review = "(بازبینی بصری انجام نشد: " + (e && e.message ? e.message : e) + ")"; dzBuildAll(spec); }
     }
-    dzState.spec = spec; dzState.dl = d;
+    dzState.spec = spec; dzState.dl = d; dzState.sizes = null; dzState.sizeN = 1;
     dzRender();
   }catch(e){ $("st-dzOut").innerHTML = "<p class='help' style='color:var(--cut)'>خطا: " + dzEsc(e.message) + "</p>"; }
 }
@@ -9067,6 +9084,68 @@ function dzRebuild(){
   if($("st-dzHl").value) s.height_lid = num("st-dzHl");
   if($("st-dzN") && $("st-dzN").value) s.sides = num("st-dzN"); if($("st-dzUnits")) s.units = $("st-dzUnits").value; if($("st-dzT") && $("st-dzT").value) s.board_thickness = num("st-dzT");
   try{ dzState.dl = dzBuildAll(s); dzRender(); }catch(e){ toast("طرح ساخته نشد: " + e.message); }
+}
+const DZ_SIZE_LABELS = {2:["Small","Large"],3:["Small","Standard","Large"],4:["Mini","Small","Standard","Large"],5:["Mini","Small","Standard","Large","XL"],6:["Mini","Small","Medium","Standard","Large","XL"]};
+const DZ_SIZE_SCALES = {2:[0.8,1.25],3:[0.7,1,1.4],4:[0.6,0.8,1,1.3],5:[0.6,0.8,1,1.25,1.5],6:[0.5,0.7,0.85,1,1.25,1.5]};
+function dzScaleRows(sp, n){
+  const rnd = v => v > 100 ? Math.round(v/5)*5 : Math.round(v);
+  return DZ_SIZE_SCALES[n].map((k,i) => ({on:true, label: DZ_SIZE_LABELS[n][i], length: rnd((Number(sp.length)||100)*k), width: rnd((Number(sp.width)||70)*k), height: Math.max(8, Math.round((Number(sp.height)||30)*k)), height_lid: sp.height_lid ? Math.round(sp.height_lid*k) : ""}));
+}
+function dzSizesInner(){
+  const sp = dzState.spec; if(!sp) return "";
+  if(sp.style === "net") return "<p class='help'>برای «طرح اختصاصی» چند اندازه‌ای خودکار ممکن نیست؛ یک نوع آماده (لوله، تاشو، شکل‌دار و...) را انتخاب کن.</p>";
+  const n = dzState.sizeN || 1, rows = dzState.sizes || [];
+  const inp = (i, k, w, t) => "<input type='" + (t || "number") + "' data-szi='" + i + "' data-szk='" + k + "' value='" + dzEsc(rows[i][k]) + "' style='width:" + w + "px'>";
+  return "<b>📐 چند اندازه در همین لیستینگ؟</b><p class='help'>تعداد اندازه را انتخاب کن؛ اندازه‌ها خودکار (بدون مصرف توکن) ساخته می‌شود و قابل ویرایش است. تیکِ هر ردیف را برداری، آن اندازه در لیستینگ نمی‌آید. برای هر اندازه فایل جدا (SVG/DXF/PDF) ساخته می‌شود و در متن لیستینگ بخش «SIZES INCLUDED» اضافه می‌شود. «پیشنهاد AI» با یک درخواست کوتاه ۵ اندازه‌ی پرطرفدار می‌آورد.</p>" +
+    "<div style='display:flex;gap:8px;flex-wrap:wrap;align-items:center'><label>تعداد اندازه: <select id='st-dzSzN'>" + [1,2,3,4,5,6].map(k => "<option value='" + k + "'" + (k === n ? " selected" : "") + ">" + k + "</option>").join("") + "</select></label><button type='button' class='ghost mini' id='st-dzSzAi'>🤖 پیشنهاد ۵ اندازه‌ی پرطرفدار (Claude، کم‌مصرف)</button></div>" +
+    (rows.length > 1 ? "<div style='overflow:auto;margin-top:8px'><table style='font-size:12.5px;border-collapse:collapse'><tr><th></th><th>برچسب</th><th>طول</th><th>عرض</th><th>ارتفاع</th><th>ارتفاع درب</th></tr>" +
+      rows.map((r,i) => "<tr><td><input type='checkbox' data-szi='" + i + "' data-szk='on'" + (r.on ? " checked" : "") + "></td><td>" + inp(i,"label",90,"text") + "</td><td>" + inp(i,"length",60) + "</td><td>" + inp(i,"width",60) + "</td><td>" + inp(i,"height",60) + "</td><td>" + inp(i,"height_lid",60) + "</td></tr>").join("") + "</table></div>" : "");
+}
+function dzSizesHtml(){ return "<div id='st-dzSizesBox' style='border:1px dashed var(--rule);border-radius:8px;padding:10px;margin:8px 0'>" + dzSizesInner() + "</div>"; }
+function dzSizesRefresh(){ const b = $("st-dzSizesBox"); if(b){ b.innerHTML = dzSizesInner(); dzSizesBind(); } }
+function dzSizesBind(){
+  const sel = $("st-dzSzN"); if(sel) sel.onchange = () => { const n = Number(sel.value); dzState.sizeN = n; dzState.sizes = n > 1 ? dzScaleRows(dzState.spec, n) : null; dzSizesRefresh(); };
+  const ai = $("st-dzSzAi"); if(ai) ai.onclick = dzSizesAi;
+  document.querySelectorAll("#st-dzSizesBox [data-szi]").forEach(el => el.onchange = () => { const r = dzState.sizes[Number(el.dataset.szi)], k = el.dataset.szk; r[k] = k === "on" ? el.checked : (k === "label" ? el.value : (el.value === "" ? "" : Number(el.value))); });
+}
+async function dzSizesAi(){
+  const sp = dzState.spec; if(!sp) return; toast("⏳ Claude دارد اندازه‌های پرطرفدار را پیشنهاد می‌دهد...");
+  const prompt = "Suggest 5 popular size options (FINISHED INNER size in millimetres) for this Etsy digital cut-file product, the way buyers usually choose sizes. Product: " + sp.name + " (style " + sp.style + (sp.shape ? ", shape " + sp.shape : "") + (sp.sides ? ", " + sp.sides + " sides" : "") + "). Idea: " + String(dzState.brief || "").slice(0, 240) + ". Current size length x width x height = " + sp.length + " x " + sp.width + " x " + sp.height + " mm" + (sp.height_lid ? " (lid height " + sp.height_lid + ")" : "") + ".\n" +
+    'Return ONLY a JSON array ordered small to large: [{"label":"Small","length":0,"width":0,"height":0,"height_lid":null}]. Labels: short English (Mini/Small/Standard/Large/XL). Keep proportions sensible for this product type.';
+  try{
+    const arr = parseJSON(await dzCall(prompt, 1200, "sonnet")), rows = (Array.isArray(arr) ? arr : (arr.sizes || [])).slice(0,6).map(r => ({on:true, label: String(r.label || "Size").slice(0,16), length: Number(r.length) || sp.length, width: Number(r.width) || sp.width, height: Number(r.height) || sp.height, height_lid: Number(r.height_lid) || ""}));
+    if(rows.length < 2) throw new Error("پیشنهادی برنگشت");
+    dzState.sizes = rows; dzState.sizeN = rows.length; dzSizesRefresh(); toast("✅ " + fa(rows.length) + " اندازه پیشنهاد شد — تیک‌ها و اعداد را دلخواه تنظیم کن.");
+  }catch(e){ toast("پیشنهاد اندازه ناموفق بود: " + (e && e.message ? e.message : e)); }
+}
+// متن لیستینگ را با اندازه‌ها کامل می‌کند (محلی، بدون AI): بخش SIZES INCLUDED + «N Sizes» در عنوان + تگ‌ها
+function dzApplySizesToProduct(p){
+  const rows = p.sizes || []; if(rows.length < 2) return;
+  const mm = v => Math.round(v), inch = v => (Math.round(v/25.4*100)/100);
+  const line = r => "• " + r.label + " — " + mm(r.length) + " × " + mm(r.width) + " × " + mm(r.height) + " mm (" + inch(r.length) + " × " + inch(r.width) + " × " + inch(r.height) + " in)";
+  const sec = "📏 SIZES INCLUDED (" + rows.length + ")\n" + rows.map(line).join("\n") + "\n• Each size comes as its own SVG, DXF and PDF file";
+  const blocks = String(p.description || "").split(/\n\s*\n/); let at = blocks.findIndex(b => /INSTANT|DOWNLOAD/i.test(b.split("\n")[0]));
+  if(blocks.some(b => /SIZES INCLUDED/i.test(b))) at = -2;
+  if(at === -1) blocks.push(sec); else if(at >= 0) blocks.splice(at, 0, sec);
+  p.description = normalizeDescription(blocks.join("\n\n"));
+  if(!/sizes/i.test(p.title || "") ){ const t2 = limitTitle(sanitizeEtsyTitle((p.title || p.name) + " | " + rows.length + " Sizes")); if(t2.length <= 140) p.title = t2; }
+  const tags = String(p.tags || "").split(/[,\n]/).map(t => t.trim()).filter(Boolean); const miss = ["multiple sizes","size options"].filter(t => !tags.some(x => x.toLowerCase() === t)); while(tags.length + miss.length > 13) tags.pop(); miss.forEach(t => tags.push(t));
+  p.tags = tags.slice(0,13).join(", ");
+  p.notes = (p.notes ? p.notes + "\n" : "") + "اندازه‌ها: " + rows.map(r => r.label + " " + mm(r.length) + "×" + mm(r.width) + "×" + mm(r.height)).join(" · ");
+}
+async function dzMultiFiles(p, s, d, rows, base, put){
+  const enc = new TextEncoder(), svgE = [], dxfE = [], pdfE = [], rigid = s.style === "rigid_shape", used = {};
+  for(const r of rows){
+    const sp = Object.assign({}, s, {length: r.length, width: r.width, height: r.height}); if(r.height_lid) sp.height_lid = r.height_lid;
+    let lab = slug(r.label || "size"); if(used[lab]) lab += "-" + (++used[lab]); else used[lab] = 1;
+    if(rigid){ const kit = rsBuild(sp); kit.parts.forEach(pt => pt.pieces.forEach(pc => { svgE.push({path: base + "-SVG/" + lab + "/" + pc.file + ".svg", data: enc.encode(rsSvg(pc, kit.unit))}); dxfE.push({path: base + "-DXF/" + lab + "/" + pc.file + ".dxf", data: enc.encode(dlDxf({paths: pc.paths, w: pc.w, h: pc.h}))}); })); }
+    else { const dd = dlBuild(sp); svgE.push({path: base + "-SVG/" + base + "-" + lab + ".svg", data: enc.encode(dlSvg(dd))}); dxfE.push({path: base + "-DXF/" + base + "-" + lab + ".dxf", data: enc.encode(dlDxf(dd))}); pdfE.push({path: base + "-PDF/" + base + "-" + lab + ".pdf", data: new Uint8Array(await dlPdf(dd).arrayBuffer())}); }
+  }
+  await put("svg", new Blob([makeZip(svgE)], {type: "application/zip"}), base + "-SVG-" + rows.length + "-sizes.zip");
+  await put("dxf", new Blob([makeZip(dxfE)], {type: "application/zip"}), base + "-DXF-" + rows.length + "-sizes.zip");
+  if(pdfE.length) await put("pdf", new Blob([makeZip(pdfE)], {type: "application/zip"}), base + "-PDF-" + rows.length + "-sizes.zip");
+  await put("preview", new Blob([dlSvg(d)], {type: "image/svg+xml"}), base + "-preview.svg"); p.dzPreview = p.files.preview; delete p.files.preview;
+  await put("guide", dlGuidePdf(s, d), base + "-instructions.pdf");
 }
 function dzRender(){
   const s = dzState.spec, d = dzState.dl, l = s.listing || {}, sw = Math.max(0.5, d.w/220);
@@ -9089,13 +9168,14 @@ function dzRender(){
       "<label class='fld'><span>ضخامت برد (mm)</span><input type='number' step='0.1' id='st-dzT' value='" + dzEsc(s.board_thickness || "") + "' placeholder='1'></label>" +
       "<label class='fld'><span>تعداد اضلاع (منشور)</span><input type='number' min='3' max='12' id='st-dzN' value='" + dzEsc(s.sides || "") + "' placeholder='6'></label>" +
     "</div>" +
+    dzSizesHtml() +
     "<table style='font-size:13px;line-height:2;direction:rtl'><tr><td>متریال</td><td dir='ltr'>" + dzEsc(s.material) + "</td></tr><tr><td>قیمت پیشنهادی</td><td dir='ltr'>$" + dzEsc(s.price) + "</td></tr><tr><td>عنوان</td><td dir='ltr'>" + dzEsc(l.title) + "</td></tr></table>" +
     "<p class='help'>" + dzEsc(s.notes_fa || "") + "</p>" + (dzState.review ? "<p class='help' style='color:var(--ink)'><b>بازبینی Claude:</b> " + dzEsc(dzState.review) + "</p>" : "") +
     "<p class='help' style='color:var(--cut)'>⚠ قبل از فروش، یک بار طرح را روی کاغذ معمولی برش بزن و جعبه را سوار کن.</p>" +
     "<div style='display:flex;gap:8px;flex-wrap:wrap;margin:8px 0'><button class='ghost mini' id='st-dzApply'>✔ ساخت فایل‌ها، راهنمای PDF، تصویرها و پر کردن همه‌چیز</button></div>" +
     "<label class='fld'><span>تغییر می‌خواهی؟ توضیح بده تا Claude اصلاح کند</span><input type='text' id='st-dzFeed' placeholder='مثلاً: درب لولایی داشته باشد، ۲ سانت بلندتر'></label>" +
     "<button class='ghost mini' id='st-dzRedo' style='margin-top:6px'>🔁 اصلاح طرح با Claude</button></div>";
-  $("st-dzApply").onclick = dzApply;
+  $("st-dzApply").onclick = dzApply; dzSizesBind();
   $("st-dzRedo").onclick = () => { const f = $("st-dzFeed").value.trim(); if(!f) return toast("اول بنویس چه تغییری می‌خواهی."); dzDesign(f); };
   ["st-dzStyle","st-dzShape","st-dzL","st-dzW","st-dzH","st-dzHl","st-dzUnits","st-dzT","st-dzN"].forEach(id => $(id).onchange = dzRebuild);
   try{ giApply(giGet()); const c = $("st-dz3d").getContext("2d"); c.fillStyle = "#fff"; c.fillRect(0,0,700,420);
@@ -9103,7 +9183,7 @@ function dzRender(){
 }
 async function dzApply(){
   const s = dzState.spec, d = dzState.dl; if(!s || !d) return;
-  const l = s.listing || {}, p = blankProduct();
+  const l = s.listing || {}, p = blankProduct(), szRows = (dzState.sizes || []).filter(r => r.on), multi = szRows.length > 1;
   p.name = String(s.name || "Box").slice(0,80);
   p.code = "BG-" + String(state.products.length + 1).padStart(3,"0");
   p.w = Math.round(dlNum(s.length,10,400,100)); p.h = Math.round(dlNum(s.width,10,400,70)); p.d = Math.round(dlNum(s.height,8,300,30));
@@ -9120,9 +9200,11 @@ async function dzApply(){
   p.price = Number(s.price) > 0 ? Number(s.price) : 4.5;
   p.notes = "ساخته‌شده با Claude · قیمت پیشنهادی: $" + p.price + (s.notes_fa ? "\n" + s.notes_fa : "");
   p.dzSpec = {style:s.style, units:s.units, board_thickness:s.board_thickness, gap:s.gap, width:s.width, length:s.length, width:s.width, height:s.height, height_lid:s.height_lid, sleeve_length:s.sleeve_length, material:s.material, name:s.name, guide:s.guide, assembly_steps:s.assembly_steps};
+  if(multi){ p.sizes = szRows.map(r => ({label: r.label, length: r.length, width: r.width, height: r.height})); p.dzSpec.sizes = p.sizes; dzApplySizesToProduct(p); }
   const put = async (slot, blob, name) => { const key = p.id + ":files:" + slot; const f = new File([blob], name, {type: blob.type}); await blobPut(key, f); p.files[slot] = {name, size: f.size, type: f.type, key}; };
   const base = slug(p.name);
-  if(s.style === "rigid_shape" && dzState.kit){
+  if(multi){ await dzMultiFiles(p, s, d, szRows, base, put); }
+  else if(s.style === "rigid_shape" && dzState.kit){
     const z = rsKitZips(dzState.kit, base);
     await put("svg", new Blob([z.svg], {type:"application/zip"}), base + "-SVG-parts.zip");
     await put("dxf", new Blob([z.dxf], {type:"application/zip"}), base + "-DXF-parts.zip");
@@ -9263,10 +9345,11 @@ async function dzBuildGuide(p){
   // ۳) الگو
   header("Your Template", "Sheet and finished size");
   const tw = W-96;
-  if(tplIdx >= 0){ const th = Math.min(520, tw*tplAR), tww = th/tplAR; card(48,120,tw,th+30); pdf.image(tplIdx, 48 + (tw-tww)/2, 135, tww, th); y = 120 + th + 60; }
+  if(tplIdx >= 0){ const th = Math.min((p.sizes && p.sizes.length > 1) ? 360 : 520, tw*tplAR), tww = th/tplAR; card(48,120,tw,th+30); pdf.image(tplIdx, 48 + (tw-tww)/2, 135, tww, th); y = 120 + th + 60; }
   else { card(48,120,tw,120); pdf.text("Open the SVG file in your cutting software to see the template.", 64, 180, {size:12, color:softTxt}); y = 280; }
   const sheet = svgImg && svgImg.sheet ? svgImg.sheet.w + " × " + svgImg.sheet.h + " mm" : "see SVG";
   [["Sheet size", sheet],["Finished size", dim],["Material", String(spec.material || p.material || "Cardstock").split(/[,;]/)[0]]].forEach((r,i) => { const x = 48 + i*(tw/3); pdf.text(r[0].toUpperCase(), x, y, {size:9, font:"F2", color:acc}); pdf.text(r[1], x, y+18, {size:13, font:"F2", color:txt, width:tw/3-10, lh:16}); });
+  if(p.sizes && p.sizes.length > 1){ y += 52; pdf.text("SIZES INCLUDED", 48, y, {size:11, font:"F2", color:acc}); y += 8; p.sizes.slice(0,6).forEach(r => { y += 18; pdf.text(r.label, 48, y, {size:11, font:"F2", color:txt}); pdf.text(Math.round(r.length) + " × " + Math.round(r.width) + " × " + Math.round(r.height) + " mm   (" + (Math.round(r.length/25.4*100)/100) + " × " + (Math.round(r.width/25.4*100)/100) + " × " + (Math.round(r.height/25.4*100)/100) + " in)", 150, y, {size:11, color:softTxt}); }); }
   // ۴) مراحل
   const perPage = 4;
   for(let s0 = 0; s0 < steps.length; s0 += perPage){
@@ -9441,6 +9524,7 @@ async function dzBuildRigidGuide(p){
   newPage();
   pdf.text(name, MX, 78, {size:30, font:"F2", color:accC, width:PW-2*MX, lh:34}); y = 78 + 34*Math.max(1, pdf.wrap(name, PW-2*MX, 30, true).length) - 8;
   pdf.text("Shaped Box with Lid — Cutting & Assembly Guide", MX, y, {size:12, color:soft}); y += 18;
+  if(p.sizes && p.sizes.length > 1){ y = pdf.text("Sizes included: " + p.sizes.map(r => r.label + " " + Math.round(r.length) + "×" + Math.round(r.width) + "×" + Math.round(r.height) + " mm").join("  ·  ") + ". Each size has its own folder in the ZIP; the part list below shows the base size.", MX, y, {size:9.5, color:soft, width:PW-2*MX, lh:12}) + 6; }
   const panelH = 190; pdf.rect(MX, y, PW-2*MX, panelH, {fill:accSoft, r:12});
   const iw = (PW-2*MX-36)/2, ih = Math.min(panelH-46, iw*imgA.h/imgA.w); pdf.image(iA, MX+12, y+10, iw, ih); pdf.image(iB, MX+24+iw, y+10, iw, ih);
   pdf.text("Closed", MX+12+iw/2, y+panelH-12, {size:8.5, color:soft, align:"center"}); pdf.text("Open — lid off", MX+24+iw*1.5, y+panelH-12, {size:8.5, color:soft, align:"center"}); y += panelH + 16;
