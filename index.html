@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.32.0 -->
+<!-- APP_VERSION: 1.33.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -685,7 +685,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v151</div>
+        <div class="logo-badge">v152</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1860,6 +1860,16 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
       <div class="block" id="st-vidBlock">
         <h3>🎬 ویدیوهای لیستینگ (۲ ویدیو)</h3>
         <p class="help">ویدیوها داخل همین مرورگر ساخته می‌شوند (رایگان). موقع ضبط این تب را باز و جلوی چشم نگه دار. خروجی MP4 است (در Chrome/Edge جدید). Etsy معمولاً ویدیوی حدود ۵ تا ۱۵ ثانیه‌ای و تا ۱۰۰ مگابایت می‌پذیرد؛ اگر ردش کرد، دلیلش در «لاگ فعالیت» نوشته می‌شود. ویدیو بر پایه‌ی تم و رنگ‌های انتخاب‌شده در بخش ساخت تصویرها ساخته می‌شود.</p>
+        <div style="border:1px dashed var(--rule);border-radius:8px;padding:10px;margin-bottom:10px">
+          <b style="font-size:13px">🧊 شکل ۳بعدی محصول (برای «ویدیوی چرخش ۳بعدی»)</b>
+          <p class="help">برای چرخاندن محصول، اپ باید شکل کلی آن (نمای از بالا) را بداند. یکی از این راه‌ها: ۱) یک شکل آماده انتخاب کن (یا «خودکار» تا از نام محصول بفهمد)، ۲) فایل شکل بده: SVG، یا یک عکس/سیلوئت از نمای بالای محصول با پس‌زمینه‌ی یکدست یا PNG شفاف (خط دور آن خودکار استخراج می‌شود). بعد ابعاد (میلی‌متر) را بنویس.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <label style="font-size:12.5px">شکل: <select id="st-v3dShape"><option value="auto">خودکار (از نام محصول)</option><option value="own" disabled>شکل از فایل من</option><option value="box">جعبه‌ی مستطیلی</option><option value="heart">قلب</option><option value="circle">دایره</option><option value="ellipse">بیضی</option><option value="rounded_rect">مستطیل گوشه‌گرد</option><option value="hexagon">شش‌ضلعی</option><option value="octagon">هشت‌ضلعی</option><option value="star">ستاره</option><option value="none">بدون ۳بعدی</option></select></label>
+            <label class="ghost mini" style="cursor:pointer">📐 فایل شکل / عکس سیلوئت<input type="file" id="st-v3dFile" accept=".svg,image/*" hidden></label>
+            <button type="button" class="ghost mini" id="st-v3dClear">✕ حذف شکل من</button><span id="st-v3dInfo" class="help"></span>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px;font-size:12.5px">ابعاد (mm): طول <input type="number" id="st-v3dW" style="width:70px"> عرض <input type="number" id="st-v3dH" style="width:70px"> ارتفاع <input type="number" id="st-v3dD" style="width:70px"></div>
+        </div>
         <label class="fld" style="max-width:220px"><span>مدت هر ویدیو</span><select id="st-vDur"><option value="8">۸ ثانیه</option><option value="10" selected>۱۰ ثانیه</option><option value="12">۱۲ ثانیه</option><option value="15">۱۵ ثانیه</option></select></label>
         <div id="st-vSlots" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:10px"></div>
       </div>
@@ -9751,7 +9761,7 @@ if($("st-dzSkip")) $("st-dzSkip").onclick = () => { const b = $("st-dzBrief").va
 if($("st-btnSendEtsy")) $("st-btnSendEtsy").onclick = studioSendToEtsy;
 /* ===================== ویدیوهای لیستینگ (۲ ویدیو، ساخته‌شده در مرورگر با Canvas + MediaRecorder) ===================== */
 const VID_SLOTS = [
-  {k:"vid3d",   t:"ویدیو نمایش محصول",   f:"Video-01-Showcase",  d:"از عکس‌ها و تصویرهای خودت (با زوم نرم)؛ اگر عکسی نداری، چرخش ۳بعدی جعبه"},
+  {k:"vid3d",   t:"ویدیو چرخش ۳بعدی",   f:"Video-01-Turntable",  d:"محصول با شکل واقعی‌اش ۳۶۰ درجه می‌چرخد (شکل را در بلوک «شکل ۳بعدی محصول» بالا مشخص کن)"},
   {k:"vidtour", t:"ویدیو معرفی و مراحل", f:"Video-02-Walkthrough", d:"اول تصویرهایی که خودت آپلود کرده‌ای؛ برای بقیه از تصویرهای ساخته‌شده"}
 ];
 const vids = p => (p.videos = p.videos || {});
@@ -9793,7 +9803,7 @@ function vidPrepText(c, p, shop, u){
 }
 async function vidBuild3d(p, seconds, onProgress){
   const gs = giGet(); giApply(gs);
-  if(!giHas3d(p)) throw new Error("برای ویدیوی ۳بعدی، اول در تنظیمات تصویرها «شکل ۳بعدی» را انتخاب کن");
+  if(!giHas3d(p)) throw new Error("برای چرخش ۳بعدی، شکل محصول را در بلوک «شکل ۳بعدی محصول» (بالای ویدیوها) مشخص کن: انتخاب شکل آماده یا آپلود فایل شکل/سیلوئت");
   const shop = giShopName() || "Shop";
   const sh = giShape(p,1), pitch = 0.45;
   // مقیاس ثابت: کوچک‌ترین مقیاسی که در همه‌ی زاویه‌های چرخش جا می‌شود
@@ -9809,6 +9819,51 @@ async function vidBuild3d(p, seconds, onProgress){
     c.save(); giRR(c,960,150,860,780,40); c.clip(); sh.draw(c, o, hex, txt, null); c.restore();
   };
   return vidRecord(draw, seconds, onProgress);
+}
+function dpSimplify(pts, eps){
+  const dist = (p,a,b) => { const dx = b[0]-a[0], dy = b[1]-a[1], l = dx*dx + dy*dy || 1e-9, t = Math.max(0, Math.min(1, ((p[0]-a[0])*dx + (p[1]-a[1])*dy)/l)); return Math.hypot(p[0]-a[0]-t*dx, p[1]-a[1]-t*dy); };
+  const dp = poly => { const keep = [poly[0]]; const rec = (a,b) => { let md = 0, mi = -1; for(let i = a+1; i < b; i++){ const d = dist(poly[i], poly[a], poly[b]); if(d > md){ md = d; mi = i; } } if(md > eps){ rec(a,mi); keep.push(poly[mi]); rec(mi,b); } }; rec(0, poly.length-1); keep.push(poly[poly.length-1]); return keep; };
+  if(pts.length < 6) return pts; let far = 0, fd = 0; pts.forEach((p,i) => { const d = Math.hypot(p[0]-pts[0][0], p[1]-pts[0][1]); if(d > fd){ fd = d; far = i; } });
+  const h1 = dp(pts.slice(0, far+1)), h2 = dp(pts.slice(far).concat([pts[0]])); return h1.concat(h2.slice(1, -1));
+}
+// سیلوئت یک عکس (پس‌زمینه‌ی یکدست یا PNG شفاف) ← خط دور شکل (چندضلعی)
+async function shapeFromImageBlob(blob){
+  const bmp = await createImageBitmap(blob), S = 240, k = Math.min(S/bmp.width, S/bmp.height), w = Math.max(8, Math.round(bmp.width*k)), h = Math.max(8, Math.round(bmp.height*k)), pad = 3, W = w + 2*pad, H = h + 2*pad;
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const c = cv.getContext("2d", {willReadFrequently: true}); c.drawImage(bmp, pad, pad, w, h);
+  const d = c.getImageData(0,0,W,H).data; let transp = 0; for(let y = pad; y < pad+h; y++) for(let x = pad; x < pad+w; x++) if(d[(y*W+x)*4+3] < 128) transp++;
+  const alphaMode = transp > w*h*0.02, bs = []; for(let x = pad; x < pad+w; x++){ bs.push((pad*W+x)*4, ((pad+h-1)*W+x)*4); } for(let y = pad; y < pad+h; y++){ bs.push((y*W+pad)*4, (y*W+pad+w-1)*4); }
+  const med = o => { const a = bs.map(i => d[i+o]).sort((p,q) => p-q); return a[a.length>>1]; }, bg = [med(0), med(1), med(2)];
+  const mask = new Uint8Array(W*H); for(let y = pad; y < pad+h; y++) for(let x = pad; x < pad+w; x++){ const i = (y*W+x)*4; mask[y*W+x] = alphaMode ? (d[i+3] > 128 ? 1 : 0) : (Math.hypot(d[i]-bg[0], d[i+1]-bg[1], d[i+2]-bg[2]) > 48 && d[i+3] > 128 ? 1 : 0); }
+  const at = (x,y) => x >= 0 && y >= 0 && x < W && y < H && mask[y*W+x], segs = [];
+  for(let y = 0; y < H; y++) for(let x = 0; x < W; x++){ if(!mask[y*W+x]) continue;
+    if(!at(x-1,y)) segs.push([[x,y],[x,y+1]]); if(!at(x+1,y)) segs.push([[x+1,y],[x+1,y+1]]); if(!at(x,y-1)) segs.push([[x,y],[x+1,y]]); if(!at(x,y+1)) segs.push([[x,y+1],[x+1,y+1]]); }
+  if(!segs.length) throw new Error("شکلی در تصویر پیدا نشد (پس‌زمینه یکدست یا PNG شفاف لازم است)");
+  const loops = dlChain(segs).filter(l => l.pts.length > 8), area = pts => Math.abs(rsArea(pts));
+  if(!loops.length) throw new Error("خط دور شکل ساخته نشد");
+  loops.sort((a,b) => area(b.pts) - area(a.pts)); let eps = 1.1, out = dpSimplify(loops[0].pts, eps); while(out.length > 85 && eps < 12){ eps *= 1.35; out = dpSimplify(loops[0].pts, eps); }
+  return out;
+}
+async function v3dLoadFile(file){
+  const p = cur();
+  try{
+    let outline, smooth = true;
+    if(/\.svg$/i.test(file.name) || file.type === "image/svg+xml"){ outline = dzParseShapeSvg(await file.text()); if(!outline) throw new Error("مسیر (path) در فایل SVG پیدا نشد"); smooth = false; }
+    else outline = await shapeFromImageBlob(file);
+    const pts = shapeOutline("custom", outline, 100, 0, smooth), ys = pts.map(q => q[1]), xs = pts.map(q => q[0]), asp = (Math.max(...ys)-Math.min(...ys))/(Math.max(...xs)-Math.min(...xs));
+    p.dzShape = {shape: "custom", outline, smooth}; p.dzShapeUser = true; p.h = Math.max(5, Math.round((p.w || 100)*asp)); save(); renderAll();
+    toast("✅ شکل محصول خوانده شد (نسبت ارتفاع/عرض " + asp.toFixed(2) + ") — حالا «ساخت خودکار» ویدیوی چرخش ۳بعدی را بزن.");
+  }catch(e){ toast("خواندن شکل ممکن نشد: " + (e && e.message ? e.message : e)); }
+}
+function v3dRefresh(){
+  const p = cur(), gs = giGet(); if(!$("st-v3dShape")) return;
+  $("st-v3dShape").value = p.dzShapeUser ? "own" : (gs.shape3d || "auto"); $("st-v3dW").value = p.w; $("st-v3dH").value = p.h; $("st-v3dD").value = p.d;
+  $("st-v3dInfo").textContent = p.dzShapeUser ? "✓ شکل از فایل شما استفاده می‌شود" : (p.dzShape || p.dzStyle ? "✓ شکل از طرح Claude/اپ" : (giAutoShape(p) ? "✓ شکل از روی نام محصول: " + giAutoShape(p) : "شکل مشخص نیست"));
+}
+function v3dBind(){
+  $("st-v3dShape").onchange = () => { const p = cur(), v = $("st-v3dShape").value; if(v === "own") return; if(p.dzShapeUser){ p.dzShape = null; p.dzShapeUser = false; } giGet().shape3d = v; if($("st-g3d")) $("st-g3d").value = v; save(); renderAll(); };
+  $("st-v3dFile").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if(f) v3dLoadFile(f); };
+  $("st-v3dClear").onclick = () => { const p = cur(); if(p.dzShapeUser){ p.dzShape = null; p.dzShapeUser = false; save(); renderAll(); } };
+  [["W","w"],["H","h"],["D","d"]].forEach(([id,k]) => $("st-v3d" + id).onchange = () => { const v = Number($("st-v3d" + id).value); if(v > 0){ cur()[k] = Math.round(v); save(); renderAll(); } });
 }
 // فریم‌های ویدیو از تصویرهای خود کاربر: ۱) عکس‌های اصلی (بی‌رنگ‌شده) ۲) تصویرهای لیستینگی که خودش آپلود کرده (نه ساخته‌ی اپ)
 async function vidLoadCanvas(blob){ const bmp = await createImageBitmap(blob), k = Math.min(1, 1800/Math.max(bmp.width, bmp.height)), cv = document.createElement("canvas"); cv.width = Math.round(bmp.width*k); cv.height = Math.round(bmp.height*k); cv.getContext("2d").drawImage(bmp, 0, 0, cv.width, cv.height); return cv; }
@@ -9856,7 +9911,7 @@ async function vidMake(slot){
   try{
     toast("⏳ ضبط ویدیو شروع شد — این تب را باز نگه دار (" + fa(dur) + " ثانیه)");
     const prog = u => { if(btn) btn.textContent = "⏳ " + fa(Math.round(u*100)) + "٪"; };
-    const blob = slot === "vid3d" ? await vidBuildShowcase(p, dur, prog) : await vidBuildTour(p, dur, prog);
+    const blob = slot === "vid3d" ? await vidBuild3d(p, dur, prog) : await vidBuildTour(p, dur, prog);
     const s = VID_SLOTS.find(x => x.k === slot), name = s.f + "." + vidExt(blob.type), key = p.id + ":videos:" + slot;
     if(vids(p)[slot]) await blobDel(vids(p)[slot].key);
     await blobPut(key, blob); vids(p)[slot] = {name, size: blob.size, type: blob.type, key};
@@ -9872,7 +9927,7 @@ async function vidPick(slot, file){
 }
 async function vidDrop(slot){ const p = cur(), v = vids(p)[slot]; if(v) await blobDel(v.key); delete vids(p)[slot]; save(); renderVideos(); }
 function renderVideos(){
-  const box = $("st-vSlots"); if(!box) return;
+  const box = $("st-vSlots"); if(!box) return; if(typeof v3dRefresh === "function") v3dRefresh();
   const p = cur(); box.innerHTML = "";
   VID_SLOTS.forEach(s => {
     const v = vids(p)[s.k], d = document.createElement("div");
@@ -10073,6 +10128,7 @@ function giBind4(){
   $("st-gCutTol").oninput = upd(g => { g.cutTol = Number($("st-gCutTol").value); });
 }
 giBind4();
+v3dBind();
 $("st-btnTxt").onclick = async () => {
   const txt = listingText(cur());
   try{ await navigator.clipboard.writeText(txt); toast("متن لیستینگ کپی شد."); }
