@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.36.0 -->
+<!-- APP_VERSION: 1.37.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -689,7 +689,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v155</div>
+        <div class="logo-badge">v156</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1657,6 +1657,7 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
         <button class="ghost mini" id="st-btnTxt">کپی متن لیستینگ</button>
         <button class="ghost mini" id="st-btnMaster">ثبت به‌عنوان قالب مادر</button>
         <label class="ghost mini" style="cursor:pointer" title="PDF (یا TXT) حاوی مشخصات محصول را بده تا اطلاعات خودکار پر شود">📄 پر کردن از فایل PDF<input type="file" id="st-pdfFile" accept=".pdf,.txt,application/pdf,text/plain" hidden></label>
+        <label class="ghost mini" style="cursor:pointer" title="یک فایل ZIP شامل همه‌چیز (فایل‌های برش، تصویرها، ویدیوها، مشخصات) را بده؛ هر فایل خودکار در جای خودش می‌نشیند">📦 ورود از فایل ZIP<input type="file" id="st-zipFile" accept=".zip,application/zip,application/x-zip-compressed" hidden></label>
         <button class="ghost mini" id="st-btnAiSeo">🤖 تولید سئو با AI</button>
         <button class="ghost mini" id="st-btnPushContent">📢 ارسال به محتوای معرفی</button>
         <button class="ghost mini cut" id="st-btnDel" style="background:transparent;color:var(--cut);border-color:var(--cut)">حذف محصول</button>
@@ -9828,6 +9829,88 @@ async function pdfFillProduct(file){
   document.querySelector("#page-studio .tab[data-p='st-p-product']").click();
   toast("✅ مشخصات از فایل پر شد" + (miss.length ? " — ناقص: " + miss.join("، ") : "") + ". حالا فایل‌ها و تصویرها را اضافه کن.");
 }
+/* ---------- ورود از ZIP: همه‌چیز در یک فایل؛ هر مورد خودکار در جای خودش می‌نشیند ---------- */
+async function zipList(buf){
+  const dv = new DataView(buf), u8 = new Uint8Array(buf); let e = -1;
+  for(let i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 65557); i--) if(dv.getUint32(i, true) === 0x06054b50){ e = i; break; }
+  if(e < 0) throw new Error("این فایل ZIP معتبر نیست");
+  const n = dv.getUint16(e + 10, true); let off = dv.getUint32(e + 16, true); const dec = new TextDecoder("utf-8"), out = [];
+  for(let k = 0; k < n; k++){
+    if(dv.getUint32(off, true) !== 0x02014b50) break;
+    const method = dv.getUint16(off + 10, true), csize = dv.getUint32(off + 20, true), nl = dv.getUint16(off + 28, true), xl = dv.getUint16(off + 30, true), cl = dv.getUint16(off + 32, true), lh = dv.getUint32(off + 42, true);
+    const name = dec.decode(u8.subarray(off + 46, off + 46 + nl)); off += 46 + nl + xl + cl;
+    if(csize === 0xFFFFFFFF || lh === 0xFFFFFFFF) throw new Error("ZIP64 (فایل خیلی بزرگ) پشتیبانی نمی‌شود");
+    if(!name.endsWith("/")) out.push({name, method, csize, lh});
+  }
+  return out;
+}
+async function zipData(buf, ent){
+  const dv = new DataView(buf), u8 = new Uint8Array(buf), nl = dv.getUint16(ent.lh + 26, true), xl = dv.getUint16(ent.lh + 28, true), st = ent.lh + 30 + nl + xl, raw = u8.subarray(st, st + ent.csize);
+  if(ent.method === 0) return raw.slice();
+  if(ent.method !== 8 || typeof DecompressionStream === "undefined") throw new Error("روش فشرده‌سازی این ZIP پشتیبانی نمی‌شود");
+  return new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer());
+}
+const ZIP_MIME = {svg:"image/svg+xml", dxf:"application/dxf", pdf:"application/pdf", jpg:"image/jpeg", jpeg:"image/jpeg", png:"image/png", webp:"image/webp", mp4:"video/mp4", webm:"video/webm", mov:"video/quicktime", txt:"text/plain", md:"text/plain", ai:"application/postscript", eps:"application/postscript"};
+async function zipImport(file){
+  if(!file) return;
+  if(file.size > 500*1024*1024) return toast("این ZIP بزرگ‌تر از ۵۰۰ مگابایت است.");
+  toast("⏳ در حال باز کردن ZIP...");
+  try{
+    const all = [];
+    const walk = async (buf, prefix, depth) => {
+      for(const e of await zipList(buf)){
+        const nm = e.name.replace(/\\/g, "/"), base = nm.split("/").pop();
+        if(!base || /^__MACOSX$/i.test(nm.split("/")[0]) || /^(\.DS_Store|Thumbs\.db)$/i.test(base) || base.startsWith("._")) continue;
+        const data = await zipData(buf, e);
+        if(/\.zip$/i.test(base) && depth < 1) await walk(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength), prefix + nm + "/", depth + 1);
+        else all.push({path: prefix + nm, base, data, x: (base.split(".").pop() || "").toLowerCase()});
+      }
+    };
+    await walk(await file.arrayBuffer(), "", 0);
+    if(!all.length) return toast("داخل این ZIP فایلی پیدا نشد.");
+    const mk = en => new File([en.data], en.base, {type: ZIP_MIME[en.x] || "application/octet-stream"});
+    const rest = new Set(all), take = fn => { const r = all.filter(en => rest.has(en) && fn(en)); r.forEach(en => rest.delete(en)); return r; };
+
+    // ۱) سند مشخصات (TXT/MD یا PDF با نام مشخصات) ← پر کردن خودکار مشخصات با AI
+    const specRe = /spec|brief|listing|info|detail|product[-_ ]?sheet|مشخصات/i;
+    const spec = take(en => ["txt","md"].includes(en.x) && !/^(license|readme)/i.test(en.base))[0] || take(en => en.x === "pdf" && specRe.test(en.base) && !/guide|instruction|assembly|manual|راهنما/i.test(en.base))[0];
+    let filled = false;
+    if(spec){ try{ await pdfFillProduct(mk(spec)); filled = String(cur().notes || "").includes(spec.base); }catch(e){ toast("پر کردن مشخصات از سند ناموفق بود: " + (e && e.message ? e.message : e)); } }
+    const p = cur(), cnt = {files:0, imgs:0, vids:0};
+
+    // ۲) فایل‌های محصول
+    const fileSlot = en => en.x === "svg" ? "svg" : en.x === "dxf" ? "dxf" : en.x === "pdf" ? (/guide|instruction|assembly|manual|راهنما/i.test(en.base) ? "guide" : "pdf") : (en.x === "ai" || en.x === "eps") ? "ai" : /^(studio3|studio)$/.test(en.x) ? "studio" : null;
+    const prev = take(en => en.x === "svg" && /preview/i.test(en.base))[0];
+    if(prev){ const key = p.id + ":files:preview"; await blobPut(key, mk(prev)); p.dzPreview = {name: prev.base, size: prev.data.length, type: "image/svg+xml", key}; }
+    for(const en of take(en => fileSlot(en))){
+      const slot = fileSlot(en), list = fsAll(p, slot), i = list.findIndex(v => v.name === en.base); if(i >= 0){ await blobDel(list[i].key); list.splice(i, 1); }
+      const f = mk(en), key = p.id + ":files:" + slot + ":" + uid(); await blobPut(key, f); list.push({name: f.name, size: f.size, type: f.type, key}); fsSet(p, slot, list); cnt.files++;
+    }
+
+    // ۳) ویدیوها
+    const taken = {};
+    for(const en of take(en => ["mp4","webm","mov"].includes(en.x))){
+      const order = /turn|3d|rotat|showcase|spin/i.test(en.base) ? ["vid3d","vidtour"] : ["vidtour","vid3d"], slot = order.find(k => !taken[k]); if(!slot) continue; taken[slot] = 1;
+      const f = mk(en), key = p.id + ":videos:" + slot; if(vids(p)[slot]) await blobDel(vids(p)[slot].key); await blobPut(key, f); vids(p)[slot] = {name: f.name, size: f.size, type: f.type, key}; cnt.vids++;
+    }
+
+    // ۴) تصویرهای لیستینگ: اول بر اساس نام اسلات (مثل بسته‌ی خود برنامه)، بعد شماره‌ی اول نام، در نهایت به ترتیب در اسلات‌های خالی
+    const imgs = take(en => ["jpg","jpeg","png","webp"].includes(en.x)).sort((a, b) => a.path.localeCompare(b.path, undefined, {numeric: true})), raw = altRaw(p), used = new Set(), place = async (en, slot) => {
+      const f = mk(en), key = p.id + ":images:" + slot; await blobPut(key, f); p.images[slot] = {name: f.name, size: f.size, type: f.type, key}; used.add(slot); cnt.imgs++;
+      const idx = IMG_SLOTS.findIndex(x => x.k === slot); if(idx >= 0 && !raw[idx]) raw[idx] = ALT_DEFAULTS[slot];
+    }, left = [];
+    for(const en of imgs){ const sl = IMG_SLOTS.find(x => !used.has(x.k) && en.base.toLowerCase().includes(x.f.toLowerCase())); if(sl) await place(en, sl.k); else left.push(en); }
+    const left2 = [];
+    for(const en of left){ const m = en.base.match(/^\D{0,3}(\d{1,2})(?!\d)/), n = m ? Number(m[1]) : 0; if(n >= 1 && n <= IMG_SLOTS.length && !used.has(IMG_SLOTS[n-1].k)) await place(en, IMG_SLOTS[n-1].k); else left2.push(en); }
+    for(const en of left2){ const sl = IMG_SLOTS.find(x => !used.has(x.k) && !p.images[x.k]); if(!sl) break; await place(en, sl.k); }
+    p.alt = raw.join("\n");
+
+    save(); renderAll();
+    const skipped = rest.size ? " — " + fa(rest.size) + " فایل ناشناخته نادیده گرفته شد (" + [...rest].slice(0, 3).map(en => en.base).join("، ") + (rest.size > 3 ? "…" : "") + ")" : "";
+    toast("✅ ZIP وارد شد: " + fa(cnt.files) + " فایل محصول، " + fa(cnt.imgs) + " تصویر، " + fa(cnt.vids) + " ویدیو" + (filled ? "، مشخصات از سند پر شد" : "") + skipped + ".");
+  }catch(e){ toast("ورود ZIP ناموفق بود: " + (e && e.message ? e.message : e)); }
+}
+if($("st-zipFile")) $("st-zipFile").onchange = e => { const f = e.target.files[0]; e.target.value = ""; zipImport(f); };
 if($("st-pdfFile")) $("st-pdfFile").onchange = e => { const f = e.target.files[0]; e.target.value = ""; pdfFillProduct(f); };
 
 // ── ارسال کامل به Etsy: پیش‌نویس + فایل‌های دیجیتال + ۱۰ تصویر با ALT
