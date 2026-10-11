@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.33.0 -->
+<!-- APP_VERSION: 1.36.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -599,8 +599,12 @@ margin:0;background:var(--paper);color:var(--ink);
 }
 #page-studio textarea{min-height:120px;resize:vertical;line-height:1.9}
 #page-studio input:focus, #page-studio textarea:focus, #page-studio select:focus{background:#fff}
-#page-studio .slots{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-#page-studio .slots.img{grid-template-columns:repeat(5,1fr)}
+#page-studio .slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+#page-studio .slots.img{grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}
+#page-studio .slot{min-width:0;overflow:hidden}
+#page-studio .slot .row{flex-wrap:wrap}
+#page-studio .slot .meta{overflow-wrap:anywhere}
+#page-studio .thumb img{max-width:100%}
 #page-studio .slot{border:1px dashed var(--rule);border-radius:10px;padding:12px;background:#fcfbf9}
 #page-studio .slot.filled{border-style:solid;border-color:var(--rule);background:var(--sheet)}
 #page-studio .slot .hd{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
@@ -648,7 +652,7 @@ margin:0;background:var(--paper);color:var(--ink);
 @media (prefers-reduced-motion:reduce){#page-studio *{transition:none!important}}
 @media(max-width:1000px){#page-studio .shell{grid-template-columns:1fr}
 #page-studio .rail{border-left:0;border-bottom:1px solid var(--rule)}
-#page-studio .slots, #page-studio .slots.img{grid-template-columns:repeat(2,1fr)}
+#page-studio .slots, #page-studio .slots.img{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 #page-studio .f.c2, #page-studio .f.c3{grid-template-columns:1fr}
 #page-studio .segs{grid-template-columns:repeat(2,1fr)}
 #page-studio main{padding:16px}}
@@ -685,7 +689,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v152</div>
+        <div class="logo-badge">v155</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1697,6 +1701,16 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
       <button class="btn btn-primary" onclick="researchAndSuggestProducts()">🔎 تحقیق و پیشنهاد جدید</button>
     </div>
       </div>
+      <div class="block" style="margin-bottom:12px">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+          <label class="fld" style="max-width:120px"><span>تعداد پیشنهاد</span><select id="ideaCount"><option value="1">۱</option><option value="2" selected>۲</option><option value="3">۳</option><option value="4">۴</option><option value="5">۵</option></select></label>
+          <label class="fld" style="max-width:150px"><span>📐 تعداد اندازه برای هر محصول</span><select id="ideaSizeN"><option value="1" selected>۱ (تک‌اندازه)</option><option value="2">۲</option><option value="3">۳</option><option value="4">۴</option><option value="5">۵</option><option value="6">۶</option></select></label>
+          <label class="fld" style="flex:1;min-width:200px"><span>موضوع/فصل دلخواه (اختیاری)</span><input id="ideaTopic" placeholder="مثلاً Valentine، Wedding favor، heart box..."></label>
+          <label class="fld" style="max-width:230px"><span>مدل تحقیق</span><select id="ideaModel"><option value="opus">Claude Opus (سرور) — دقیق‌ترین ⭐</option><option value="sonnet">Claude Sonnet (سرور)</option><option value="app">همان مدل تنظیمات برنامه</option></select></label>
+          <label style="font-size:12.5px"><input type="checkbox" id="ideaDigital" checked> فقط محصول دیجیتال</label>
+        </div>
+        <p class="help" style="margin:6px 0 0">تعداد اندازه را قبل از تحقیق اینجا بگذار، یا بعد از ساخت هر پیشنهاد روی کارتش عوض کن. انتخاب نهایی بر اساس «امتیاز فرصت» (تقاضای واقعی ÷ رقابت) از ۸ تا ۱۲ کلیدواژه‌ی بررسی‌شده انجام می‌شود.</p>
+      </div>
       <div id="dailyProg" class="card hidden"><div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" id="dpFill"></div></div><div class="prog-text" id="dpText">در حال تحقیق...</div></div></div>
   <div class="card" style="margin-bottom:16px">
     <div class="card-title" style="margin-bottom:8px">💡 ایده‌ی خودم</div>
@@ -1815,7 +1829,7 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
               <label><input type="radio" name="st-gBgMode" value="overlay"> لایه‌ی رنگی روی پس‌زمینه</label>
               <label style="margin-inline-start:10px"><input type="radio" name="st-gBgMode" value="full"> قالب کامل (طرح من دست‌نخورده می‌ماند و محتوا داخل کادر امن می‌آید)</label></div>
             <div id="st-gSafeRow" style="display:none;gap:10px;flex-wrap:wrap;align-items:center;font-size:12px;margin-top:4px">حاشیه‌ی کادر امن (٪) — چپ <input type="range" id="st-gSfL" min="0" max="35"> بالا <input type="range" id="st-gSfT" min="0" max="35"> راست <input type="range" id="st-gSfR" min="0" max="35"> پایین <input type="range" id="st-gSfB" min="0" max="35"></div>
-            <div style="margin-top:8px"><label class="ghost mini" style="cursor:pointer">🤖 شبیه این قالب بساز (Claude تصویر نمونه را می‌بیند)<input type="file" id="st-gAiTplFile" accept="image/*" hidden></label> <span id="st-gAiTplInfo" class="help"></span></div>
+            <div style="margin-top:8px"><label class="ghost mini" style="cursor:pointer">🤖 شبیه این قالب بساز (Claude تصویر نمونه را می‌بیند)<input type="file" id="st-gAiTplFile" accept="image/*" multiple hidden></label> <label style="font-size:12.5px"><input type="checkbox" id="st-gAiSaveTpl" checked> ذخیره‌ی خودکار به‌عنوان قالب</label> <label style="font-size:12.5px"><input type="checkbox" id="st-gAiUseBg"> خود تصویر نمونه هم پشت تصویرها بیاید</label> <span id="st-gAiTplInfo" class="help"></span><div class="help">تا ۳ تصویر نمونه را یک‌جا انتخاب کن؛ Claude رنگ، فونت، قاب، گرادیان، تزئین و اندازه‌ی عنوان را از روی آن‌ها می‌سازد.</div></div>
             <div id="st-gPal" style="margin-top:6px"></div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px">
               <input type="text" id="st-gTplName" placeholder="نام قالب (مثلاً: قالب لوکس من)" style="flex:1;min-width:160px">
@@ -1824,6 +1838,18 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
               <label class="ghost mini" style="cursor:pointer">⬆ وارد کردن<input type="file" id="st-gTplImportFile" accept="application/json" hidden></label>
             </div>
             <div id="st-gTpls" style="margin-top:6px"></div>
+          </div>
+          <div style="border:1px dashed var(--rule);border-radius:8px;padding:10px;margin:10px 0">
+            <b style="font-size:13px">🧩 ساختار و متن تصویرها</b>
+            <p class="help">اندازه و حالت عنوان‌ها، گرادیان پس‌زمینه، تزئین گوشه‌ها و متن اختصاصی هر تصویر. با «🤖 شبیه این قالب بساز» (بالا) هم Claude این گزینه‌ها را از روی عکس نمونه‌ات پر می‌کند. هر چیزی که خالی بماند، متن پیش‌فرض می‌آید.</p>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+              <label class="fld"><span>اندازه‌ی عنوان</span><input type="range" id="st-gTScale" min="60" max="125"></label>
+              <label class="fld"><span>حالت حروف عنوان</span><select id="st-gTCase"><option value="normal">معمولی</option><option value="upper">همه بزرگ (UPPERCASE)</option></select></label>
+              <label class="fld"><span>گرادیان پس‌زمینه</span><select id="st-gGrad"><option value="none">بدون</option><option value="vertical">عمودی</option><option value="diag">مورب</option></select></label>
+              <label class="fld"><span>رنگ دوم گرادیان</span><input type="color" id="st-gBg2"></label>
+              <label class="fld"><span>تزئین</span><select id="st-gDecor"><option value="none">بدون</option><option value="corners">دایره‌های گوشه</option><option value="dots">نقطه‌چین گوشه</option><option value="stripes">راه‌راه مورب</option></select></label>
+            </div>
+            <details style="margin-top:8px"><summary style="cursor:pointer;font-size:13px">✏️ متن اختصاصی هر تصویر (عنوان / زیرعنوان)</summary><div id="st-gSlotText" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;margin-top:8px"></div></details>
           </div>
           <div style="display:flex;gap:16px;flex-wrap:wrap;margin:8px 0;font-size:13px">
             <label><input type="checkbox" id="st-gFooter"> نوار پایین (نام فروشگاه)</label>
@@ -2274,6 +2300,7 @@ window.addEventListener('load', function(){
 });
 
 function applyShopToUI(){
+  setTimeout(() => { if(typeof uiRestore === "function") uiRestore(); }, 0);
   // Sidebar
   document.getElementById('sidebarShopNameText').textContent=S.shopName||'انتخاب فروشگاه';
   updateArchiveBadge();
@@ -2594,6 +2621,42 @@ function goToProductSuggestTab(){
   const btn = document.querySelector('#page-studio .tab[data-p="st-p-daily"]');
   if(btn) btn.click();
 }
+// ══ ذخیره‌ی خودکار ورودی‌ها و نتیجه‌ها (هر فروشگاه جدا) — با رفتن به صفحه‌ی دیگر یا رفرش پاک نمی‌شوند ══
+const UI_RES_IDS = ['customerResult','marketResult','descResult','emailResult','pricingResult','reportResult','kwResults','socialResult','trendsResult','calendarResult','visibilityResult','shopResult','custInsights','topicSuggestList'];
+const uiState = {fields:{}, res:{}}; let uiTimer = null, uiObs = null;
+const uiKey = kind => 'eap_' + kind + '_' + (S.shopId || 'x');
+function uiPersistable(el){
+  if(!el || !el.id || !/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return false;
+  if(/^(password|file|button|submit)$/.test(el.type) || el.hasAttribute('data-k')) return false;
+  if(/(Secret|Key|Token|Password|Url|Relay|Api)/i.test(el.id)) return false;
+  if(el.closest('#page-settings, #page-shopmanager')) return false;
+  if(el.closest('#page-studio') && !/^idea/.test(el.id)) return false; // استودیو ذخیره‌ی خودش را دارد؛ فقط کنترل‌های «پیشنهاد محصول»
+  return true;
+}
+function uiWriteSoon(){ clearTimeout(uiTimer); uiTimer = setTimeout(() => {
+  try{ localStorage.setItem(uiKey('ui'), JSON.stringify(uiState.fields)); }catch(e){}
+  try{ let tot = 0; Object.keys(uiState.res).forEach(k => tot += uiState.res[k].length); while(tot > 1200000){ const k = Object.keys(uiState.res)[0]; tot -= uiState.res[k].length; delete uiState.res[k]; } localStorage.setItem(uiKey('res'), JSON.stringify(uiState.res)); }catch(e){}
+}, 500); }
+let uiLoadedShop = null;
+function uiRestore(){
+  const prevF = Object.keys(uiState.fields), prevR = Object.keys(uiState.res), switched = uiLoadedShop !== null && uiLoadedShop !== (S.shopId || 'x');
+  try{ uiState.fields = JSON.parse(localStorage.getItem(uiKey('ui')) || '{}'); uiState.res = JSON.parse(localStorage.getItem(uiKey('res')) || '{}'); }catch(e){ uiState.fields = {}; uiState.res = {}; }
+  if(switched){ // فروشگاه عوض شده: مقدارهای فروشگاه قبلی که برای این فروشگاه ذخیره نشده پاک شود
+    prevF.forEach(id => { if(id in uiState.fields) return; const el = document.getElementById(id); if(!el) return; if(el.type === 'checkbox') el.checked = false; else if(el.tagName === 'SELECT') el.selectedIndex = 0; else el.value = ''; });
+    prevR.forEach(id => { if(id in uiState.res) return; const el = document.getElementById(id); if(el) el.innerHTML = ''; });
+  }
+  uiLoadedShop = S.shopId || 'x';
+  Object.keys(uiState.fields).forEach(id => { const el = document.getElementById(id), v = uiState.fields[id]; if(!el || !uiPersistable(el)) return; if(el.type === 'checkbox') el.checked = !!v; else if(el.value !== v) el.value = v; });
+  UI_RES_IDS.forEach(id => { const el = document.getElementById(id); if(el && uiState.res[id] && !el.innerHTML.trim()) el.innerHTML = uiState.res[id]; });
+}
+function uiInitPersistence(){
+  const onEv = e => { const el = e.target; if(!uiPersistable(el)) return; uiState.fields[el.id] = el.type === 'checkbox' ? el.checked : el.value; uiWriteSoon(); };
+  document.addEventListener('input', onEv); document.addEventListener('change', onEv);
+  uiObs = new MutationObserver(muts => { const ids = new Set(muts.map(m => { const t = m.target.nodeType === 1 ? m.target : m.target.parentElement; const host = t && t.closest ? UI_RES_IDS.find(id => { const h = document.getElementById(id); return h && h.contains(t); }) : null; return host; }).filter(Boolean));
+    ids.forEach(id => { const el = document.getElementById(id); if(!el || el.querySelector('.spinner')) return; if(el.innerHTML.trim()) uiState.res[id] = el.innerHTML; else delete uiState.res[id]; }); if(ids.size) uiWriteSoon(); });
+  UI_RES_IDS.forEach(id => { const el = document.getElementById(id); if(el) uiObs.observe(el, {childList:true, subtree:true, characterData:true}); });
+  uiRestore();
+}
 function nav(name, el) {
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -2611,7 +2674,7 @@ function nav(name, el) {
   if(name==='settings'){ renderOtherShopsInSettings(); renderShopSwitcher(); }
   if(name==='content-review') loadContentReview();
   if(name==='marketing') loadMarketing();
-  if(name==='customers') renderCustomersFromCache();
+  if(name==='customers'){ if(typeof uiRestore === 'function') uiRestore(); renderCustomersFromCache(); }
   if(name==='studio' && window.studioReloadForShop) window.studioReloadForShop(); // هر بار که استودیو باز می‌شه با فروشگاه فعلی همگام می‌شه
   // وقتی صفحه optimize باز می‌شود لیست را render کن
   if(name==='optimize' && Object.keys(S.analyzed).length){
@@ -2946,32 +3009,149 @@ async function etsySearchActiveListings(keyword, limit=15){
   return d;
 }
 
+// ══ تحقیق و پیشنهاد محصول (نسخه‌ی دقیق‌تر): داده‌ی بیشتر از Etsy، امتیاز فرصت، شورت‌لیست با کد، متن‌نویسی با Claude قوی، اعتبارسنجی خروجی ══
+async function serverAI(prompt, maxTokens, model){
+  const res = await fetch(crApiUrl('design_ai.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify({prompt, max_tokens: maxTokens, model}) });
+  const d = await mktParseResponse(res); if(!d.text) throw new Error('پاسخ خالی از سرور'); return d.text;
+}
+// tier: 'cheap' (Sonnet، برای کارهای ساده) | 'best' (مدل انتخاب‌شده در «مدل تحقیق»)
+async function ideaAI(prompt, maxTokens, tier){
+  const m = (document.getElementById('ideaModel') || {}).value || 'opus';
+  if(m !== 'app' && S.contentBackendUrl){
+    try{ return await serverAI(prompt, Math.max(maxTokens, 8000), tier === 'cheap' ? 'sonnet' : m); }
+    catch(e){ log('⚠ Claude سرور جواب نداد (' + e.message + ') — مدل برنامه استفاده می‌شود', 'warn'); }
+  }
+  return callClaude(prompt, maxTokens);
+}
+function ideaOpts(){
+  const g = id => document.getElementById(id);
+  return { count: Math.max(1, Math.min(5, Number((g('ideaCount') || {}).value) || 2)), sizeN: Math.max(1, Math.min(6, Number((g('ideaSizeN') || {}).value) || 1)),
+           topic: ((g('ideaTopic') || {}).value || '').trim(), digital: !g('ideaDigital') || g('ideaDigital').checked };
+}
+const medianOf = a => { const s = a.filter(v => isFinite(v)).sort((x,y) => x-y); if(!s.length) return null; const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m-1] + s[m]) / 2; };
+const quantileOf = (a, q) => { const s = a.filter(v => isFinite(v)).sort((x,y) => x-y); if(!s.length) return null; const i = (s.length-1)*q, lo = Math.floor(i), hi = Math.ceil(i); return s[lo] + (s[hi]-s[lo])*(i-lo); };
 function summarizeResearch(searchResult){
-  const listings = searchResult.results || [];
-  const prices = listings.map(l => (l.price?.amount||0)/(l.price?.divisor||100)).filter(p=>p>0);
-  const favorers = listings.map(l=>l.num_favorers||0);
-  const tagSet = new Set();
-  listings.slice(0,6).forEach(l=>(l.tags||[]).forEach(t=>tagSet.add(t)));
-  const round2 = n => Math.round(n*100)/100;
-  const topListings = [...listings]
-    .sort((a,b)=>(b.num_favorers||0)-(a.num_favorers||0))
-    .slice(0,3)
-    .filter(l=>l.listing_id)
-    .map(l=>({
-      title: (l.title||'').slice(0,80),
-      url: `https://www.etsy.com/listing/${l.listing_id}`,
-      price: l.price ? round2((l.price.amount||0)/(l.price.divisor||100)) : null,
-      favorers: l.num_favorers||0
-    }));
+  const listings = searchResult.results || [], now = Date.now()/1000, r2 = n => n == null ? null : Math.round(n*100)/100;
+  const price = l => l.price ? (l.price.amount||0)/(l.price.divisor||100) : 0;
+  const prices = listings.map(price).filter(p => p > 0), favorers = listings.map(l => l.num_favorers || 0);
+  const age = l => Math.max(7, (now - (l.original_creation_timestamp || l.creation_timestamp || l.created_timestamp || now)) / 86400);
+  const mature = listings.filter(l => age(l) >= 30);                 // لیستینگ‌های قدیمی‌تر از ۳۰ روز: نرخ روزانه قابل‌اعتمادتر است
+  const viewsPerDay = mature.map(l => (l.views || 0) / age(l)), favPerDay = mature.map(l => (l.num_favorers || 0) / age(l));
+  const digital = listings.filter(l => l.listing_type === 'download' || l.is_digital === true).length;
+  const tagCount = {}; listings.forEach(l => (l.tags || []).forEach(t => { const k = String(t).toLowerCase(); tagCount[k] = (tagCount[k] || 0) + 1; }));
+  const sampleTags = Object.entries(tagCount).sort((a,b) => b[1]-a[1]).slice(0,12).map(e => e[0]);
+  const topListings = [...listings].sort((a,b) => (b.num_favorers||0)-(a.num_favorers||0)).slice(0,3).filter(l => l.listing_id)
+    .map(l => ({ title: (l.title||'').slice(0,80), url: `https://www.etsy.com/listing/${l.listing_id}`, price: l.price ? r2(price(l)) : null, favorers: l.num_favorers||0 }));
+  const total = searchResult.count ?? listings.length, mv = medianOf(viewsPerDay);
   return {
-    listingCount: searchResult.count ?? listings.length,
-    avgPrice: prices.length ? round2(prices.reduce((a,b)=>a+b,0)/prices.length) : null,
-    minPrice: prices.length ? round2(Math.min(...prices)) : null,
-    maxPrice: prices.length ? round2(Math.max(...prices)) : null,
-    topFavorers: favorers.length ? Math.max(...favorers) : null,
-    sampleTags: [...tagSet].slice(0,10),
-    topListings
+    listingCount: total,
+    avgPrice: prices.length ? r2(prices.reduce((a,b) => a+b,0)/prices.length) : null,
+    medianPrice: r2(medianOf(prices)), p25: r2(quantileOf(prices, 0.25)), p75: r2(quantileOf(prices, 0.75)),
+    minPrice: prices.length ? r2(Math.min(...prices)) : null, maxPrice: prices.length ? r2(Math.max(...prices)) : null,
+    topFavorers: favorers.length ? Math.max(...favorers) : null, medianFavorers: r2(medianOf(favorers)),
+    viewsPerDay: r2(mv), favPerDay: r2(medianOf(favPerDay)), digitalShare: listings.length ? Math.round(digital/listings.length*100) : null,
+    // امتیاز فرصت = تقاضا (میانه‌ی بازدید روزانه‌ی لیستینگ‌ها) ÷ شدت رقابت (لگاریتم تعداد رقبا)
+    opportunity: mv != null ? r2(mv / Math.log10(total + 10)) : null,
+    sampleTags, topListings, sampled: listings.length
   };
+}
+function ideaDataLine(r){
+  const f = v => v == null ? '؟' : v;
+  return `${Number(r.listingCount).toLocaleString('en-US')} لیستینگ فعال · میانه‌ی قیمت $${f(r.medianPrice)} (بازه‌ی میانی $${f(r.p25)}–$${f(r.p75)}) · میانه‌ی بازدید روزانه ${f(r.viewsPerDay)} · علاقه‌مندی/روز ${f(r.favPerDay)} · ${f(r.digitalShare)}٪ دیجیتال · امتیاز فرصت ${f(r.opportunity)}`;
+}
+async function researchAndSuggestProducts(silent=false){
+  if(!S.etsyApiKey){
+    if(silent){ log('⚠ پیشنهاد محصول رد شد — App API Key اتسی تنظیم نشده','warn'); return; }
+    alert('برای تحقیق واقعی رقبا، اول توی تنظیمات App API Key اتسی رو وارد کن (فقط همون کلید کافیه، نیازی به OAuth نیست).');
+    nav('settings');
+    return;
+  }
+  if(!silent) goToProductSuggestTab();
+  const prog = document.getElementById('dailyProg'); prog.classList.remove('hidden');
+  const fill = document.getElementById('dpFill'), txt = document.getElementById('dpText'), done = () => prog.classList.add('hidden');
+  const o = ideaOpts(), niche = getNiche(), today = new Date().toISOString().slice(0,10);
+  const existing = [...new Set([...S.products.slice(0,15).map(p => p.TITLE), ...S.dailyArchive.slice(0,40).map(a => a.title)].filter(Boolean))].join('\n');
+
+  fill.style.width = '8%'; txt.textContent = 'ساخت لیست ایده‌های اولیه (با توجه به فصل و فروشگاه)...';
+  const nCand = Math.min(12, Math.max(8, o.count*4));
+  const candidatePrompt = `You are an Etsy market researcher. Shop niche: ${niche}. Today is ${today}.\nExisting or previously suggested products (never repeat or paraphrase them):\n${existing || '(none)'}\n\n` +
+    (o.topic ? `The seller wants ideas around: ${o.topic}\n` : '') +
+    (o.digital ? 'ONLY digital-download products (SVG/DXF/PDF cut files, templates, printables). No physical items.\n' : '') +
+    `Suggest ${nCand} distinct product ideas. For each give ONLY the exact short English search phrase (2-4 words) a buyer types into Etsy search. Mix evergreen proven demand with seasonal demand that peaks within the next 2 months. Prefer concrete, specific products over broad categories.\nReturn ONLY JSON: {"candidates":["phrase 1","phrase 2"]}`;
+  let candidates;
+  try{
+    const text = await ideaAI(candidatePrompt, 1500, 'cheap');
+    candidates = [...new Set((parseJSON(text).candidates || []).map(x => String(x).trim()).filter(Boolean))].slice(0, nCand);
+  }catch(e){ log('✗ خطا در ساخت ایده‌های اولیه: ' + e.message, 'err'); done(); return; }
+  if(!candidates.length){ log('✗ هیچ ایده‌ای ساخته نشد', 'err'); done(); return; }
+
+  const researched = [];
+  for(let i = 0; i < candidates.length; i++){
+    fill.style.width = (8 + ((i+1)/candidates.length)*57) + '%';
+    txt.textContent = `بررسی رقبای اتسی برای «${candidates[i]}» (${i+1}/${candidates.length})...`;
+    try{
+      const summary = summarizeResearch(await etsySearchActiveListings(candidates[i], 40));
+      researched.push({ keyword: candidates[i], research: summary });
+      log(`✓ «${candidates[i]}»: ${ideaDataLine(summary)}`, 'info');
+    }catch(e){ log(`⚠ تحقیق برای «${candidates[i]}» ناموفق بود: ${e.message}`, 'warn'); }
+  }
+  if(!researched.length){ log('✗ هیچ‌کدوم از تحقیق‌های اتسی جواب نداد — احتمالاً App API Key اشتباهه یا اتسی درخواست رو رد کرده', 'err'); done(); return; }
+
+  // شورت‌لیست با کد: امتیاز فرصت بالا، و در حالت «فقط دیجیتال» رقبای عمدتاً دیجیتال
+  fill.style.width = '72%'; txt.textContent = 'رتبه‌بندی فرصت‌ها بر پایه‌ی داده‌ی واقعی...';
+  const scored = researched.map(r => ({...r, score: (r.research.opportunity || 0) * ((o.digital && (r.research.digitalShare || 0) < 30) ? 0.3 : 1)})).sort((a,b) => b.score - a.score);
+  const shortlist = scored.slice(0, Math.max(o.count*2, 4));
+  const block = shortlist.map(r => `- "${r.keyword}": ${r.research.listingCount} active listings; price median $${r.research.medianPrice} (p25 $${r.research.p25} – p75 $${r.research.p75}); median views/day ${r.research.viewsPerDay}; median favorites/day ${r.research.favPerDay}; top listing favorites ${r.research.topFavorers}; digital share ${r.research.digitalShare}%; OPPORTUNITY SCORE ${r.research.opportunity}; common tags: ${r.research.sampleTags.join(', ') || '—'}`).join('\n');
+  txt.textContent = 'انتخاب نهایی و نوشتن محتوا با Claude...';
+  const finalPrompt = `You are an expert Etsy SEO copywriter and market analyst. Shop niche: ${niche}.\nREAL data from a live Etsy search (not guesses), already ranked by opportunity:\n${block}\n\n` +
+    `Choose exactly ${o.count} product(s) from this list with the best balance of real demand (views/favorites per day) and manageable competition. Prefer higher OPPORTUNITY SCORE unless there is a clear reason not to, and avoid near-duplicates of each other.\n` +
+    `RULES: the "keyword" field must be copied EXACTLY from the list. Price must be a USD number between that keyword's p25 and p75 (typical for the niche). ` +
+    (o.digital ? 'The product is a DIGITAL download (cut files / templates): write for that. ' : '') +
+    (o.sizeN > 1 ? `The product will be sold in ${o.sizeN} SIZE OPTIONS in one listing: mention "${o.sizeN} Sizes" naturally in the title, add a "SIZES INCLUDED" bullet in the description and a relevant tag; do NOT invent exact dimensions (the seller adds them later). ` : '') +
+    `\nTitle: max 14 words and 140 chars, starts with a letter/number, no characters $ ^ \` . °, at most one each of % : &, at most 3 ALL-CAPS words. Exactly 13 tags, each max 20 chars, no underscores. Write in natural, native ${S.contentLanguage || 'English'}.\n${DESC_FORMAT_RULES}\n` +
+    `"reason_fa": 1-2 Persian sentences that cite the concrete numbers above (listings, price, views/day...) — never vague.\n` +
+    `Return ONLY a JSON array: [{"keyword":"","title":"","tags":["..."],"description":"","price":0,"category":"","reason_fa":""}]`;
+  try{
+    const text = await ideaAI(finalPrompt, 6000, 'best');
+    const picks = (() => { const j = parseJSON(text); return Array.isArray(j) ? j : (j.products || j.items || []); })().slice(0, o.count);
+    const lc = s => String(s || '').toLowerCase().trim(), seen = new Set(existing.split('\n').map(lc));
+    const built = []; let bi = 0;
+    for(const p of picks){
+      const r = shortlist.find(x => lc(x.keyword) === lc(p.keyword)) || shortlist[Math.min(bi, shortlist.length-1)], rs = r.research;
+      let price = Number(p.price) || rs.medianPrice || 4.5;
+      if(rs.p25 != null && rs.p75 != null && (price < rs.p25 || price > rs.p75)) price = rs.medianPrice || price; // قیمت خارج از بازه‌ی واقعی بازار اصلاح می‌شود
+      const title = limitTitle(sanitizeEtsyTitle(p.title || r.keyword));
+      if(seen.has(lc(title))) continue; seen.add(lc(title));
+      const tags = (p.tags || []).map(t => String(t).replace(/_/g,' ').trim()).filter(t => t && t.length <= 20).filter((t,i,a) => a.findIndex(x => lc(x) === lc(t)) === i).slice(0,13);
+      built.push({ keyword: r.keyword, title, tags, description: normalizeDescription(p.description || ''), price: Math.round(price*100)/100, category: p.category || '',
+        why_sellable: (p.reason_fa ? p.reason_fa + '\n' : '') + '📊 ' + ideaDataLine(rs), id: Date.now() + bi, status: 'pending', created: new Date().toLocaleDateString('fa-IR'), research: rs, sizeN: o.sizeN });
+      bi++;
+    }
+    if(!built.length) throw new Error('خروجی Claude قابل‌استفاده نبود (عنوان تکراری یا خالی)');
+    fill.style.width = '100%'; txt.textContent = '✅ آماده!';
+    S.dailyProducts = built; built.forEach(item => archiveDailyProduct(item));
+    log(`✓ ${built.length} پیشنهاد نهایی، بر پایه‌ی تحقیق واقعی روی ${researched.length} کلیدواژه (امتیاز فرصت و بازه‌ی قیمت واقعی بازار)`, 'ok');
+  }catch(e){ log('✗ خطا در انتخاب نهایی: ' + e.message, 'err'); }
+  renderDailyProducts();
+  const pend = S.dailyProducts.filter(p => p.status === 'pending').length;
+  document.getElementById('statPending').textContent = pend;
+  const dbEl2 = document.getElementById('dailyBadge'); if(dbEl2) dbEl2.textContent = pend;
+  document.getElementById('sidebarPending').textContent = pend;
+  setTimeout(done, 1500);
+}
+function setDailySizeN(i, v){
+  const it = S.dailyProducts[i]; if(!it) return; it.sizeN = Number(v) || 1;
+  const a = S.dailyArchive.find(x => x.id === it.id); if(a) a.sizeN = it.sizeN;
+  if(window.ProductStudio && window.ProductStudio.setIdeaSizeN) window.ProductStudio.setIdeaSizeN(it.id, it.sizeN);
+  saveCurrentShop(); toast('تعداد اندازه برای این پیشنهاد: ' + it.sizeN);
+}
+
+function cardResearchLine(r){
+  if(r && r.viewsPerDay != null) return escHtml(ideaDataLine(r));
+  return r.listingCount + ' رقیب فعال · میانگین قیمت ' + (r.avgPrice != null ? '$' + r.avgPrice : '?') + ' · محبوب‌ترین رقیب ' + (r.topFavorers ?? '?') + ' علاقه‌مندی';
+}
+function sizeSelHtml(i, n){
+  return '<label style="font-size:12px;display:inline-flex;gap:4px;align-items:center" title="تعداد اندازه‌ی این محصول در یک لیستینگ">📐 اندازه <select onchange="setDailySizeN(' + i + ',this.value)" style="width:auto;padding:3px 6px">' + [1,2,3,4,5,6].map(k => '<option value="' + k + '"' + (k === (Number(n) || 1) ? ' selected' : '') + '>' + k + '</option>').join('') + '</select></label>';
 }
 
 function onOwnIdeaImageSelected(evt){
@@ -3025,7 +3205,7 @@ async function generateFromOwnIdea(){
     const text = await callClaude(finalPrompt, 3000);
     const p = parseJSON(text);
 
-    const item = { ...p, id:Date.now(), status:'pending', created:new Date().toLocaleDateString('fa-IR'), research, keyword, ownIdeaDesc:desc, ownIdeaImage:imageDataUrl };
+    const item = { ...p, id:Date.now(), status:'pending', created:new Date().toLocaleDateString('fa-IR'), research, keyword, ownIdeaDesc:desc, ownIdeaImage:imageDataUrl, sizeN: ideaOpts().sizeN };
     fill.style.width='100%'; txt.textContent='✅ آماده!';
     S.dailyProducts.unshift(item);
     archiveDailyProduct(item);
@@ -3047,85 +3227,6 @@ async function generateFromOwnIdea(){
   setTimeout(()=>document.getElementById('dailyProg').classList.add('hidden'),1500);
 }
 
-async function researchAndSuggestProducts(silent=false){
-  if(!S.etsyApiKey){
-    if(silent){ log('⚠ پیشنهاد محصول رد شد — App API Key اتسی تنظیم نشده','warn'); return; }
-    alert('برای تحقیق واقعی رقبا، اول توی تنظیمات App API Key اتسی رو وارد کن (فقط همون کلید کافیه، نیازی به OAuth نیست).');
-    nav('settings');
-    return;
-  }
-  if(!silent) goToProductSuggestTab();
-  document.getElementById('dailyProg').classList.remove('hidden');
-  const fill=document.getElementById('dpFill'), txt=document.getElementById('dpText');
-  const niche = getNiche();
-  const catalogTitles=S.products.slice(0,15).map(p=>p.TITLE);
-  const archiveTitles=S.dailyArchive.slice(0,40).map(a=>a.title).filter(Boolean);
-  const existing=[...new Set([...catalogTitles,...archiveTitles])].join('\n');
-
-  fill.style.width='8%'; txt.textContent='ساخت لیست ایده‌های اولیه...';
-  const candidatePrompt=`متخصص محصولات دیجیتال/فیزیکی اتسی برای فروشگاه: ${niche}\nمحصولاتی که قبلاً هست یا پیشنهاد شده (تکرار نکن):\n${existing}\n\n۶ ایده‌ی محصول متفاوت پیشنهاد بده که واقعاً بشه روی اتسی جستجوشون کرد. برای هر کدوم فقط یه عبارت جستجوی کوتاه انگلیسی (۲ تا ۴ کلمه، دقیقاً چیزی که یه خریدار توی اتسی سرچ می‌کنه) بده.\nفقط این JSON رو برگردون: {"candidates":["keyword phrase 1","keyword phrase 2","..."]}\nفقط JSON، دقیقاً ۶ تا.`;
-
-  let candidates;
-  try{
-    const text = await callClaude(candidatePrompt, 1000);
-    log('🔍 پاسخ خام مدل (برای عیب‌یابی): '+JSON.stringify(text),'info');
-    candidates = (parseJSON(text).candidates || []).filter(Boolean).slice(0,6);
-  }catch(e){
-    log('✗ خطا در ساخت ایده‌های اولیه: '+e.message,'err');
-    document.getElementById('dailyProg').classList.add('hidden');
-    return;
-  }
-  if(!candidates.length){
-    log('✗ هیچ ایده‌ای ساخته نشد','err');
-    document.getElementById('dailyProg').classList.add('hidden');
-    return;
-  }
-
-  const researched=[];
-  for(let i=0;i<candidates.length;i++){
-    fill.style.width=(8+((i+1)/candidates.length)*57)+'%';
-    txt.textContent=`بررسی رقبای اتسی برای «${candidates[i]}» (${i+1}/${candidates.length})...`;
-    try{
-      const searchResult = await etsySearchActiveListings(candidates[i], 15);
-      const summary = summarizeResearch(searchResult);
-      researched.push({ keyword: candidates[i], research: summary });
-      log(`✓ «${candidates[i]}»: ${summary.listingCount} رقیب، میانگین قیمت ${summary.avgPrice!=null?'$'+summary.avgPrice:'نامشخص'}`,'info');
-    }catch(e){
-      log(`⚠ تحقیق برای «${candidates[i]}» ناموفق بود: ${e.message}`,'warn');
-    }
-  }
-  if(!researched.length){
-    log('✗ هیچ‌کدوم از تحقیق‌های اتسی جواب نداد — احتمالاً App API Key اشتباهه یا اتسی درخواست رو رد کرده (کنسول مرورگر رو چک کن)','err');
-    document.getElementById('dailyProg').classList.add('hidden');
-    return;
-  }
-
-  fill.style.width='75%'; txt.textContent='انتخاب نهایی و نوشتن محتوا...';
-  const researchBlock = researched.map(r=>`- "${r.keyword}": ${r.research.listingCount} لیستینگ فعال، قیمت میانگین ${r.research.avgPrice??'نامشخص'} (بازه ${r.research.minPrice??'?'} تا ${r.research.maxPrice??'?'})، محبوب‌ترین رقیب ${r.research.topFavorers??'?'} علاقه‌مندی، تگ‌های رایج: ${r.research.sampleTags.join(', ')||'—'}`).join('\n');
-  const langLine = `Write the title, tags, and description in natural, native ${S.contentLanguage||'English'} — not a literal word-for-word translation.`;
-  const finalPrompt=`متخصص محصولات دیجیتال/فیزیکی اتسی برای فروشگاه: ${niche}\nاین داده‌های واقعی از جستجوی زنده‌ی اتسیه (نه حدس):\n${researchBlock}\n\nاز بین این‌ها دقیقاً ۲ تا رو انتخاب کن که بهترین تعادل بین «تقاضای واقعی» (رقبا دارن می‌فروشن، علاقه‌مندی بالا) و «رقابت قابل‌مدیریت» (خیلی اشباع نشده) دارن. توی why_sellable مستقیماً به همین اعداد اشاره کن (نه یه جمله‌ی کلی).\n${langLine}\n\n${DESC_FORMAT_HINT}\n\nفقط این آرایه‌ی JSON رو برگردون:\n[{"keyword":"همون کلیدواژه‌ای که انتخاب کردی، عیناً (همیشه انگلیسی، چون برای جستجوی اتسی استفاده می‌شه)","title":"عنوان SEO شده حداکثر 140 کاراکتر","tags":["13 تگ بدون underscore"],"description":"توضیح کامل حداقل 150 کلمه","price":3.95,"category":"نوع","why_sellable":"دلیل، با عدد از تحقیق بالا"}]\nفقط JSON، دقیقاً ۲ تا.`;
-
-  try{
-    const text = await callClaude(finalPrompt, 3000);
-    const picks = parseJSON(text).slice(0,2);
-    const built = picks.map((p,i)=>{
-      const matched = researched.find(r=>r.keyword===p.keyword) || researched[0];
-      return { ...p, id:Date.now()+i, status:'pending', created:new Date().toLocaleDateString('fa-IR'), research: matched.research, keyword: matched.keyword };
-    });
-    fill.style.width='100%'; txt.textContent='✅ آماده!';
-    S.dailyProducts = built;
-    built.forEach(item=>archiveDailyProduct(item));
-    log(`✓ ۲ پیشنهاد نهایی، بر پایه‌ی تحقیق واقعی روی ${researched.length} کلیدواژه`,'ok');
-  }catch(e){
-    log('✗ خطا در انتخاب نهایی: '+e.message,'err');
-  }
-  renderDailyProducts();
-  document.getElementById('statPending').textContent=S.dailyProducts.filter(p=>p.status==='pending').length;
-  const dbEl2=document.getElementById('dailyBadge'); if(dbEl2) dbEl2.textContent=S.dailyProducts.filter(p=>p.status==='pending').length;
-  document.getElementById('sidebarPending').textContent=S.dailyProducts.filter(p=>p.status==='pending').length;
-  setTimeout(()=>document.getElementById('dailyProg').classList.add('hidden'),1500);
-}
-
 // ── آرشیو پیشنهادها (سبک، فقط مشخصات — همیشه در دسترس، حتی بعد از رفرش) ──
 function archiveDailyProduct(item){
   const entry = {
@@ -3133,7 +3234,7 @@ function archiveDailyProduct(item){
     price: item.price||0, category: item.category||'', why_sellable: item.why_sellable||'',
     keyword: item.keyword||'', research: item.research||null,
     ownIdeaDesc: item.ownIdeaDesc||'', ownIdeaImage: item.ownIdeaImage||null,
-    status: item.status||'pending', created: new Date().toISOString()
+    status: item.status||'pending', sizeN: item.sizeN||1, created: new Date().toISOString()
   };
   S.dailyArchive.unshift(entry);
   if(S.dailyArchive.length>200) S.dailyArchive.length=200;
@@ -3205,7 +3306,7 @@ function renderDailyProducts() {
     const statusText={pending:'⏳ منتظر تأیید',approved:'✅ تأیید شده',rejected:'❌ رد شده'};
     const r = p.research;
     const d=document.createElement('div'); d.className='daily-card';
-    d.innerHTML=`<div class="daily-card-top"><div class="daily-card-label">🔎 پیشنهاد ${i+1} — ${p.created}</div><div class="daily-status" style="padding:14px 14px 0"><span class="badge ${statusMap[p.status]}">${statusText[p.status]}</span><span style="font-size:13px;font-weight:700;color:var(--orange)">$${p.price}</span></div></div><div class="daily-body"><div class="daily-title">${escHtml(p.title)}</div>${r?`<div style="font-size:11.5px;color:var(--text2);background:var(--surface3);border-radius:8px;padding:8px;margin-bottom:8px">📊 ${r.listingCount} رقیب فعال · میانگین قیمت ${r.avgPrice!=null?'$'+r.avgPrice:'?'} · محبوب‌ترین رقیب ${r.topFavorers??'?'} علاقه‌مندی</div>`:''}<div class="daily-reason">💡 ${escHtml(p.why_sellable||'')}</div><div style="margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px">تگ‌ها (${(p.tags||[]).length}/13)</div><div class="tags">${(p.tags||[]).slice(0,5).map(t=>`<span class="tag tag-new">${escHtml(t)}</span>`).join('')}<span class="tag">+${Math.max(0,(p.tags||[]).length-5)}</span></div></div><div class="daily-actions"><button class="btn btn-secondary btn-sm" onclick="showDailyDetail(${i})">📋 اطلاعات کامل</button>${p.status==='approved'?`<button class="btn btn-primary btn-sm" onclick="sendDailyToEtsy(${i})">${p.etsyListingId?'✔ پیش‌نویس ساخته شد — دوباره؟':'📤 ارسال به Etsy (پیش‌نویس)'}</button>`:''}${p.status==='pending'?`<button class="btn btn-red btn-sm" onclick="setDailyStatus(${i},'rejected')">رد</button><button class="btn btn-green btn-sm" onclick="setDailyStatus(${i},'approved')">✅ تأیید</button>`:''}</div></div>`;
+    d.innerHTML=`<div class="daily-card-top"><div class="daily-card-label">🔎 پیشنهاد ${i+1} — ${p.created}</div><div class="daily-status" style="padding:14px 14px 0"><span class="badge ${statusMap[p.status]}">${statusText[p.status]}</span><span style="font-size:13px;font-weight:700;color:var(--orange)">$${p.price}</span></div></div><div class="daily-body"><div class="daily-title">${escHtml(p.title)}</div>${r?`<div style="font-size:11.5px;color:var(--text2);background:var(--surface3);border-radius:8px;padding:8px;margin-bottom:8px">📊 ${cardResearchLine(r)}</div>`:''}<div class="daily-reason">💡 ${escHtml(p.why_sellable||'')}</div><div style="margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px">تگ‌ها (${(p.tags||[]).length}/13)</div><div class="tags">${(p.tags||[]).slice(0,5).map(t=>`<span class="tag tag-new">${escHtml(t)}</span>`).join('')}<span class="tag">+${Math.max(0,(p.tags||[]).length-5)}</span></div></div><div class="daily-actions">${sizeSelHtml(i,p.sizeN)}<button class="btn btn-secondary btn-sm" onclick="showDailyDetail(${i})">📋 اطلاعات کامل</button>${p.status==='approved'?`<button class="btn btn-primary btn-sm" onclick="sendDailyToEtsy(${i})">${p.etsyListingId?'✔ پیش‌نویس ساخته شد — دوباره؟':'📤 ارسال به Etsy (پیش‌نویس)'}</button>`:''}${p.status==='pending'?`<button class="btn btn-red btn-sm" onclick="setDailyStatus(${i},'rejected')">رد</button><button class="btn btn-green btn-sm" onclick="setDailyStatus(${i},'approved')">✅ تأیید</button>`:''}</div></div>`;
     g.appendChild(d);
   });
 }
@@ -7011,6 +7112,7 @@ function saveOAuthTokenManual(){
 
 // چک callback هنگام لود صفحه
 window.addEventListener('load',function(){
+  try{ uiInitPersistence(); }catch(e){ console.warn('ui persist', e); }
   const params=new URLSearchParams(window.location.search);
   if(params.get('code')&&params.get('state')){
     nav('settings');
@@ -7951,6 +8053,19 @@ const giOnAcc = () => { const [r,g,b] = g3.hex(GI.acc); return (r*0.299+g*0.587+
 const giOnTeal = () => { const [r,g,b] = g3.hex(GI.teal); return (r*0.299+g*0.587+b*0.114) > 160 ? "#1a1a1a" : "#ffffff"; };
 function giCard(c,x,y,w,h,r){ const rr = (r||36)*(GI.rScale == null ? 1 : GI.rScale); c.save(); if(GI.shadow){ c.shadowColor = "rgba(0,0,0,0.16)"; c.shadowBlur = 36; c.shadowOffsetY = 14; } c.fillStyle=GI.card; giRR(c,x,y,w,h,rr); c.fill(); c.restore(); c.strokeStyle=GI.line; c.lineWidth=4; giRR(c,x,y,w,h,rr); c.stroke(); }
 let GI_BG = null, GI_TRANSP = false;
+function giFillBg(c){
+  const o = GI_OPT; let f = GI.bg;
+  if(o.bgGrad && o.bgGrad !== "none" && o.bg2 && o.plain === false){ const g = o.bgGrad === "diag" ? c.createLinearGradient(0,0,GI.W,GI.H) : c.createLinearGradient(0,0,0,GI.H); g.addColorStop(0, GI.bg); g.addColorStop(1, o.bg2); f = g; }
+  c.fillStyle = f; c.fillRect(0,0,GI.W,GI.H);
+}
+function giDecor(c){
+  const o = GI_OPT; if(!o.decor || o.decor === "none") return;
+  c.save(); c.globalAlpha = 0.10; c.fillStyle = GI.acc; c.strokeStyle = GI.acc;
+  if(o.decor === "corners"){ c.beginPath(); c.arc(GI.W, 0, 420, 0, Math.PI*2); c.fill(); c.beginPath(); c.arc(0, GI.H, 360, 0, Math.PI*2); c.fill(); c.globalAlpha = 0.07; c.beginPath(); c.arc(GI.W-150, GI.H-120, 180, 0, Math.PI*2); c.fill(); }
+  else if(o.decor === "dots"){ for(let i = 0; i < 9; i++) for(let j = 0; j < 5; j++){ c.beginPath(); c.arc(GI.W-180-i*56, 90+j*56, 9, 0, Math.PI*2); c.fill(); } for(let i = 0; i < 9; i++) for(let j = 0; j < 4; j++){ c.beginPath(); c.arc(180+i*56, GI.H-260-j*56, 9, 0, Math.PI*2); c.fill(); } }
+  else if(o.decor === "stripes"){ c.lineWidth = 18; for(let i = 0; i < 14; i++){ c.beginPath(); c.moveTo(GI.W-60-i*60, 0); c.lineTo(GI.W+400-i*60, 460); c.stroke(); } }
+  c.restore();
+}
 function giFrame(c,title,sub,shop,logo){
   const o = GI_OPT, left = o.align === "left" && !o.center, tx0 = left ? 140 : GI.W/2, al = left ? "left" : "center";
   if(GI_TRANSP){
@@ -7958,14 +8073,16 @@ function giFrame(c,title,sub,shop,logo){
     const k = Math.max(GI.W/GI_BG.width, GI.H/GI_BG.height), w = GI_BG.width*k, h = GI_BG.height*k;
     c.drawImage(GI_BG, (GI.W-w)/2, (GI.H-h)/2, w, h);
     c.globalAlpha = o.bgAlpha == null ? 0.85 : o.bgAlpha; c.fillStyle = GI.bg; c.fillRect(0,0,GI.W,GI.H); c.globalAlpha = 1;
-  } else { c.fillStyle = GI.bg; c.fillRect(0,0,GI.W,GI.H); }
+  } else { giFillBg(c); }
+  if(!GI_TRANSP) giDecor(c);
   if(GI_TRANSP){}
   else if(o.frame === "bar"){ c.fillStyle = GI.acc; c.fillRect(0,0,GI.W,28); }
   else if(o.frame === "border"){ c.strokeStyle = GI.acc; c.lineWidth = 26; giRR(c,40,40,GI.W-80,GI.H-80,40); c.stroke(); }
   if(title){
-    c.fillStyle = GI.ink; c.font = "800 140px " + GI_FONT;
-    const y = giWrap(c,title,tx0,270,GI.W-300,156,2,al);
-    if(sub){ c.fillStyle = GI.mute; c.font = "600 72px " + GI_FONT; giWrap(c,sub,tx0,y+6,GI.W-300,84,1,al); }
+    const ts = Math.max(0.5, Math.min(1.3, Number(o.titleScale) || 1)), up = o.titleCase === "upper";
+    c.fillStyle = GI.ink; c.font = "800 " + Math.round(140*ts) + "px " + GI_FONT;
+    const y = giWrap(c,up ? String(title).toUpperCase() : title,tx0,130+140*ts,GI.W-300,156*ts,2,al);
+    if(sub){ c.fillStyle = GI.mute; c.font = "600 " + Math.round(72*ts) + "px " + GI_FONT; giWrap(c,up ? String(sub).toUpperCase() : sub,tx0,y+6,GI.W-300,84*ts,1,al); }
   }
   if(o.footer){
     c.fillStyle = GI.line; c.fillRect(120,GI.H-170,GI.W-240,4);
@@ -8537,7 +8654,8 @@ function giList(p){
 function giBg(c){
   const o = GI_OPT;
   if(GI_BG){ const k = Math.max(GI.W/GI_BG.width, GI.H/GI_BG.height), w = GI_BG.width*k, h = GI_BG.height*k; c.drawImage(GI_BG, (GI.W-w)/2, (GI.H-h)/2, w, h); c.globalAlpha = o.bgAlpha == null ? 0.85 : o.bgAlpha; c.fillStyle = GI.bg; c.fillRect(0,0,GI.W,GI.H); c.globalAlpha = 1; }
-  else { c.fillStyle = GI.bg; c.fillRect(0,0,GI.W,GI.H); }
+  else { giFillBg(c); }
+  giDecor(c);
   if(o.frame === "bar"){ c.fillStyle = GI.acc; c.fillRect(0,0,GI.W,28); }
   else if(o.frame === "border"){ c.strokeStyle = GI.acc; c.lineWidth = 26; giRR(c,40,40,GI.W-80,GI.H-80,40); c.stroke(); }
 }
@@ -8569,6 +8687,7 @@ function giRenderCore(c,p,slotKey,ctx){
   if(slotKey === "template" && p.dzStyle === "rigid_shape") t = ["All Parts Included", "12 parts: chipboard + paper"];
   else if(slotKey === "template" && ctx.svgImg && ctx.svgImg.sheet) t = ["Cutting Template", "Sheet " + ctx.svgImg.sheet.w + " × " + ctx.svgImg.sheet.h + " mm"];
   if(slotKey === "hero" && GI_OPT.hero === "center" && !giPhotoOn("hero", ctx)) t = [p.name, p.category || ""];
+  { const so = (GI_OPT.slotText || {})[slotKey]; if(so && t && (so.t || so.s)) t = [so.t || t[0], (so.s != null && so.s !== "") ? so.s : t[1]]; }
   if(GI_3D_SLOTS.includes(slotKey) && !giHas3d(p)){ giFrame(c, "3D shape not set", "Choose a 3D shape in the image settings", ctx.shop, ctx.logo); return; }
   giFrame(c, t ? t[0] : "", t ? t[1] : "", ctx.shop, ctx.logo);
   (giPhotoOn(slotKey, ctx) ? GI_PHOTO : GI_DRAW)[slotKey](c,p,ctx.L,ctx.svgImg,ctx.shop,ctx.logo,ctx);
@@ -8998,6 +9117,7 @@ function dzBriefFromProduct(p){
   const notes = String(p.notes || "").trim(); if(notes) parts.push("یادداشت‌ها: " + notes.slice(0, 500));
   const tg = String(p.tags || "").trim(); if(tg) parts.push("تگ‌های پیشنهادی: " + tg);
   if(p.dzSpec) parts.push("اندازه‌ی فعلی: " + p.w + " × " + p.h + " × " + p.d + " میلی‌متر");
+  if(p.ideaSizeN > 1) parts.push("این لیستینگ در " + p.ideaSizeN + " اندازه فروخته می‌شود (اندازه‌های بعدی از روی طرح اصلی خودکار مقیاس می‌شوند).");
   parts.push("با رعایت همین ایده، جعبه/قالب را طراحی کن و فایل‌ها را بساز.");
   return parts.join("\n");
 }
@@ -9081,11 +9201,33 @@ async function dzDielineJpeg(d){
   const b = await new Promise(r => cv.toBlob(r, "image/jpeg", 0.9)); return new Uint8Array(await b.arrayBuffer());
 }
 // بازبینی بصری: Claude تصویر دای‌لاین را می‌بیند، با درخواست مقایسه می‌کند و در صورت اشکال، طرح اصلاح‌شده می‌دهد
-async function dzReview(spec, d){
+// گزارش هندسی که «کد» اندازه می‌گیرد (نه حدس مدل): مسیر باز، تقاطع خطوط برش، سر بازِ خط تا، تکه‌های بسیار کوچک
+function dzGeomReport(d){
+  const segs = []; d.paths.forEach((p, pi) => { const n = p.closed ? p.pts.length : p.pts.length - 1; for(let i = 0; i < n; i++) segs.push({t: p.t, pi, a: p.pts[i], b: p.pts[(i+1) % p.pts.length]}); });
+  const cut = d.paths.filter(p => p.t === "cut"), sc = d.paths.filter(p => p.t === "score"), hard = [], soft = [];
+  const lenOf = ps => Math.round(segs.filter(g => ps.includes(g.t)).reduce((a, g) => a + Math.hypot(g.b[0]-g.a[0], g.b[1]-g.a[1]), 0));
+  const open = cut.filter(p => !p.closed).length; if(open) hard.push(open + " cut path(s) are not closed (gap in the cut outline)");
+  const tiny = segs.filter(g => Math.hypot(g.b[0]-g.a[0], g.b[1]-g.a[1]) < 0.8).length; if(tiny) soft.push(tiny + " segments are shorter than 0.8 mm");
+  const sd = (g, p) => { const dx = g.b[0]-g.a[0], dy = g.b[1]-g.a[1], l = Math.hypot(dx, dy) || 1; return (dx*(p[1]-g.a[1]) - dy*(p[0]-g.a[0])) / l; };
+  const crosses = (g, h) => { const T = 0.05, a1 = sd(g, h.a), a2 = sd(g, h.b), b1 = sd(h, g.a), b2 = sd(h, g.b); return a1*a2 < 0 && Math.abs(a1) > T && Math.abs(a2) > T && b1*b2 < 0 && Math.abs(b1) > T && Math.abs(b2) > T; };
+  const cs = segs.filter(g => g.t === "cut"); let x = 0;
+  if(cs.length <= 2500){ outer: for(let i = 0; i < cs.length; i++) for(let j = i+1; j < cs.length; j++){
+    const g = cs[i], h = cs[j]; if(Math.max(g.a[0], g.b[0]) < Math.min(h.a[0], h.b[0]) || Math.max(h.a[0], h.b[0]) < Math.min(g.a[0], g.b[0]) || Math.max(g.a[1], g.b[1]) < Math.min(h.a[1], h.b[1]) || Math.max(h.a[1], h.b[1]) < Math.min(g.a[1], g.b[1])) continue;
+    if(crosses(g, h)){ x++; if(x >= 3) break outer; } } }
+  if(x) hard.push("cut lines cross each other at " + x + "+ places (overlapping parts)");
+  const pd = (p, g) => { const dx = g.b[0]-g.a[0], dy = g.b[1]-g.a[1], l2 = dx*dx + dy*dy || 1e-9, t = Math.max(0, Math.min(1, ((p[0]-g.a[0])*dx + (p[1]-g.a[1])*dy) / l2)); return Math.hypot(p[0]-g.a[0]-t*dx, p[1]-g.a[1]-t*dy); };
+  const dang = []; sc.forEach(p => { if(p.closed) return; const pi = d.paths.indexOf(p); [p.pts[0], p.pts[p.pts.length-1]].forEach(e => { if(!segs.some(g => g.pi !== pi && pd(e, g) < 0.6)) dang.push("(" + Math.round(e[0]) + "," + Math.round(e[1]) + ")"); }); });
+  if(dang.length) soft.push("fold line ends touching nothing at " + dang.slice(0, 5).join(" ") + " (check that the fold continues or reaches an edge)");
+  const lines = sc.slice(0, 30).map(p => "(" + p.pts.map(q => Math.round(q[0]) + "," + Math.round(q[1])).join(")->(") + ")").join("  ");
+  const text = "Sheet " + d.w + " x " + d.h + " mm; cut loops: " + cut.filter(p => p.closed).length + " closed + " + open + " open (cut length " + lenOf(["cut"]) + " mm); fold/score lines: " + sc.length + " (length " + lenOf(["score"]) + " mm).\n" +
+    (hard.length || soft.length ? "AUTOMATIC CHECK FOUND: " + hard.concat(soft).join("; ") + "." : "Automatic check: no open cut paths, no crossing cut lines, no dangling fold lines.") + "\nFold lines (mm): " + lines;
+  return {text, hard, soft};
+}
+async function dzReview(spec, d, rep){
   const b64 = u8ToB64(await dzDielineJpeg(d)), slim = JSON.stringify(spec, (k, v) => (k === "listing" || k === "guide") ? undefined : v).slice(0, 6000);
   const qa = dzState.qa.map(x => "Q: " + x.q + "\nA: " + x.a).join("\n");
   const prompt = "You are a senior packaging engineer REVIEWING an automatically generated box dieline. The image shows it: red = cut lines, blue dashed = fold/score lines.\nSeller request: " + dzState.brief + "\n" + (qa ? "Seller answers:\n" + qa + "\n" : "") +
-    "\nCurrent design spec (JSON): " + slim + "\n\nAvailable styles and their rules:\n" + DZ_NET_DOC +
+    (rep ? "\nGEOMETRY REPORT MEASURED BY CODE (trust these numbers, they are exact): " + rep.text + "\n" : "") + "\nCurrent design spec (JSON): " + slim + "\n\nAvailable styles and their rules:\n" + DZ_NET_DOC +
     "\n\nCHECK carefully: (1) does the box type/shape match the request? (2) are all parts present (lid, base/bottom, closing flaps, glue tabs, tuck/dust flaps)? (3) do panels connect with consistent fold lines, with no overlapping or crossing parts? (4) are proportions and sizes realistic (e.g. each polygon side equals the wall panel width)? (5) can a buyer cut and assemble it?\n" +
     'Reply ONLY JSON: {"ok":true|false,"problems":["short English problem"],"notes_fa":"1-3 Persian sentences: what you checked / what you fixed","spec":{FULL corrected spec in the same format, only when ok=false}}';
   const res = await fetch(crApiUrl("design_ai.php"), {method:"POST", headers: crHeaders(), body: JSON.stringify({prompt, max_tokens: 12000, model: $("st-dzModel").value, images: [{media_type: "image/jpeg", data: b64}]})});
@@ -9108,6 +9250,7 @@ async function dzDesign(feedback){
       (dzState.userOutline ? "\nThe seller UPLOADED THEIR OWN SHAPE FILE (SVG outline). The app uses it automatically: choose style \"rigid_shape\" (rigid chipboard box with separate lid, layered walls, paper covers and a parts list) or \"shape_box\" (light cardstock box) and set shape to \"custom\" — do NOT draw an outline yourself. For rigid_shape give length = lid top width in mm (the shape keeps its own proportions), height = base wall height, height_lid = lid wall height, board_thickness = 1.\n" : "") +
       "\n" + DZ_NET_DOC + "\n\n" +
       "SIZE RULES: length/width/height are the FINISHED INNER box size in mm. Choose realistic numbers for the use case and material thickness (allow tolerances). Keep the whole sheet under ~500 mm.\n" +
+      "ENGINEERING CHECKLIST (verify silently before answering): every panel that folds has a score line on BOTH shared edges; one glue tab on exactly one side panel; every closing flap has a lock/tuck and is not deeper than ~90% of the adjacent panel width; polygon side length = wall panel width; lid is slightly larger than the base by about 2x the board thickness plus 0.6 mm; no two cut outlines may cross; every fold line must reach a cut edge or another fold line; choose the style whose assembled shape matches the request (do not simplify a heart/round/hexagon request into a rectangle).\n" +
       "GUIDE: write a friendly assembly guide for buyers: guide.steps = 5-8 items {title (max 4 words), text (1-2 short sentences), tip (optional short)}; guide.tools = 4-6 items; guide.tips = 4-6 items {title, text}. Plain English, no emojis.\n\n" +
       "LISTING RULES: title in English, max 14 words and 140 chars, must start with a letter or number, no characters $ ^ ` . °, at most one each of % : &, no more than 3 ALL-CAPS words (SVG/DXF/PDF count). tags: exactly 13, each max 20 chars, no underscores. materials: up to 13 short items. price: realistic USD number for this digital template.\n" + DESC_FORMAT_RULES + "\n" +
       "notes_fa: 2-4 Persian sentences telling the seller what was designed (style, sizes, material, closure) and what to test-cut.\n\n" +
@@ -9121,15 +9264,18 @@ async function dzDesign(feedback){
         if(!spec.listing) throw new Error("بخش listing در پاسخ نبود");
         if(dzState.userOutline && !["shape_box","rigid_shape"].includes(spec.style)){ spec.style = "rigid_shape"; spec.notes_fa = (spec.notes_fa || "") + " (چون فایل شکل خودتان را دادید، جعبه‌ی سخت بر پایه‌ی همان شکل طراحی شد.)"; }
         if(dzState.userOutline && ["shape_box","rigid_shape"].includes(spec.style)){ spec.shape = "custom"; spec.outline = dzState.userOutline; }
-        d = dzBuildAll(spec); err = ""; break;
+        d = dzBuildAll(spec);
+        if(attempt === 0 && spec.style !== "rigid_shape"){ const g0 = dzGeomReport(d); if(g0.hard.length){ err = "geometry check: " + g0.hard.join("; "); continue; } }
+        err = ""; break;
       }catch(e){ err = e.message; if(attempt === 1) throw new Error(err); }
     }
     dzState.review = "";
     if($("st-dzReview") && $("st-dzReview").checked && $("st-dzModel").value !== "app" && S.contentBackendUrl){
-      try{ $("st-dzOut").innerHTML = "<p class='help'>🔍 Claude در حال بازبینی بصری طرح است (اشکال‌یابی)...</p>"; const r = await dzReview(spec, d); if(r){ if(r.spec){ spec = r.spec; d = r.d; } dzState.review = r.note; } }
+      try{ const notes = []; for(let round = 0; round < 2; round++){ $("st-dzOut").innerHTML = "<p class='help'>🔍 Claude در حال بازبینی بصری طرح است — دور " + fa(round + 1) + " از ۲ (اشکال‌یابی با گزارش هندسی)...</p>"; const r = await dzReview(spec, d, dzGeomReport(d)); if(!r) break; notes.push(r.note); if(!r.spec) break; spec = r.spec; d = r.d; } dzState.review = notes.join(" ⟶ "); }
       catch(e){ dzState.review = "(بازبینی بصری انجام نشد: " + (e && e.message ? e.message : e) + ")"; dzBuildAll(spec); }
     }
     dzState.spec = spec; dzState.dl = d; dzState.sizes = null; dzState.sizeN = 1;
+    { const pp = cur(), wantN = pp && pp.ideaSizeN > 1 ? pp.ideaSizeN : 1; if(wantN > 1 && spec.style !== "net"){ dzState.sizeN = wantN; dzState.sizes = dzScaleRows(spec, wantN); } }
     dzRender();
   }catch(e){ $("st-dzOut").innerHTML = "<p class='help' style='color:var(--cut)'>خطا: " + dzEsc(e.message) + "</p>"; }
 }
@@ -10085,21 +10231,27 @@ function giUiRefresh3(){
   const sf = gs.safe || {l:6,t:6,r:6,b:6}; $("st-gSfL").value = sf.l; $("st-gSfT").value = sf.t; $("st-gSfR").value = sf.r; $("st-gSfB").value = sf.b;
   $("st-gSafeRow").style.display = (gs.bgMode === "full") ? "flex" : "none";
 }
-async function giAnalyzeTemplate(file){
+async function giAnalyzeTemplate(files){
+  files = (Array.isArray(files) ? files : [files]).slice(0, 3);
   if(!S.contentBackendUrl) return toast("برای تحلیل تصویر با Claude، آدرس بک‌اند باید در تنظیمات وارد شده باشد.");
-  $("st-gAiTplInfo").textContent = "⏳ Claude در حال دیدن قالب است...";
+  $("st-gAiTplInfo").textContent = "⏳ Claude در حال دیدن " + fa(files.length) + " تصویر نمونه است...";
   try{
-    const j = await dzToJpeg(file, 1100), b64 = u8ToB64(j.bytes);
-    const prompt = "You are a senior graphic designer. The attached image is a REFERENCE design (an Etsy listing image / template the seller likes). Describe its visual style as parameters for an automatic image generator that makes infographic-style listing images (cards, pills, big titles, a footer line). Be faithful: pick the real colors you see.\n" +
-      'Return ONLY JSON: {"bg":"#rrggbb main background","ink":"#rrggbb main text","mute":"#rrggbb secondary text","acc":"#rrggbb main accent","teal":"#rrggbb secondary accent","card":"#rrggbb panel/card fill","line":"#rrggbb thin border","font":"sans|serif|round","frame":"bar|border|none","align":"center|left","hero":"combo|split|center|3d","card_radius":0-80,"pill_shape":"round|square","shadow":true|false,"use_plain_white_background":true|false,"notes_fa":"1-2 Persian sentences: what you matched and what cannot be reproduced automatically"}';
-    const res = await fetch(crApiUrl("design_ai.php"), {method:"POST", headers: crHeaders(), body: JSON.stringify({prompt, max_tokens: 3000, model: "sonnet", images: [{media_type: "image/jpeg", data: b64}]})});
+    const imgs = []; for(const f of files){ const j = await dzToJpeg(f, 1100); imgs.push({media_type: "image/jpeg", data: u8ToB64(j.bytes)}); }
+    const prompt = "You are a senior graphic designer. The attached image(s) are REFERENCE designs (Etsy listing images / templates the seller likes" + (imgs.length > 1 ? "; unify their common style" : "") + "). Describe the visual style as parameters for an automatic image generator that makes infographic-style listing images (cards, pills, big titles, a footer line, optional decoration). Be faithful: pick the real colors you see, and the real structure (title size, letter case, gradient, decoration).\n" +
+      'Return ONLY JSON: {"bg":"#rrggbb main background","bg2":"#rrggbb second background color if there is a gradient else same as bg","bg_gradient":"none|vertical|diag","ink":"#rrggbb main text","mute":"#rrggbb secondary text","acc":"#rrggbb main accent","teal":"#rrggbb secondary accent","card":"#rrggbb panel/card fill","line":"#rrggbb thin border","font":"sans|serif|round","frame":"bar|border|none","align":"center|left","hero":"combo|split|center|3d","card_radius":0-80,"pill_shape":"round|square","shadow":true|false,"decor":"none|corners|dots|stripes","title_scale":0.7-1.2,"title_case":"normal|upper","footer":true|false,"use_plain_white_background":true|false,"notes_fa":"1-2 Persian sentences: what you matched and what cannot be reproduced automatically"}';
+    const res = await fetch(crApiUrl("design_ai.php"), {method:"POST", headers: crHeaders(), body: JSON.stringify({prompt, max_tokens: 3000, model: "sonnet", images: imgs})});
     const d = await mktParseResponse(res), st = parseJSON(d.text), hex = v => /^#[0-9a-f]{6}$/i.test(String(v)) ? String(v).toLowerCase() : null;
     const gs = giGet(), pick = (k, v) => { if(v) gs[k] = v; };
-    ["bg","ink","mute","acc","teal","card","line"].forEach(k => pick(k, hex(st[k])));
+    ["bg","bg2","ink","mute","acc","teal","card","line"].forEach(k => pick(k, hex(st[k])));
     if(["sans","serif","round"].includes(st.font)) gs.font = st.font; if(["bar","border","none"].includes(st.frame)) gs.frame = st.frame; if(["center","left"].includes(st.align)) gs.align = st.align;
     if(["combo","split","center","3d"].includes(st.hero)) gs.hero = st.hero;
     if(isFinite(st.card_radius)) gs.cardR = Math.max(0, Math.min(80, Number(st.card_radius))); gs.pillShape = st.pill_shape === "square" ? "square" : "round"; gs.shadow = !!st.shadow;
-    gs.plain = st.use_plain_white_background === true; gs.theme = "cream"; gs.bgKey = gs.bgKey; save(); giSig = ""; giUiRefresh();
+    gs.bgGrad = ["vertical","diag"].includes(st.bg_gradient) && gs.bg2 ? st.bg_gradient : "none"; gs.decor = ["corners","dots","stripes"].includes(st.decor) ? st.decor : "none";
+    if(isFinite(st.title_scale)) gs.titleScale = Math.max(0.6, Math.min(1.2, Number(st.title_scale))); gs.titleCase = st.title_case === "upper" ? "upper" : "normal"; if(typeof st.footer === "boolean") gs.footer = st.footer;
+    gs.plain = st.use_plain_white_background === true && gs.bgGrad === "none"; gs.theme = "cream";
+    if($("st-gAiUseBg") && $("st-gAiUseBg").checked){ await giSetBg(files[0]); gs.bgMode = "overlay"; gs.bgAlpha = 0.9; gs.plain = false; }
+    save(); giSig = ""; giUiRefresh();
+    if($("st-gAiSaveTpl") && $("st-gAiSaveTpl").checked){ $("st-gTplName").value = "از نمونه: " + String(files[0].name || "تصویر").replace(/\.[^.]+$/, "").slice(0, 30); await giSaveTpl(); }
     $("st-gAiTplInfo").textContent = "✓ " + (st.notes_fa || "سبک قالب اعمال شد."); toast("سبک قالب اعمال شد — پیش‌نمایش را ببین.");
   }catch(e){ $("st-gAiTplInfo").textContent = ""; toast("تحلیل قالب ناموفق بود: " + (e && e.message ? e.message : e)); }
 }
@@ -10109,18 +10261,30 @@ function giBind3(){
   $("st-gBg").addEventListener("input", () => { giGet().plain = false; $("st-gPlain").checked = false; });
   document.querySelectorAll("input[name='st-gBgMode']").forEach(r => r.onchange = () => { if(!r.checked) return; giGet().bgMode = r.value; save(); giUiRefresh3(); giQueuePreview(); });
   ["L","T","R","B"].forEach(k => $("st-gSf" + k).oninput = () => { const gs = giGet(); gs.safe = {l:Number($("st-gSfL").value), t:Number($("st-gSfT").value), r:Number($("st-gSfR").value), b:Number($("st-gSfB").value)}; save(); giQueuePreview(); });
-  $("st-gAiTplFile").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if(f) giAnalyzeTemplate(f); };
+  $("st-gAiTplFile").onchange = e => { const f = [...e.target.files]; e.target.value = ""; if(f.length) giAnalyzeTemplate(f); };
 }
 giBind3();
 /* ---------- نام برند روی تصویرها، حاشیه‌ی امن/وسط‌چین (موبایل)، حذف پس‌زمینه‌ی عکس ---------- */
 function giShopName(){ const gs = (typeof giGet === "function") ? giGet() : {}; return String(gs.brandName || "").trim() || (typeof getShopName === "function" ? getShopName() : "") || ""; }
 function giUiRefresh4(){
   const gs = giGet();
+  if($("st-gTScale")){
+    $("st-gTScale").value = Math.round((gs.titleScale || 1)*100); $("st-gTCase").value = gs.titleCase || "normal"; $("st-gGrad").value = gs.bgGrad || "none"; $("st-gBg2").value = gs.bg2 || "#e9eef2"; $("st-gDecor").value = gs.decor || "none";
+    const box = $("st-gSlotText");
+    if(!box.children.length) box.innerHTML = IMG_SLOTS.map((sl, i) => { const dt = GI_TITLES[sl.k]; return "<div style='font-size:12px'><b>" + fa(i+1) + ". " + dzEsc(sl.t) + "</b>" + (dt ? "<input data-stk='" + sl.k + "' data-stf='t' placeholder='" + dzEsc(dt[0]) + "' style='width:100%;margin-top:3px'><input data-stk='" + sl.k + "' data-stf='s' placeholder='" + dzEsc(dt[1] || "زیرعنوان") + "' style='width:100%;margin-top:3px'>" : "<div class='help'>این تصویر عنوان ثابت ندارد</div>") + "</div>"; }).join("");
+    box.querySelectorAll("[data-stk]").forEach(el => { const so = (gs.slotText || {})[el.dataset.stk]; el.value = so ? (so[el.dataset.stf] || "") : ""; });
+  }
   $("st-gBrand").value = gs.brandName || ""; $("st-gMargin").value = gs.margin == null ? 5 : gs.margin; $("st-gCenter").checked = !!gs.center;
   $("st-gCutout").checked = gs.removeBg !== false; $("st-gCutTol").value = gs.cutTol || 48;
 }
 function giBind4(){
   const upd = fn => () => { fn(giGet()); save(); giSig = ""; giQueuePreview(); };
+  $("st-gTScale").oninput = upd(g => { g.titleScale = Number($("st-gTScale").value)/100; });
+  $("st-gTCase").onchange = upd(g => { g.titleCase = $("st-gTCase").value; });
+  $("st-gGrad").onchange = upd(g => { g.bgGrad = $("st-gGrad").value; if(g.bgGrad !== "none"){ g.plain = false; $("st-gPlain").checked = false; if(!g.bg2) g.bg2 = $("st-gBg2").value; } });
+  $("st-gBg2").oninput = upd(g => { g.bg2 = $("st-gBg2").value; });
+  $("st-gDecor").onchange = upd(g => { g.decor = $("st-gDecor").value; });
+  $("st-gSlotText").oninput = e => { const el = e.target; if(!el.dataset.stk) return; const gs = giGet(); gs.slotText = gs.slotText || {}; const so = gs.slotText[el.dataset.stk] = gs.slotText[el.dataset.stk] || {}; so[el.dataset.stf] = el.value; save(); giQueuePreview(); };
   $("st-gBrand").oninput = upd(g => { g.brandName = $("st-gBrand").value; });
   $("st-gMargin").oninput = upd(g => { g.margin = Number($("st-gMargin").value); });
   $("st-gCenter").onchange = upd(g => { g.center = $("st-gCenter").checked; });
@@ -10188,11 +10352,13 @@ function addDraftFromIdea(data){
   if(Array.isArray(data.tags)) p.tags = data.tags.join(", ");
   if(data.price) p.notes = "قیمت پیشنهادی Agent: $" + data.price;
   if(data.why_sellable) p.notes += (p.notes ? "\n" : "") + "چرا فروش می‌ره: " + data.why_sellable;
+  p.ideaId = data.id; p.ideaSizeN = Math.max(1, Math.min(6, Number(data.sizeN) || 1));
   state.products.push(p); state.active = p.id; save(); renderAll();
   return p.id;
 }
 window.ProductStudio = window.ProductStudio || {};
 window.ProductStudio.addDraftFromIdea = addDraftFromIdea;
+window.ProductStudio.setIdeaSizeN = function(ideaId, n){ const p = state.products.find(x => x.ideaId === ideaId); if(p){ p.ideaSizeN = Number(n) || 1; save(); } };
 
 // تولید خودکار عنوان/توضیحات/تگ برای محصول فعلی، با همون موتور AI که بقیه‌ی Agent استفاده می‌کنه
 async function aiGenerateSeoForCurrent(){
