@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.38.1 -->
+<!-- APP_VERSION: 1.39.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -693,7 +693,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v160</div>
+        <div class="logo-badge">v161</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1427,6 +1427,13 @@ margin:0;background:var(--paper);color:var(--ink);
             <div id="etsyTaxonomyResult" style="margin-top:8px;font-size:12px"></div>
             <div style="font-size:11px;color:var(--text3);margin-top:4px">پیدا کردنش: یکی از لیستینگ‌های مشابه خودت یا رقبا رو توی مرورگر باز کن و آدرسش رو ببین، یا با فراخوانی <code>getSellerTaxonomyNodes</code> از API اتسی، آیدی دسته‌ی «Templates» یا نزدیک‌ترین دسته به محصولت رو پیدا کن. بدون این مقدار، ساخت خودکار لیستینگ رد می‌شود.</div>
           </div>
+          <div>
+            <div class="input-label">گروه محصول (Shop Section) <span style="color:var(--text3);font-weight:400">(تا لیستینگ «بدون گروه» نماند)</span></div>
+            <select class="input" id="etsySectionSelect" onchange="saveEtsySection(this.value)" style="direction:ltr"><option value="">خودکار — انتخاب بر اساس نام و دسته‌ی محصول</option></select>
+            <div style="margin-top:6px"><button class="btn btn-secondary btn-sm" type="button" onclick="loadEtsySectionsUI()">🔄 دریافت گروه‌های فروشگاه از Etsy</button></div>
+            <div id="etsySectionResult" style="margin-top:6px;font-size:12px"></div>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px">«خودکار» یعنی برنامه گروهی را که اسمش با محصول بیشتر می‌خواند انتخاب می‌کند؛ اگر هیچ‌کدام نخواند، موقع ارسال از تو می‌پرسد. اگر یک گروه مشخص انتخاب کنی، همه‌ی پیش‌نویس‌ها در همان می‌روند. گروه‌ها را در Etsy → Shop Manager → Listings → Sections می‌سازی.</div>
+          </div>
           <div id="etsyOAuthSection">
             <div class="input-label" style="margin-bottom:6px">اتصال OAuth <span style="color:var(--text3);font-weight:400">(برای آپلود خودکار)</span></div>
             <div id="etsyOAuthStatus" style="margin-bottom:8px"></div>
@@ -2117,6 +2124,7 @@ let S = {
   etsySharedSecret: '',
   etsyShopId: '',
   etsyTaxonomyId: '',
+  etsySectionId: '', etsySections: [],
   contentBackendUrl: '', contentBackendSecret: '',
   contentLanguage: 'en',
   brandLogoDataUrl: '', brandFooterText: '', brandFooterPresets: [], brandBgColor: '#f4f1e8',
@@ -2148,6 +2156,7 @@ function loadShopToState(shopId){
   S.etsySharedSecret=shop.etsySharedSecret||'';
   S.etsyShopId=shop.etsyShopId||'';
   S.etsyTaxonomyId=shop.etsyTaxonomyId||'';
+  S.etsySectionId=shop.etsySectionId||''; S.etsySections=shop.etsySections||[];
   S.contentBackendUrl=shop.contentBackendUrl||'';
   S.contentBackendSecret=shop.contentBackendSecret||'';
   S.contentLanguage=shop.contentLanguage||'English';
@@ -2188,6 +2197,7 @@ function saveCurrentShop(){
   shop.etsySharedSecret=S.etsySharedSecret;
   shop.etsyShopId=S.etsyShopId;
   shop.etsyTaxonomyId=S.etsyTaxonomyId;
+  shop.etsySectionId=S.etsySectionId||''; shop.etsySections=S.etsySections||[];
   shop.contentBackendUrl=S.contentBackendUrl;
   shop.contentBackendSecret=S.contentBackendSecret;
   shop.contentLanguage=S.contentLanguage;
@@ -2336,6 +2346,7 @@ function applyShopToUI(){
   const etsySecEl=document.getElementById('etsySharedSecretInput'); if(etsySecEl) etsySecEl.value=S.etsySharedSecret||'';
   const etsyShopEl=document.getElementById('etsyShopIdInput'); if(etsyShopEl) etsyShopEl.value=S.etsyShopId||'';
   const etsyTaxEl=document.getElementById('etsyTaxonomyIdInput'); if(etsyTaxEl) etsyTaxEl.value=S.etsyTaxonomyId||'';
+  if(typeof renderEtsySectionSelect==='function') renderEtsySectionSelect();
   const cbUrlEl=document.getElementById('contentBackendUrlInput'); if(cbUrlEl) cbUrlEl.value=S.contentBackendUrl||'';
   const cbSecEl=document.getElementById('contentBackendSecretInput'); if(cbSecEl) cbSecEl.value=S.contentBackendSecret||'';
   const cbLangEl=document.getElementById('contentLanguageInput'); if(cbLangEl) cbLangEl.value=S.contentLanguage||'English';
@@ -5528,8 +5539,63 @@ async function etsyUpdateListing(product, _isRetry){
   }catch(e){log('✗ خطای آپلود: '+e.message,'err');return false;}
 }
 
+// نام فایل دیجیتال برای Etsy: حداکثر ۷۰ نویسه (با پسوند)، فقط حروف/عدد/نقطه/خط‌تیره/زیرخط، بدون تکرار
+function etsySafeFileName(name, used, fallback){
+  const m = String(name || "").match(/^(.*?)(\.[A-Za-z0-9]{1,6})?$/), ext = (m && m[2]) || "";
+  let base = String((m && m[1]) || "").normalize("NFKD").replace(/[^A-Za-z0-9._ -]+/g, " ").trim().replace(/[ ]+/g, "-").replace(/[-_.]{2,}/g, "-").replace(/^[-_.]+|[-_.]+$/g, "");
+  if(!base) base = fallback || "file";
+  const maxBase = 70 - ext.length; let out = base;
+  if(out.length > maxBase) out = out.slice(0, maxBase).replace(/[-_.]+$/, "");
+  let cand = out + ext, k = 1; while(used[cand.toLowerCase()]){ k++; const suf = "-" + k; cand = out.slice(0, maxBase - suf.length) + suf + ext; }
+  used[cand.toLowerCase()] = 1; return cand;
+}
+// آیتم‌های فایل ({name, ...}) را بررسی و در صورت نیاز کوتاه/پاک می‌کند؛ فهرست تغییرها را برمی‌گرداند
+function etsyFixFileNames(items, fallbackBase){
+  const used = {}, changes = [];
+  items.forEach(it => { const nn = etsySafeFileName(it.name, used, fallbackBase); if(nn !== it.name){ changes.push(it.name + " → " + nn); it.name = nn; if(it.blob && it.blob instanceof File && it.blob.name !== nn){ try{ it.blob = new File([it.blob], nn, {type: it.blob.type}); }catch(e){} } } });
+  return changes;
+}
+// گروه‌های فروشگاه (Shop Sections)
+function renderEtsySectionSelect(){
+  const sel = document.getElementById('etsySectionSelect'); if(!sel) return;
+  sel.innerHTML = '<option value="">خودکار — انتخاب بر اساس نام و دسته‌ی محصول</option>' + (S.etsySections || []).map(x => '<option value="' + x.id + '">' + escHtml(x.title) + '</option>').join('');
+  sel.value = S.etsySectionId || '';
+}
+function saveEtsySection(v){ S.etsySectionId = v || ''; saveCurrentShop(); }
+async function etsyLoadSections(force){
+  if(!force && S.etsySections && S.etsySections.length) return S.etsySections;
+  const shopId = await resolveEtsyShopId();
+  const d = await etsyApiGet('https://openapi.etsy.com/v3/application/shops/' + shopId + '/sections');
+  S.etsySections = (d.results || []).map(x => ({id: String(x.shop_section_id), title: x.title || ('Section ' + x.shop_section_id), count: x.active_listing_count || 0}));
+  saveCurrentShop(); renderEtsySectionSelect(); return S.etsySections;
+}
+async function loadEtsySectionsUI(){
+  const out = document.getElementById('etsySectionResult'); if(!S.etsyApiKey || !S.etsyShopId){ out.innerHTML = '<span style="color:var(--red)">اول App API Key و Shop ID را وارد و «ذخیره» کن.</span>'; return; }
+  out.textContent = '⏳ در حال دریافت از Etsy...';
+  try{ const list = await etsyLoadSections(true); out.innerHTML = list.length ? '<span style="color:var(--green)">✓ ' + list.length + ' گروه پیدا شد: ' + list.map(x => escHtml(x.title)).join('، ') + '</span>' : '<span style="color:var(--red)">این فروشگاه هنوز گروهی ندارد — در Etsy → Shop Manager → Listings → Sections بساز.</span>'; }
+  catch(e){ out.innerHTML = '<span style="color:var(--red)">خطا: ' + escHtml(e.message) + '</span>'; }
+}
+// انتخاب گروه برای یک لیستینگ: گروه ثابتِ انتخاب‌شده در تنظیمات، وگرنه بهترین تطبیق نام، وگرنه پرسیدن از کاربر
+async function etsyResolveSection(item){
+  if(item._sectionDone) return item._sectionId || null; item._sectionDone = true;
+  let list = []; try{ list = await etsyLoadSections(false); }catch(e){ log('⚠ دریافت گروه‌های فروشگاه ممکن نشد: ' + e.message, 'warn'); }
+  if(!list.length){ log('ℹ️ این فروشگاه گروهی (Section) ندارد — پیش‌نویس بدون گروه ساخته می‌شود. گروه را در Etsy بساز و «دریافت گروه‌ها» را بزن.', 'warn'); return null; }
+  if(S.etsySectionId && list.some(x => x.id === String(S.etsySectionId))){ item._sectionId = String(S.etsySectionId); return item._sectionId; }
+  const words = t => String(t || '').toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length >= 3).map(w => w.replace(/(ies)$/, 'y').replace(/s$/, ''));
+  const hay = new Set(words([item.title, item.category, item.keyword, (item.tags || []).join(' ')].join(' ')));
+  let best = null, bs = 0; list.forEach(x => { const sc = words(x.title).filter(w => hay.has(w)).length; if(sc > bs){ bs = sc; best = x; } });
+  if(best){ item._sectionId = best.id; log('📂 گروه فروشگاه: «' + best.title + '» (بر اساس تطبیق با محصول)', 'info'); return best.id; }
+  if(list.length === 1){ item._sectionId = list[0].id; return list[0].id; }
+  const ans = prompt('گروه (Section) این محصول در فروشگاه کدام باشد؟ شماره را بنویس:\n' + list.map((x, i) => (i + 1) + ') ' + x.title).join('\n') + '\n\n(خالی/لغو = بدون گروه)', '1');
+  const n = parseInt(ans, 10); if(n >= 1 && n <= list.length){ item._sectionId = list[n - 1].id; return item._sectionId; }
+  log('⚠ گروهی انتخاب نشد — لیستینگ «بدون گروه» ساخته می‌شود.', 'warn'); return null;
+}
+// مقدار when_made: بازه‌ی سال جاری (نه made_to_order) تا Etsy تیک «This digital item is made to order» را نزند
+function etsyWhenMadeCandidates(){ const Y = new Date().getFullYear(); return [...new Set(['2020_' + Y, '2020_' + (Y - 1), '2020_2025'])]; }
+
 // ── ارسال پیشنهاد تأییدشده به Etsy به‌صورت «پیش‌نویس» (Draft) — منتشر نمی‌شه؛ فایل و عکس‌ها رو خودت اون‌جا اضافه می‌کنی
-async function etsyCreateDraftListing(item, _isRetry, _noMat){
+async function etsyCreateDraftListing(item, _isRetry, _noMat, _wmIdx, _noSec){
+  _wmIdx = _wmIdx || 0; const WM = etsyWhenMadeCandidates();
   if(!S.etsyApiKey||!S.etsyOAuthToken){
     alert('برای ارسال به Etsy، API Key و اتصال OAuth لازم است (تنظیمات → Etsy).'); nav('settings'); return false;
   }
@@ -5550,12 +5616,13 @@ async function etsyCreateDraftListing(item, _isRetry, _noMat){
     price,
     quantity:999,
     who_made:'i_did',
-    when_made:'made_to_order',
+    when_made:_wmIdx < WM.length ? WM[_wmIdx] : 'made_to_order',
     taxonomy_id:taxonomyId,
     type:'download',
     is_supply:false,
     tags
   };
+  if(!_noSec){ try{ const sid=await etsyResolveSection(item); if(sid) body.shop_section_id=parseInt(sid,10); }catch(e){ log('⚠ انتخاب گروه فروشگاه ممکن نشد: '+e.message,'warn'); } }
   const mats=sanitizeMaterials(item.materials,[]);
   if(mats.length && !_noMat){ body.materials=mats; log('ℹ️ متریال‌های ارسالی: '+mats.join(' | '),'info'); }
   log(`📤 در حال ساخت پیش‌نویس "${body.title}" روی Etsy...`,'info');
@@ -5580,19 +5647,30 @@ async function etsyCreateDraftListing(item, _isRetry, _noMat){
       item.etsyListingId=d.listing_id;
       item.etsyDraftAt=new Date().toLocaleDateString('fa-IR');
       saveCurrentShop();
+      log(`ℹ️ Etsy ثبت کرد: who_made=${d.who_made||'?'} · when_made=${d.when_made||'?'} · گروه=${d.shop_section_id||'بدون گروه'}`,'info');
+      if(d.when_made==='made_to_order') log('⚠ Etsy مقدار «made to order» ثبت کرد — در Etsy تیک «This digital item is made to order» را بردار.','warn');
       log(`✅ پیش‌نویس روی Etsy ساخته شد (ID: ${d.listing_id}) — Etsy → Shop Manager → Listings → Drafts رو ببین و فایل و عکس‌ها رو اضافه کن`,'ok');
       renderDailyProducts();
       return true;
     }
     if(!_isRetry && (d.error==='invalid_token'||d.error_description==='invalid_token')){
       log('🔄 توکن منقضی شده — در حال تمدید خودکار...','warn');
-      if(await refreshEtsyOAuthToken()) return await etsyCreateDraftListing(item,true,_noMat);
+      if(await refreshEtsyOAuthToken()) return await etsyCreateDraftListing(item,true,_noMat,_wmIdx,_noSec);
     }
     const errTxt=String(d.error||d.error_description||JSON.stringify(d));
     // اگر Etsy فقط فیلد متریال را رد کرد، لیستینگ را بدون متریال بساز (بعداً دستی در Etsy اضافه می‌شود)
     if(!_noMat && body.materials && /materials/i.test(errTxt)){
       log('⚠ Etsy متریال‌ها را نپذیرفت — پیش‌نویس بدون متریال ساخته می‌شود؛ متریال را بعداً در خود Etsy وارد کن.','warn');
-      return await etsyCreateDraftListing(item,true,true);
+      return await etsyCreateDraftListing(item,true,true,_wmIdx,_noSec);
+    }
+    // مقدار when_made رد شد: بازه‌ی بعدی (و در نهایت made_to_order) را امتحان کن
+    if(/when_made/i.test(errTxt) && _wmIdx < WM.length){
+      log('⚠ Etsy مقدار when_made='+body.when_made+' را نپذیرفت — مقدار بعدی امتحان می‌شود.','warn');
+      return await etsyCreateDraftListing(item,true,_noMat,_wmIdx+1,_noSec);
+    }
+    if(!_noSec && body.shop_section_id && /section/i.test(errTxt)){
+      log('⚠ Etsy گروه فروشگاه را نپذیرفت — بدون گروه ساخته می‌شود؛ گروه را در خود Etsy بزن.','warn');
+      return await etsyCreateDraftListing(item,true,_noMat,_wmIdx,true);
     }
     log('✗ خطای Etsy: '+errTxt.slice(0,300),'err');
     return false;
@@ -9944,8 +10022,10 @@ async function studioSendToEtsy(){
   p.price = price; save();
   const files = await fsEtsyPayload(p), imgs = IMG_SLOTS.filter(s => p.images[s.k]);
   const vidList = VID_SLOTS.filter(s => vids(p)[s.k]);
-  if(!confirm("«" + p.title + "»\nقیمت: $" + price + "\n" + files.length + " فایل، " + imgs.length + " تصویر و " + vidList.length + " ویدیو به‌صورت پیش‌نویس (Draft) روی Etsy ساخته بشه؟\n(منتشر نمی‌شود؛ خودت در Etsy بررسی و Publish می‌کنی.)")) return;
-  const item = {title: p.title, tags: tagList(p), description: p.description, price, materials: matList(p)};
+  const nameFix = etsyFixFileNames(files, slug(p.name));
+  if(nameFix.length) log("✂ نام " + nameFix.length + " فایل برای Etsy کوتاه/اصلاح شد: " + nameFix.slice(0, 5).join(" | "), "warn");
+  if(!confirm("«" + p.title + "»\nقیمت: $" + price + "\n" + files.length + " فایل، " + imgs.length + " تصویر و " + vidList.length + " ویدیو به‌صورت پیش‌نویس (Draft) روی Etsy ساخته بشه؟" + (nameFix.length ? "\n\n✂ نام " + nameFix.length + " فایل بلند یا نامناسب بود و کوتاه شد:\n" + nameFix.slice(0, 4).join("\n") : "") + "\n(منتشر نمی‌شود؛ خودت در Etsy بررسی و Publish می‌کنی.)")) return;
+  const item = {title: p.title, tags: tagList(p), description: p.description, price, materials: matList(p), category: p.category};
   toast("⏳ در حال ساخت پیش‌نویس روی Etsy...");
   const ok = await etsyCreateDraftListing(item);
   if(!ok) return toast("ساخت پیش‌نویس ناموفق بود — جزئیات را در «لاگ فعالیت» ببین.");
