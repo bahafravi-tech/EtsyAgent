@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.37.0 -->
+<!-- APP_VERSION: 1.37.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -543,6 +543,10 @@ margin:0;background:var(--paper);color:var(--ink);
 #page-studio button.ghost{background:transparent;color:var(--ink);border-color:var(--rule)}
 #page-studio button.ghost:hover{border-color:var(--ink)}
 #page-studio button.cut{background:var(--cut);border-color:var(--cut)}
+#page-studio label.ghost{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--rule);background:transparent;color:var(--ink);border-radius:6px;padding:8px 14px;cursor:pointer;font-weight:600;font-size:13px;line-height:1.4}
+#page-studio label.ghost:hover{border-color:var(--ink)}
+#page-studio label.ghost:focus-within{outline:2px solid var(--crease);outline-offset:2px}
+#page-studio label.ghost.mini{padding:5px 9px;font-size:12px;font-weight:500}
 #page-studio button.mini{padding:5px 9px;font-size:12px;font-weight:500}
 #page-studio button[disabled]{opacity:.4;cursor:not-allowed}
 #page-studio .shell{display:grid;grid-template-columns:270px 1fr;gap:0;min-height:calc(100vh - 57px)}
@@ -689,7 +693,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v156</div>
+        <div class="logo-badge">v157</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -7325,8 +7329,8 @@ const FILE_SLOTS = [
   {k:"svg",  t:"SVG",         h:"برش اصلی"},
   {k:"dxf",  t:"DXF",         h:"برای لیزر"},
   {k:"pdf",  t:"PDF",         h:"چاپ و پیش‌نمایش"},
-  {k:"ai",   t:"AI",          h:"نسخه ویرایش‌پذیر"},
-  {k:"studio",t:"Studio3",    h:"سیلوئت"},
+  {k:"ai",   t:"AI",          h:"Adobe Illustrator — نسخه ویرایش‌پذیر"},
+  {k:"studio",t:"Studio3",    h:"Silhouette Studio (.studio3) — برای دستگاه‌های Silhouette"},
   {k:"guide",t:"Instructions",h:"راهنمای مونتاژ"}
 ];
 const IMG_SLOTS = [
