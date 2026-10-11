@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.39.0 -->
+<!-- APP_VERSION: 1.40.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -693,7 +693,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v161</div>
+        <div class="logo-badge">v162</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1788,6 +1788,19 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
       <div class="block">
         <h3>فایل‌های داخل بسته</h3>
         <p class="help">فایل واقعی را انتخاب کنید تا هنگام ساخت بسته، همین‌ها داخل ZIP نهایی قرار بگیرند. کادر خط‌چین یعنی هنوز فایلی انتخاب نشده.</p>
+        <div id="st-canvaBox" style="border:1px dashed var(--rule);border-radius:8px;padding:10px;margin-bottom:10px">
+          <b style="font-size:13px">🎨 Canva (اختیاری)</b>
+          <label style="display:block;font-size:12.5px;margin-top:6px"><input type="checkbox" id="st-canvaOn"> فایل در Canva هم قرار گیرد — یک فایل «لینک تمپلیت Canva» برای مشتری ساخته شود و همراه محصول ارسال شود</label>
+          <div id="st-canvaPane" style="display:none;margin-top:8px">
+            <p class="help">ساخت لینک تمپلیت فقط داخل خود Canva ممکن است (برنامه‌ها نمی‌توانند آن را بسازند)، پس سه قدم دستی و کوتاه دارد: ۱) «فایل آماده‌ی ورود به Canva» را دانلود کن (یا SVG محصول را مستقیم در Canva آپلود کن). ۲) در canva.com وارد حساب خودت شو ← Create a design ← Import file، طرح را آماده کن، بعد Share ← «Template link» (اگر نبود داخل More) را بزن و لینک را کپی کن. ۳) لینک را اینجا بچسبان و «ساخت فایل لینک» را بزن؛ یک PDF با لینک قابل‌کلیک در جایگاه «Canva-Link» می‌نشیند و همراه محصول به Etsy می‌رود.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <button type="button" class="ghost mini" id="st-canvaImportBtn">⬇ فایل آماده‌ی ورود به Canva (PDF)</button>
+              <input type="text" id="st-canvaLink" dir="ltr" placeholder="https://www.canva.com/design/…/view?…  یا  https://canva.link/…" style="flex:1;min-width:240px">
+              <button type="button" id="st-canvaMake">📘 ساخت فایل لینک برای مشتری</button>
+            </div>
+            <div id="st-canvaInfo" class="help" style="margin-top:6px"></div>
+          </div>
+        </div>
         <div class="slots" id="st-fileSlots"></div>
       </div>
     </section>
@@ -7409,14 +7422,15 @@ const FILE_SLOTS = [
   {k:"pdf",  t:"PDF",         h:"چاپ و پیش‌نمایش"},
   {k:"ai",   t:"AI",          h:"Adobe Illustrator — نسخه ویرایش‌پذیر"},
   {k:"studio",t:"Studio3",    h:"Silhouette Studio (.studio3) — برای دستگاه‌های Silhouette"},
-  {k:"guide",t:"Instructions",h:"راهنمای مونتاژ"}
+  {k:"guide",t:"Instructions",h:"راهنمای مونتاژ"},
+  {k:"canva",t:"Canva-Link",h:"لینک تمپلیت Canva برای مشتری (PDF)"}
 ];
 const IMG_SLOTS = [
   {k:"hero",     t:"تصویر اصلی",        f:"01-Hero"},
   {k:"dims",     t:"ابعاد",             f:"02-Dimensions"},
   {k:"template", t:"الگوی برش",         f:"03-Template"},
   {k:"formats",  t:"فرمت فایل‌ها",       f:"04-Formats"},
-  {k:"machines", t:"دستگاه‌های سازگار",  f:"05-Machines"},
+  {k:"cricut",   t:"محصول در محیط Cricut",  f:"05-Cricut-Design-Space"},
   {k:"included", t:"محتویات بسته",       f:"06-Included"},
   {k:"finished", t:"محصول ساخته‌شده",    f:"07-Finished"},
   {k:"ideas",    t:"ایده‌های کاربرد",     f:"08-Ideas"},
@@ -7425,10 +7439,10 @@ const IMG_SLOTS = [
   {k:"box3d",      t:"جعبه ۳بعدی",          f:"11-3D-Box"},
   {k:"box3d_open", t:"۳بعدی باز + درب",     f:"12-3D-Open"},
   {k:"colors",     t:"رنگ‌بندی‌ها",          f:"13-Colors"},
-  {k:"occasions",  t:"مناسبت‌ها",            f:"14-Occasions"},
+  {k:"canva",     t:"محصول در محیط Canva",    f:"14-Canva-Template"},
   {k:"materials",  t:"متریال مناسب",        f:"15-Materials"},
   {k:"download",   t:"روش دانلود",          f:"16-Download"},
-  {k:"software",   t:"نرم‌افزارها",          f:"17-Software"},
+  {k:"silhouette", t:"محصول در محیط Silhouette", f:"17-Silhouette-Studio"},
   {k:"faq",        t:"سؤالات رایج",         f:"18-FAQ"},
   {k:"sizes",      t:"تغییر اندازه",        f:"19-Sizes"},
   {k:"thanks",     t:"تشکر",                f:"20-Thanks"}
@@ -7596,6 +7610,9 @@ const ALT_DEFAULTS = {
   template:   "{KW} cutting template with cut lines and fold lines, SVG DXF PDF files",
   formats:    "Included file formats for {NAME}: SVG, DXF, PDF and instructions — {TAGS}",
   machines:   "{NAME} template compatible with Cricut, Silhouette, Glowforge and laser cutters",
+  cricut:     "{NAME} SVG cut file opened in Cricut Design Space with cut and score lines — {TAGS}",
+  silhouette: "{NAME} DXF and SVG cut file opened in Silhouette Studio — {TAGS}",
+  canva:      "{NAME} editable template in Canva with template link included — {TAGS}",
   included:   "What is included with {NAME}: digital cut files and assembly instructions, instant download",
   finished:   "{NAME} finished size {W}x{H}x{D} mm made from cardstock — {TAGS}",
   ideas:      "Ideas for the {NAME}: wedding favors, party gifts, small business packaging, holiday gifts",
@@ -7771,6 +7788,7 @@ async function fsAdd(slot, files){
 async function fsRemove(slot, idx){ const p = cur(), list = fsAll(p, slot); if(!list[idx]) return; await blobDel(list[idx].key); list.splice(idx, 1); fsSet(p, slot, list); save(); renderAll(); }
 const fsDelEntry = async e => { if(!e) return; await blobDel(e.key); for(const m of (e.more || [])) await blobDel(m.key); };
 function renderFiles(){
+  if(typeof canvaRefresh === "function") canvaRefresh();
   const p = cur(), box = $("st-fileSlots"); box.innerHTML = "";
   FILE_SLOTS.forEach(s => {
     const list = fsAll(p, s.k), d = document.createElement("div");
@@ -7873,7 +7891,7 @@ async function dropSlot(kind, slot){
 
 /* ===================== امتیاز و چک‌لیست ===================== */
 function score(p){
-  const f = FILE_SLOTS.filter(s => p.files[s.k]).length;
+  const f = FILE_SLOTS.filter(s => s.k !== "canva" && p.files[s.k]).length;
   const i = IMG_SLOTS.filter(s => p.images[s.k]).length;
   const t = tagList(p), a = altList(p);
   const seo = [
@@ -7884,7 +7902,7 @@ function score(p){
     a.length >= 10
   ];
   const seoDone = seo.filter(Boolean).length;
-  const pct = Math.round((f/FILE_SLOTS.length*30 + Math.min(i,10)/10*35 + seoDone/5*35));
+  const pct = Math.round((f/6*30 + Math.min(i,10)/10*35 + seoDone/5*35));
   return {f, i, seo, seoDone, pct};
 }
 function renderHero(){
@@ -7896,7 +7914,7 @@ function renderHero(){
   st.className = "pill" + (p.status === "ready" ? " ready" : p.status === "published" ? " pub" : "");
   $("st-hMaster").hidden = !p.master;
 
-  seg("sgFiles", s.f, FILE_SLOTS.length, fa(s.f) + "/" + fa(6));
+  seg("sgFiles", s.f, 6, fa(s.f) + "/" + fa(6));
   seg("sgImgs",  Math.min(s.i,10), 10,  fa(s.i) + "/" + fa(IMG_SLOTS.length));
   seg("sgSeo",   s.seoDone, 5,           fa(s.seoDone) + "/" + fa(5));
   seg("sgAll",   s.pct, 100,             fa(s.pct) + "٪");
@@ -7924,7 +7942,7 @@ function count(id, n, max, exact){
 function renderChecks(){
   const p = cur(), s = score(p), t = tagList(p);
   const items = [
-    ["شش فایل محصول", s.f === FILE_SLOTS.length, fa(s.f) + " فایل انتخاب شده"],
+    ["شش فایل محصول", s.f === 6, fa(s.f) + " فایل انتخاب شده"],
     ["حداقل ده تصویر لیستینگ (تا ۲۰)", s.i >= 10, fa(s.i) + " تصویر انتخاب شده"],
     ["عنوان زیر ۱۴۰ کاراکتر", !!p.title && p.title.length <= 140, fa(p.title.length) + " کاراکتر"],
     ["سیزده تگ معتبر", t.length === 13 && t.every(x => x.length <= 20), fa(t.length) + " تگ"],
@@ -8454,6 +8472,25 @@ function giBox3dSimple(c,p,tw,th,cx,cy,hex,txtColor,scale){
   const sh = giShape(p, scale || 1), o = g3FitV(sh.verts(), tw, th, cx, cy, -0.62, 0.52);
   sh.draw(c, o, hex, txtColor, null);
 }
+// ---- ماکت محیط نرم‌افزارها (تصویر شبیه‌سازی‌شده؛ نه اسکرین‌شات واقعی) ----
+function giMockWin(c, x, y, w, h, bar, barH){
+  c.save(); c.shadowColor = "rgba(0,0,0,0.24)"; c.shadowBlur = 50; c.shadowOffsetY = 18; c.fillStyle = "#ffffff"; giRR(c,x,y,w,h,28); c.fill(); c.restore();
+  c.save(); giRR(c,x,y,w,h,28); c.clip(); c.fillStyle = bar; c.fillRect(x,y,w,barH); c.restore();
+  ["#ff5f57","#febc2e","#28c840"].forEach((col,i) => { c.fillStyle = col; c.beginPath(); c.arc(x+46+i*44, y+barH/2, 12, 0, Math.PI*2); c.fill(); });
+}
+function giMockArt(c, p, svgImg, x, y, w, h){
+  if(svgImg){ const iw = svgImg.naturalWidth||svgImg.width||800, ih = svgImg.naturalHeight||svgImg.height||600, k = Math.min(w/iw, h/ih), bw = iw*k, bh = ih*k, bx = x+(w-bw)/2, by = y+(h-bh)/2; c.drawImage(svgImg, bx, by, bw, bh); return {x:bx, y:by, w:bw, h:bh}; }
+  const bw = w*0.8, bh = Math.min(h*0.8, bw*Math.max(.35, Math.min(1, (p.h||70)/(p.w||100)))), bx = x+(w-bw)/2, by = y+(h-bh)/2;
+  c.strokeStyle = "#d92d20"; c.lineWidth = 6; c.setLineDash([]); giRR(c,bx,by,bw,bh,26); c.stroke();
+  c.strokeStyle = "#2563eb"; c.lineWidth = 5; c.setLineDash([24,16]); [0.22,0.78].forEach(f => { c.beginPath(); c.moveTo(bx+bw*f,by); c.lineTo(bx+bw*f,by+bh); c.stroke(); }); c.beginPath(); c.moveTo(bx,by+bh/2); c.lineTo(bx+bw,by+bh/2); c.stroke(); c.setLineDash([]);
+  return {x:bx, y:by, w:bw, h:bh};
+}
+function giMockSel(c, r, col){
+  c.save(); c.strokeStyle = col; c.lineWidth = 4; c.setLineDash([16,10]); c.strokeRect(r.x-14, r.y-14, r.w+28, r.h+28); c.setLineDash([]);
+  [[r.x-14,r.y-14],[r.x+r.w+14,r.y-14],[r.x-14,r.y+r.h+14],[r.x+r.w+14,r.y+r.h+14]].forEach(q => { c.fillStyle = "#fff"; c.fillRect(q[0]-12,q[1]-12,24,24); c.strokeRect(q[0]-12,q[1]-12,24,24); }); c.restore();
+}
+function giMockSize(p, svgImg){ const sw = svgImg && svgImg.sheet ? svgImg.sheet.w : p.w*2.2, sh = svgImg && svgImg.sheet ? svgImg.sheet.h : p.h*1.4; return {w: sw, h: sh}; }
+function giMockGrid(c, x, y, w, h, step, col){ c.save(); c.beginPath(); c.rect(x,y,w,h); c.clip(); c.strokeStyle = col; c.lineWidth = 2; for(let gx = x; gx < x+w; gx += step){ c.beginPath(); c.moveTo(gx,y); c.lineTo(gx,y+h); c.stroke(); } for(let gy = y; gy < y+h; gy += step){ c.beginPath(); c.moveTo(x,gy); c.lineTo(x+w,gy); c.stroke(); } c.restore(); }
 const GI_DRAW = {
   hero(c,p,L,svgImg){
     let mode = GI_OPT.hero || "combo"; const pillF = "800 64px " + GI_FONT; if((mode === "combo" || mode === "3d") && !giHas3d(p)) mode = "split";
@@ -8613,6 +8650,57 @@ const GI_DRAW = {
       c.fillStyle = GI.ink; c.font = "800 96px " + GI_FONT; c.fillText(s[1],x+cw/2,1010);
       c.fillStyle = GI.mute; c.font = "600 62px " + GI_FONT; giWrap(c,s[2],x+cw/2,1100,cw-90,78,4,"center"); });
   },
+  cricut(c,p,L,svgImg){
+    const x = 160, y = 560, w = GI.W-320, h = 1030, bar = 100, left = 190, right = 470, sz = giMockSize(p, svgImg), inch = v => (v/25.4).toFixed(1) + " in";
+    giMockWin(c,x,y,w,h,"#1d4d44",bar);
+    c.fillStyle = "#ffffff"; c.font = "700 40px " + GI_FONT; c.textAlign = "left"; c.fillText("Canvas", x+210, y+bar/2+14); c.font = "500 34px " + GI_FONT; c.fillStyle = "#cfe5df"; c.fillText("Untitled project", x+400, y+bar/2+12);
+    c.fillStyle = "#34a853"; giRR(c, x+w-330, y+20, 290, 60, 30); c.fill(); c.fillStyle = "#fff"; c.font = "800 36px " + GI_FONT; c.textAlign = "center"; c.fillText("Make It", x+w-185, y+60);
+    c.fillStyle = "#f1f4f3"; c.fillRect(x, y+bar, left, h-bar);
+    ["New","Templates","Projects","Images","Text","Shapes","Upload"].forEach((t,i) => { const ty = y+bar+60+i*118; c.strokeStyle = "#51615c"; c.lineWidth = 4; giRR(c, x+left/2-26, ty-28, 52, 44, 10); c.stroke(); c.fillStyle = "#51615c"; c.font = "600 30px " + GI_FONT; c.textAlign = "center"; c.fillText(t, x+left/2, ty+48); });
+    const cx0 = x+left, cw0 = w-left-right, cy0 = y+bar;
+    c.fillStyle = "#e6ebe9"; c.fillRect(cx0, cy0, cw0, h-bar); c.fillStyle = "#ffffff"; c.fillRect(cx0+50, cy0+50, cw0-100, h-bar-100); giMockGrid(c, cx0+50, cy0+50, cw0-100, h-bar-100, 60, "#e8eeec");
+    const r = giMockArt(c,p,svgImg, cx0+110, cy0+110, cw0-220, h-bar-220); giMockSel(c, r, "#1d9a82");
+    c.fillStyle = "#51615c"; c.font = "600 32px " + GI_FONT; c.textAlign = "center"; c.fillText(inch(sz.w) + "  ×  " + inch(sz.h), cx0+cw0/2, cy0+h-bar-14);
+    const rx = x+w-right; c.fillStyle = "#f7f9f8"; c.fillRect(rx, y+bar, right, h-bar); c.fillStyle = "#d9e0dd"; c.fillRect(rx, y+bar, 3, h-bar);
+    c.fillStyle = "#1e2a32"; c.font = "800 38px " + GI_FONT; c.textAlign = "left"; c.fillText("Layers", rx+36, y+bar+66);
+    [["#d92d20","Cut line"],["#2563eb","Score line"]].forEach((it,i) => { const ry = y+bar+110+i*104; c.fillStyle = "#ffffff"; giRR(c, rx+30, ry, right-60, 84, 14); c.fill(); c.strokeStyle = "#dfe6e3"; c.lineWidth = 3; c.stroke(); c.fillStyle = it[0]; c.beginPath(); c.arc(rx+80, ry+42, 18, 0, Math.PI*2); c.fill(); c.fillStyle = "#1e2a32"; c.font = "600 34px " + GI_FONT; c.fillText(it[1], rx+120, ry+54); });
+    c.fillStyle = "#51615c"; c.font = "700 32px " + GI_FONT; c.fillText("Operation", rx+36, y+bar+390);
+    ["Cut","Score"].forEach((t,i) => { c.fillStyle = i ? "#ffffff" : "#1d9a82"; giRR(c, rx+36+i*190, y+bar+412, 170, 66, 33); c.fill(); c.strokeStyle = "#1d9a82"; c.lineWidth = 3; c.stroke(); c.fillStyle = i ? "#1d9a82" : "#ffffff"; c.textAlign = "center"; c.font = "700 32px " + GI_FONT; c.fillText(t, rx+36+i*190+85, y+bar+456); c.textAlign = "left"; });
+  },
+  silhouette(c,p,L,svgImg){
+    const x = 160, y = 560, w = GI.W-320, h = 1030, bar = 100, left = 130, right = 480, sz = giMockSize(p, svgImg);
+    giMockWin(c,x,y,w,h,"#2f3a4a",bar);
+    c.fillStyle = "#dfe6ee"; c.font = "500 34px " + GI_FONT; c.textAlign = "left"; ["File","Edit","View","Panels","Window","Help"].forEach((t,i) => c.fillText(t, x+210+i*150, y+bar/2+12));
+    ["Design","Page Setup","Send"].forEach((t,i) => { const bx = x+w-780+i*250; c.fillStyle = i === 2 ? "#e8590c" : "#44546a"; giRR(c,bx,y+20,230,60,12); c.fill(); c.fillStyle = "#fff"; c.font = "700 32px " + GI_FONT; c.textAlign = "center"; c.fillText(t, bx+115, y+60); });
+    c.fillStyle = "#eef1f5"; c.fillRect(x, y+bar, left, h-bar);
+    for(let i = 0; i < 7; i++){ const ty = y+bar+60+i*118; c.strokeStyle = "#5b6676"; c.lineWidth = 5; if(i % 3 === 0){ c.strokeRect(x+left/2-26, ty-26, 52, 52); } else if(i % 3 === 1){ c.beginPath(); c.arc(x+left/2, ty, 28, 0, Math.PI*2); c.stroke(); } else { c.beginPath(); c.moveTo(x+left/2-28, ty+24); c.lineTo(x+left/2+28, ty-24); c.stroke(); } }
+    const cx0 = x+left, cw0 = w-left-right, cy0 = y+bar;
+    c.fillStyle = "#c9ced6"; c.fillRect(cx0, cy0, cw0, h-bar); c.fillStyle = "#ffffff"; c.fillRect(cx0+60, cy0+50, cw0-120, h-bar-100); c.strokeStyle = "#b5bcc7"; c.lineWidth = 3; c.strokeRect(cx0+60, cy0+50, cw0-120, h-bar-100);
+    const r = giMockArt(c,p,svgImg, cx0+120, cy0+110, cw0-240, h-bar-220); giMockSel(c, r, "#e8590c");
+    c.fillStyle = "#5b6676"; c.font = "600 32px " + GI_FONT; c.textAlign = "center"; c.fillText(Math.round(sz.w) + " mm  ×  " + Math.round(sz.h) + " mm", cx0+cw0/2, cy0+h-bar-12);
+    const rx = x+w-right; c.fillStyle = "#f6f8fa"; c.fillRect(rx, y+bar, right, h-bar); c.fillStyle = "#d3d9e0"; c.fillRect(rx, y+bar, 3, h-bar);
+    c.fillStyle = "#1e2a32"; c.font = "800 38px " + GI_FONT; c.textAlign = "left"; c.fillText("Send", rx+36, y+bar+66);
+    [["Material","Cardstock"],["Action","Cut"],["Fold lines","Score"]].forEach((it,i) => { const ry = y+bar+110+i*132; c.fillStyle = "#5b6676"; c.font = "600 30px " + GI_FONT; c.fillText(it[0], rx+36, ry+30); c.fillStyle = "#ffffff"; giRR(c, rx+36, ry+44, right-72, 62, 12); c.fill(); c.strokeStyle = "#c9d0d8"; c.lineWidth = 3; c.stroke(); c.fillStyle = "#1e2a32"; c.font = "600 34px " + GI_FONT; c.fillText(it[1], rx+60, ry+86); c.fillStyle = "#5b6676"; c.fillText("▾", rx+right-90, ry+86); });
+    c.fillStyle = "#e8590c"; giRR(c, rx+36, y+h-150, right-72, 90, 18); c.fill(); c.fillStyle = "#fff"; c.font = "800 40px " + GI_FONT; c.textAlign = "center"; c.fillText("Send to Silhouette", rx+right/2, y+h-92);
+  },
+  canva(c,p,L,svgImg){
+    const x = 160, y = 560, w = GI.W-320, h = 1030, bar = 100, left = 200;
+    giMockWin(c,x,y,w,h,"#6d28d9",bar);
+    c.fillStyle = "#ffffff"; c.font = "700 38px " + GI_FONT; c.textAlign = "center"; c.fillText("Untitled design", x+w/2, y+bar/2+13);
+    c.fillStyle = "#ffffff"; giRR(c, x+w-300, y+20, 260, 60, 30); c.fill(); c.fillStyle = "#6d28d9"; c.font = "800 34px " + GI_FONT; c.fillText("Share", x+w-170, y+60);
+    c.fillStyle = "#141a21"; c.fillRect(x, y+bar, left, h-bar);
+    ["Design","Elements","Text","Brand","Uploads"].forEach((t,i) => { const ty = y+bar+80+i*150; c.strokeStyle = i === 4 ? "#a78bfa" : "#9aa5b1"; c.lineWidth = 5; giRR(c, x+left/2-30, ty-34, 60, 52, 12); c.stroke(); c.fillStyle = i === 4 ? "#c4b5fd" : "#cbd5df"; c.font = "600 30px " + GI_FONT; c.textAlign = "center"; c.fillText(t, x+left/2, ty+54); });
+    const cx0 = x+left, cw0 = w-left, cy0 = y+bar;
+    c.fillStyle = "#ebecf2"; c.fillRect(cx0, cy0, cw0, h-bar);
+    const pw = cw0-340, ph = h-bar-230, px = cx0+170, py = cy0+120; c.save(); c.shadowColor = "rgba(0,0,0,0.18)"; c.shadowBlur = 30; c.shadowOffsetY = 8; c.fillStyle = "#ffffff"; c.fillRect(px,py,pw,ph); c.restore();
+    const r = giMockArt(c,p,svgImg, px+60, py+60, pw-120, ph-120); giMockSel(c, r, "#7c3aed");
+    const tbw = 820, tbx = r.x+r.w/2-tbw/2, tby = Math.max(cy0+22, r.y-110); c.save(); c.shadowColor = "rgba(0,0,0,0.2)"; c.shadowBlur = 22; c.fillStyle = "#ffffff"; giRR(c, tbx, tby, tbw, 70, 16); c.fill(); c.restore();
+    ["#7c3aed","#ef4444","#f59e0b","#10b981"].forEach((col,i) => { c.fillStyle = col; c.beginPath(); c.arc(tbx+50+i*56, tby+35, 17, 0, Math.PI*2); c.fill(); });
+    c.fillStyle = "#374151"; c.font = "600 30px " + GI_FONT; c.textAlign = "left"; ["Position","Effects","Animate"].forEach((t,i) => c.fillText(t, tbx+290+i*180, tby+46));
+    const tag = p.canvaOn ? "Template link included" : "Fully editable design"; c.font = "800 34px " + GI_FONT; const tw = c.measureText(tag).width + 70;
+    c.fillStyle = "#7c3aed"; giRR(c, x+w-tw-50, cy0+h-bar-96, tw, 64, 32); c.fill(); c.fillStyle = "#fff"; c.textAlign = "center"; c.fillText(tag, x+w-tw/2-50, cy0+h-bar-52);
+    c.fillStyle = "#6b7280"; c.font = "600 30px " + GI_FONT; c.textAlign = "left"; c.fillText("Page 1 / 1", cx0+40, cy0+h-bar-52);
+  },
   software(c){
     const items = ["Cricut Design Space","Silhouette Studio","Inkscape","Adobe Illustrator","LightBurn","Glowforge"];
     let y = 600; items.forEach((m,i) => { c.font = "800 80px " + GI_FONT; const w = c.measureText(m).width + 90; giPill(c,m,(GI.W-w)/2,y,"800 80px " + GI_FONT,giOnTeal(),GI.teal); y += 170; });
@@ -8700,7 +8788,7 @@ function stOpenViewer(items, index){
 }
 const GI_TITLES = {
   hero:null, dims:["Exact Dimensions","Finished size in mm"], template:["Cutting Template","Ready-to-cut layout"], formats:["File Formats Included","One download, every format"],
-  machines:["Compatible Machines","Cricut • Silhouette • Laser"], included:["What's Included",""], finished:["Size & Material",""], ideas:["Perfect For",""], assembly:["Easy Assembly","4 simple steps"], promo:null,
+  machines:["Compatible Machines","Cricut • Silhouette • Laser"], cricut:["Works in Cricut Design Space","Upload the SVG, then press Make It"], silhouette:["Works in Silhouette Studio","Open the DXF or SVG and send to cut"], canva:["Customize in Canva","Edit the artwork online — template link included"], included:["What's Included",""], finished:["Size & Material",""], ideas:["Perfect For",""], assembly:["Easy Assembly","4 simple steps"], promo:null,
   box3d:["3D Preview","How it looks when assembled"], box3d_open:["Open Box View","See the inside in 3D"], colors:["Any Color You Like","Cut from any cardstock"], occasions:["Perfect For Every Occasion",""],
   materials:["Works With Many Materials",""], download:["How It Works","Instant download in 3 steps"], software:["Compatible Software",""], faq:["Questions?",""], sizes:["Resize Freely","Small • Medium • Large"], thanks:null
 };
@@ -9539,6 +9627,7 @@ class PdfDoc{
     lines.forEach((ln, i) => { const w = pdfW(ln, size, bold), xx = o.align === "center" ? x - w/2 : o.align === "right" ? x - w : x;
       this.cur.ops.push("BT /" + font + " " + size + " Tf " + this.hex(o.color || "#000000") + " rg " + xx.toFixed(2) + " " + (this.H - y - i*lh).toFixed(2) + " Td (" + pdfStr(ln) + ") Tj ET"); });
     return y + lines.length*lh; }
+  link(x, y, w, h, url){ (this.cur.links = this.cur.links || []).push({x, yb: this.H - y - h, w, h, url}); }
   image(idx, x, y, w, h){ this.cur.imgs.add(idx); this.cur.ops.push("q " + w.toFixed(2) + " 0 0 " + h.toFixed(2) + " " + x.toFixed(2) + " " + (this.H-y-h).toFixed(2) + " cm /Im" + idx + " Do Q"); }
   build(){
     const enc = new TextEncoder(), parts = []; let off = 0; const offs = [];
@@ -9554,7 +9643,7 @@ class PdfDoc{
     this.images.forEach((im, i) => { const id = 6 + i; offs[id] = off; push(id + " 0 obj\n<< /Type /XObject /Subtype /Image /Width " + im.w + " /Height " + im.h + " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " + im.bytes.length + " >>\nstream\n"); push(im.bytes); push("\nendstream\nendobj\n"); });
     this.pages.forEach((pg, i) => { const pid = pageStart + i*2, cid = pid + 1, stream = pg.ops.join("\n");
       const xo = [...pg.imgs].map(k => "/Im" + k + " " + (6 + k) + " 0 R").join(" ");
-      obj(pid, "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + this.W.toFixed(2) + " " + this.H.toFixed(2) + "] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >>" + (xo ? " /XObject << " + xo + " >>" : "") + " >> /Contents " + cid + " 0 R >>");
+      obj(pid, "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + this.W.toFixed(2) + " " + this.H.toFixed(2) + "] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >>" + (xo ? " /XObject << " + xo + " >>" : "") + " >>" + (pg.links ? " /Annots [ " + pg.links.map(l => "<< /Type /Annot /Subtype /Link /Rect [" + [l.x, l.yb, l.x + l.w, l.yb + l.h].map(v => v.toFixed(2)).join(" ") + "] /Border [0 0 0] /A << /S /URI /URI (" + pdfStr(l.url) + ") >> >>").join(" ") + " ]" : "") + " /Contents " + cid + " 0 R >>");
       obj(cid, "<< /Length " + enc.encode(stream).length + " >>\nstream\n" + stream + "\nendstream"); });
     const xr = off; let x = "xref\n0 " + total + "\n0000000000 65535 f \n"; for(let i = 1; i < total; i++) x += String(offs[i]).padStart(10,"0") + " 00000 n \n";
     push(x + "trailer\n<< /Size " + total + " /Root 1 0 R >>\nstartxref\n" + xr + "\n%%EOF");
@@ -9995,6 +10084,57 @@ async function zipImport(file){
 if($("st-zipFile")) $("st-zipFile").onchange = e => { const f = e.target.files[0]; e.target.value = ""; zipImport(f); };
 if($("st-pdfFile")) $("st-pdfFile").onchange = e => { const f = e.target.files[0]; e.target.value = ""; pdfFillProduct(f); };
 
+/* ---------- Canva: فایل لینک تمپلیت برای مشتری و فایل آماده‌ی ورود ---------- */
+const canvaOk = u => /^https:\/\/(www\.)?canva\.com\/\S+$/i.test(u) || /^https:\/\/canva\.link\/\S+$/i.test(u);
+const latin1 = t => String(t || "").replace(/[^\x20-\x7E]/g, "").replace(/\s+/g, " ").trim();
+async function canvaLinkPdf(p){
+  const link = String(p.canvaLink || "").trim(); if(!canvaOk(link)) throw new Error("لینک باید با https://www.canva.com/ یا https://canva.link/ شروع شود");
+  const gs = giGet(); giApply(gs);
+  const pdf = new PdfDoc(), W = pdf.W, H = pdf.H, acc = GI.acc, teal = GI.teal, onAcc = giOnAcc(), onTeal = giOnTeal(), shop = latin1(giShopName()) || "";
+  const name = latin1((p.dzSpec && p.dzSpec.name) || p.title || p.name) || "your design";
+  pdf.newPage(); pdf.rect(0, 0, W, H, {fill: "#ffffff"}); pdf.rect(0, 0, W, 170, {fill: acc});
+  pdf.text("YOUR CANVA TEMPLATE", W/2, 88, {size: 30, font: "F2", color: onAcc, align: "center"});
+  pdf.text(name, W/2, 124, {size: 13, color: onAcc, align: "center", width: W-120, lh: 17});
+  let y = pdf.text("Thank you for your purchase! Click the button below to open your editable template in Canva.", 60, 230, {size: 14, color: "#1e2a32", width: W-120, lh: 20});
+  const by = y + 24; pdf.rect(80, by, W-160, 74, {fill: teal, r: 16}); pdf.text("Open your Canva template", W/2, by + 46, {size: 21, font: "F2", color: onTeal, align: "center"}); pdf.link(80, by, W-160, 74, link);
+  pdf.text("Or copy this link into your browser:", 60, by + 112, {size: 11, color: "#5b6770"});
+  y = pdf.text(link, 60, by + 132, {size: 9, color: "#1d4ed8", width: W-120, lh: 12}); pdf.link(60, by + 120, W-120, Math.max(16, y - (by + 120)), link);
+  y += 28; pdf.text("HOW TO USE", 60, y, {size: 14, font: "F2", color: acc}); y += 24;
+  [["1","Click the button (or paste the link into your browser)."],["2","Log in or sign up to Canva - a free account works."],["3","Click \"Use template\" - a personal copy opens in your Canva account."],["4","Edit text, colors and images, then download your design (PDF or PNG) to print or cut."]].forEach(st => {
+    pdf.circle(76, y - 4, 11, acc); pdf.text(st[0], 76, y, {size: 11, font: "F2", color: onAcc, align: "center"}); y = pdf.text(st[1], 100, y, {size: 12.5, color: "#1e2a32", width: W-160, lh: 17}) + 14; });
+  y += 10; pdf.rect(60, y, W-120, 92, {fill: "#f4f6f8", r: 12});
+  pdf.text("Good to know", 80, y + 28, {size: 12, font: "F2", color: "#1e2a32"});
+  pdf.text("The template opens as your own copy, so the original is never changed. Please do not share or resell the link - it is for your personal use only.", 80, y + 48, {size: 11, color: "#5b6770", width: W-160, lh: 15});
+  pdf.text(shop ? "Thank you for shopping at " + shop : "Thank you!", W/2, H - 50, {size: 12, font: "F2", color: "#5b6770", align: "center"});
+  return pdf.build();
+}
+async function canvaImportPdf(p){
+  const im = await giSvgImage(p); if(!im) throw new Error("اول فایل SVG یا پیش‌نمایش طرح محصول لازم است (از «طراحی با Claude» یا بخش فایل‌ها)");
+  const iw = im.naturalWidth || im.width || 800, ih = im.naturalHeight || im.height || 600, k = Math.min(3200/Math.max(iw, ih), 6), cw = Math.round(iw*k), ch = Math.round(ih*k);
+  const cv = document.createElement("canvas"); cv.width = cw; cv.height = ch; const c = cv.getContext("2d"); c.fillStyle = "#ffffff"; c.fillRect(0, 0, cw, ch); c.drawImage(im, 0, 0, cw, ch);
+  const jb = await new Promise(r => cv.toBlob(r, "image/jpeg", 0.92)), bytes = new Uint8Array(await jb.arrayBuffer());
+  const mmW = im.sheet ? im.sheet.w : cw/10, mmH = im.sheet ? im.sheet.h : ch/10, pdf = new PdfDoc(mmW*2.8346, mmH*2.8346);
+  pdf.newPage(); const idx = pdf.addImage(bytes, cw, ch); pdf.image(idx, 0, 0, pdf.W, pdf.H); return pdf.build();
+}
+function canvaRefresh(){
+  const p = cur(); if(!$("st-canvaOn")) return;
+  $("st-canvaOn").checked = !!p.canvaOn; $("st-canvaPane").style.display = p.canvaOn ? "block" : "none";
+  if(document.activeElement !== $("st-canvaLink")) $("st-canvaLink").value = p.canvaLink || "";
+  const has = fsAll(p, "canva").length; $("st-canvaInfo").textContent = p.canvaOn ? (has ? "✓ فایل لینک ساخته شده و همراه محصول ارسال می‌شود." : (canvaOk(String(p.canvaLink || "").trim()) ? "لینک معتبر است — «ساخت فایل لینک» را بزن." : "هنوز لینک تمپلیت وارد نشده.")) : "";
+}
+function canvaBind(){
+  if(!$("st-canvaOn")) return;
+  $("st-canvaOn").onchange = () => { cur().canvaOn = $("st-canvaOn").checked; save(); canvaRefresh(); renderChecks && renderChecks(); };
+  $("st-canvaLink").oninput = () => { cur().canvaLink = $("st-canvaLink").value.trim(); save(); };
+  $("st-canvaImportBtn").onclick = async () => { try{ const b = await canvaImportPdf(cur()); download(b, slug(cur().name) + "-canva-import.pdf"); toast("PDF آماده‌ی ورود به Canva دانلود شد."); }catch(e){ toast("ساخت فایل ممکن نشد: " + (e && e.message ? e.message : e)); } };
+  $("st-canvaMake").onclick = async () => { try{ await canvaBuildLinkFile(cur()); renderAll(); toast("✅ فایل لینک Canva ساخته و در جایگاه «Canva-Link» قرار گرفت."); }catch(e){ toast("ساخت فایل لینک ممکن نشد: " + (e && e.message ? e.message : e)); } };
+}
+async function canvaBuildLinkFile(p){
+  const blob = await canvaLinkPdf(p), fname = slug(p.name) + "-Canva-Template-Link.pdf", key = p.id + ":files:canva", old = p.files.canva; if(old) await fsDelEntry(old);
+  const f = new File([blob], fname, {type: "application/pdf"}); await blobPut(key, f); p.files.canva = {name: fname, size: f.size, type: f.type, key}; save();
+}
+canvaBind();
+
 // ── ارسال کامل به Etsy: پیش‌نویس + فایل‌های دیجیتال + ۱۰ تصویر با ALT
 async function fsEtsyPayload(p){
   const items = []; // {t,name,blob}
@@ -10007,9 +10147,9 @@ async function fsEtsyPayload(p){
     else { const b = await blobGet(x.list[0].key); if(b) items.push({t: x.s.t, name: x.list[0].name, blob: b}); }
   }
   if(items.length > 5){
-    const guide = slots.find(x => x.s.k === "guide"), rest = slots.filter(x => x.s.k !== "guide"), flat = rest.flatMap(x => x.list);
+    const keepOut = slots.filter(x => x.s.k === "guide" || x.s.k === "canva"), rest = slots.filter(x => x.s.k !== "guide" && x.s.k !== "canva"), flat = rest.flatMap(x => x.list);
     const f = await zipOf(flat, base + "-all-files.zip"); const out = [{t: "همه‌ی فایل‌ها (ZIP)", name: f.name, blob: f}];
-    if(guide) for(const v of guide.list){ const b = await blobGet(v.key); if(b) out.push({t: "راهنما", name: v.name, blob: b}); }
+    for(const x of keepOut) for(const v of x.list){ const b = await blobGet(v.key); if(b) out.push({t: x.s.k === "canva" ? "لینک Canva" : "راهنما", name: v.name, blob: b}); }
     log("ℹ️ Etsy فقط ۵ فایل دیجیتال می‌پذیرد — فایل‌ها در " + out.length + " فایل بسته‌بندی شد", "warn"); return out;
   }
   log("ℹ️ Etsy فقط ۵ فایل دیجیتال می‌پذیرد — فایل‌های چندتایی هر جایگاه در یک ZIP قرار گرفت", "warn"); return items;
@@ -10019,6 +10159,10 @@ async function studioSendToEtsy(){
   if(!p.title || !tagList(p).length) return toast("عنوان و تگ‌ها خالی است — اول تب «سئو اتسی» را کامل کن.");
   let price = parseFloat(p.price) || parseFloat(((String(p.notes||"").match(/\$\s*([0-9]+(?:\.[0-9]+)?)/)||[])[1]));
   if(!(price > 0)){ price = parseFloat(prompt("قیمت لیستینگ (USD):", "4.5")); if(!(price > 0)) return; }
+  if(p.canvaOn){
+    if(!canvaOk(String(p.canvaLink || "").trim())){ toast("گزینه‌ی Canva روشن است ولی لینک تمپلیت معتبر وارد نشده — در تب «فایل‌ها» لینک را بگذار یا تیک Canva را بردار."); return; }
+    try{ await canvaBuildLinkFile(p); renderAll(); }catch(e){ return toast("ساخت فایل لینک Canva ممکن نشد: " + (e && e.message ? e.message : e)); }
+  }
   p.price = price; save();
   const files = await fsEtsyPayload(p), imgs = IMG_SLOTS.filter(s => p.images[s.k]);
   const vidList = VID_SLOTS.filter(s => vids(p)[s.k]);
