@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.37.2 -->
+<!-- APP_VERSION: 1.38.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -693,7 +693,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v158</div>
+        <div class="logo-badge">v160</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -9894,7 +9894,7 @@ async function zipImport(file){
     // ۳) ویدیوها
     const taken = {};
     for(const en of take(en => ["mp4","webm","mov"].includes(en.x))){
-      const order = /turn|3d|rotat|showcase|spin/i.test(en.base) ? ["vid3d","vidtour"] : ["vidtour","vid3d"], slot = order.find(k => !taken[k]); if(!slot) continue; taken[slot] = 1;
+      const order = /build|assembl|step|مراحل/i.test(en.base) ? ["vidbuild","vid3d"] : /turn|3d|rotat|showcase|spin|چرخش/i.test(en.base) ? ["vid3d","vidbuild"] : ["vid3d","vidbuild"], slot = order.find(k => !taken[k]); if(!slot) continue; taken[slot] = 1;
       const f = mk(en), key = p.id + ":videos:" + slot; if(vids(p)[slot]) await blobDel(vids(p)[slot].key); await blobPut(key, f); vids(p)[slot] = {name: f.name, size: f.size, type: f.type, key}; cnt.vids++;
     }
 
@@ -9994,8 +9994,8 @@ if($("st-dzSkip")) $("st-dzSkip").onclick = () => { const b = $("st-dzBrief").va
 if($("st-btnSendEtsy")) $("st-btnSendEtsy").onclick = studioSendToEtsy;
 /* ===================== ویدیوهای لیستینگ (۲ ویدیو، ساخته‌شده در مرورگر با Canvas + MediaRecorder) ===================== */
 const VID_SLOTS = [
-  {k:"vid3d",   t:"ویدیو چرخش ۳بعدی",   f:"Video-01-Turntable",  d:"محصول با شکل واقعی‌اش ۳۶۰ درجه می‌چرخد (شکل را در بلوک «شکل ۳بعدی محصول» بالا مشخص کن)"},
-  {k:"vidtour", t:"ویدیو معرفی و مراحل", f:"Video-02-Walkthrough", d:"اول تصویرهایی که خودت آپلود کرده‌ای؛ برای بقیه از تصویرهای ساخته‌شده"}
+  {k:"vid3d",   t:"ویدیو چرخش ۳بعدی محصول",   f:"Video-01-Turntable",  d:"محصول با شکل واقعی‌اش ۳۶۰ درجه می‌چرخد (شکل را در بلوک «شکل ۳بعدی محصول» بالا مشخص کن)"},
+  {k:"vidbuild", t:"ویدیو مراحل ساخت", f:"Video-02-Assembly", d:"مرحله‌های ساخت یکی‌یکی (طرح برش و متن راهنمای Claude؛ اگر به تعداد مراحل عکس بارگذاری کرده باشی، عکس‌های خودت) و در پایان یک نمای کوتاه از جعبه‌ی ساخته‌شده. مدت از روی تعداد مراحل خودکار تنظیم می‌شود (حدود ۱۵ تا ۲۵ ثانیه)."}
 ];
 const vids = p => (p.videos = p.videos || {});
 const vidMime = () => ["video/mp4;codecs=avc1.42E01E","video/mp4","video/webm;codecs=vp9","video/webm"].find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || "";
@@ -10043,7 +10043,7 @@ function vidPrepText(c, p, shop, u){
   c.textAlign = "right"; c.fillStyle = GI.teal; c.fillText("Instant Digital Download", 1810, 1010);
   c.globalAlpha = 1;
 }
-async function vidBuild3d(p, seconds, onProgress, forceBox){
+async function vid3dPrep(p, forceBox){
   const gs = giGet(); giApply(forceBox ? Object.assign({}, gs, {shape3d: "box"}) : gs);
   if(!(p.w > 0 && p.h > 0 && p.d > 0)) throw new Error("ابعاد محصول (طول، عرض، ارتفاع) باید بزرگ‌تر از صفر باشد — در بلوک «شکل ۳بعدی محصول» یا تب مشخصات وارد کن");
   if(!giHas3d(p)) throw new Error("برای چرخش ۳بعدی، شکل محصول را در بلوک «شکل ۳بعدی محصول» (بالای ویدیوها) مشخص کن: انتخاب شکل آماده یا آپلود فایل شکل/سیلوئت");
@@ -10052,16 +10052,57 @@ async function vidBuild3d(p, seconds, onProgress, forceBox){
   // مقیاس ثابت: کوچک‌ترین مقیاسی که در همه‌ی زاویه‌های چرخش جا می‌شود
   let sMin = 1e9; for(let a = 0; a < 12; a++) sMin = Math.min(sMin, g3FitV(sh.verts(),760,640,0,0,a*Math.PI/6,pitch).s);
   const colors = [GI.acc].concat(GI_COLORWAYS.map(x => x[0]).filter(x => x.toLowerCase() !== GI.acc.toLowerCase())).slice(0,4);
-  const draw = (c, u, t) => {
-    vidPrepText(c, p, shop, u);
+  // draw(c, u, t, opt): opt.noText = بدون متن سمت چپ | opt.dx = جابه‌جایی افقی کارت (مثلاً برای قراردادن در چپ)
+  const draw = (c, u, t, opt) => {
+    opt = opt || {}; if(!opt.noText) vidPrepText(c, p, shop, u);
     const yaw = -0.62 + u*Math.PI*2, seg = u*colors.length, i = Math.min(colors.length-1, Math.floor(seg)), f = vidEase(Math.max(0, Math.min(1, (seg - i - 0.7)/0.3)));
     const hex = vidMix(colors[i], colors[(i+1) % colors.length], i === colors.length-1 ? 0 : f);
     const o = {yaw, pitch, s: sMin, cx: 1380, cy: 540 + sMin*(sh.H/2)*Math.cos(pitch)};
     const [r,g,bb] = g3.hex(hex), txt = (r*0.299 + g*0.587 + bb*0.114) > 160 ? "#1a1a1a" : "#ffffff";
+    c.save(); if(opt.dx) c.translate(opt.dx, 0);
     c.fillStyle = GI.card; giRR(c,960,150,860,780,40); c.fill(); c.strokeStyle = GI.line; c.lineWidth = 4; c.stroke();
-    c.save(); giRR(c,960,150,860,780,40); c.clip(); sh.draw(c, o, hex, txt, null); c.restore();
+    c.save(); giRR(c,960,150,860,780,40); c.clip(); sh.draw(c, o, hex, txt, null); c.restore(); c.restore();
   };
-  return vidRecord(draw, seconds, onProgress);
+  return {shop, draw};
+}
+async function vidBuild3d(p, seconds, onProgress, forceBox){
+  const k = await vid3dPrep(p, forceBox);
+  return vidRecord((c, u, t) => k.draw(c, u, t), seconds, onProgress);
+}
+// ویدیوی «مراحل ساخت»: مرحله‌ها یکی‌یکی (عکس‌های خودت یا طرح برش) و در پایان یک نمای کوتاه از جعبه‌ی ساخته‌شده
+async function vidBuildSteps(p, seconds, onProgress, forceBox){
+  const k = await vid3dPrep(p, forceBox), spec = p.dzSpec || {}, g = spec.guide || {};
+  let steps = (g.steps && g.steps.length) ? g.steps : (spec.assembly_steps && spec.assembly_steps.length ? spec.assembly_steps.map((t,i) => ({title: "Step " + (i+1), text: t})) : [
+    {title:"Download", text:"Download and unzip the files from your Etsy purchases page."}, {title:"Test cut", text:"Cut once on plain paper to check size and fit."},
+    {title:"Cut", text:"Load your material and cut using the SVG or DXF file."}, {title:"Score and fold", text:"Score the blue dashed lines, then fold firmly along them."},
+    {title:"Assemble", text:"Glue the tab and close the flaps to finish the box."}]);
+  steps = steps.slice(0, 8).map(x => typeof x === "string" ? {title: "", text: x} : x);
+  const n = steps.length, stepT = n*2.6, total = stepT + 3.5, seg = stepT/n;
+  const svgImg = await giSvgImage(p), own0 = await vidUserFrames(p), own = own0.length >= n ? own0 : [], shop = k.shop;
+  const frame = c => { c.fillStyle = GI.bg; c.fillRect(0,0,1920,1080); if(GI_OPT.frame === "bar"){ c.fillStyle = GI.acc; c.fillRect(0,0,1920,18); } else if(GI_OPT.frame === "border"){ c.strokeStyle = GI.acc; c.lineWidth = 20; giRR(c,30,30,1860,1020,32); c.stroke(); } };
+  const fit = (c, im, x, y, w, h, pad) => { const iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height, kk = Math.min((w-2*pad)/iw, (h-2*pad)/ih); c.drawImage(im, x + (w-iw*kk)/2, y + (h-ih*kk)/2, iw*kk, ih*kk); };
+  const draw = (c, u, t) => {
+    if(t >= stepT){ const lt = (t - stepT)/(total - stepT); k.draw(c, 0.04 + lt*0.3, t); return; }
+    const i = Math.min(n-1, Math.floor(t/seg)), pop = vidEase(Math.min(1, (t - i*seg)/0.5)), st = steps[i];
+    frame(c);
+    // سمت چپ: عکس مرحله‌ی خودت، یا طرح برش، و برای مرحله‌ی آخر جعبه‌ی ۳بعدی ساخته‌شده
+    c.save(); c.globalAlpha = 0.35 + 0.65*pop;
+    const vis = own[i] ? own[i].cv : (i < n-1 && svgImg ? svgImg : null);
+    if(vis){ c.fillStyle = "#ffffff"; giRR(c,110,150,860,780,40); c.fill(); c.strokeStyle = GI.line; c.lineWidth = 4; c.stroke(); c.save(); giRR(c,110,150,860,780,40); c.clip(); fit(c, vis, 110, 150, 860, 780, 36); c.restore(); }
+    else { k.draw(c, 0.04 + 0.1*pop, t, {noText: true, dx: -850}); }
+    c.restore();
+    // سمت راست: شماره، عنوان و توضیح مرحله
+    c.save(); c.globalAlpha = pop; c.translate((1 - pop)*40, 0);
+    c.fillStyle = GI.acc; c.beginPath(); c.arc(1110, 280, 74, 0, Math.PI*2); c.fill();
+    c.fillStyle = giOnAcc(); c.font = "900 90px " + GI_FONT; c.textAlign = "center"; c.fillText(String(i+1), 1110, 312);
+    c.fillStyle = GI.ink; c.font = "800 78px " + GI_FONT; c.textAlign = "left"; const y = giWrap(c, st.title || ("Step " + (i+1)), 1220, 300, 620, 90, 2);
+    c.fillStyle = GI.mute; c.font = "500 50px " + GI_FONT; giWrap(c, st.text || "", 1010, Math.max(y + 70, 460), 810, 66, 6);
+    c.restore();
+    // نوار پیشرفت مراحل
+    for(let j = 0; j < n; j++){ c.fillStyle = j <= i ? GI.acc : GI.line; giRR(c, 1010 + j*(800/n), 900, 800/n - 12, 14, 7); c.fill(); }
+    c.fillStyle = GI.mute; c.font = "600 38px " + GI_FONT; c.textAlign = "left"; c.fillText(shop, 110, 1010);
+  };
+  return vidRecord(draw, total, onProgress);
 }
 function dpSimplify(pts, eps){
   const dist = (p,a,b) => { const dx = b[0]-a[0], dy = b[1]-a[1], l = dx*dx + dy*dy || 1e-9, t = Math.max(0, Math.min(1, ((p[0]-a[0])*dx + (p[1]-a[1])*dy)/l)); return Math.hypot(p[0]-a[0]-t*dx, p[1]-a[1]-t*dy); };
@@ -10155,9 +10196,9 @@ async function vidMake(slot){
     toast("⏳ ضبط ویدیو شروع شد — این تب را باز نگه دار (" + fa(dur) + " ثانیه)");
     const prog = u => { if(btn) btn.textContent = "⏳ " + fa(Math.round(u*100)) + "٪"; };
     let forceBox = false;
-    if(slot === "vid3d"){ giApply(giGet()); if(!giHas3d(p)){ if(!confirm("شکل ۳بعدی این محصول مشخص نیست.\nبا «جعبه‌ی مستطیلی» (از روی طول و عرض و ارتفاع) ساخته شود؟\n\nبرای شکل دیگر (قلب، دایره، فایل خودت...) لغو را بزن و در بلوک «شکل ۳بعدی محصول» انتخاب کن.")){ if(btn) btn.textContent = old; return; } forceBox = true; } }
+    if(slot === "vid3d" || slot === "vidbuild"){ giApply(giGet()); if(!giHas3d(p)){ if(!confirm("شکل ۳بعدی این محصول مشخص نیست.\nبا «جعبه‌ی مستطیلی» (از روی طول و عرض و ارتفاع) ساخته شود؟\n\nبرای شکل دیگر (قلب، دایره، فایل خودت...) لغو را بزن و در بلوک «شکل ۳بعدی محصول» انتخاب کن.")){ if(btn) btn.textContent = old; return; } forceBox = true; } }
     vidShowErr("");
-    const blob = slot === "vid3d" ? await vidBuild3d(p, dur, prog, forceBox) : await vidBuildTour(p, dur, prog);
+    const blob = slot === "vid3d" ? await vidBuild3d(p, dur, prog, forceBox) : slot === "vidbuild" ? await vidBuildSteps(p, dur, prog, forceBox) : await vidBuildTour(p, dur, prog);
     const s = VID_SLOTS.find(x => x.k === slot), name = s.f + "." + vidExt(blob.type), key = p.id + ":videos:" + slot;
     if(vids(p)[slot]) await blobDel(vids(p)[slot].key);
     await blobPut(key, blob); vids(p)[slot] = {name, size: blob.size, type: blob.type, key};
