@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.37.1 -->
+<!-- APP_VERSION: 1.37.2 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -693,7 +693,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v157</div>
+        <div class="logo-badge">v158</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -10003,20 +10003,29 @@ const vidExt = type => /mp4/.test(type) ? "mp4" : "webm";
 async function vidRecord(drawFrame, seconds, onProgress){
   const mime = vidMime(); if(!mime) throw new Error("این مرورگر ضبط ویدیو را پشتیبانی نمی‌کند (Chrome یا Edge جدید لازم است)");
   const cv = document.createElement("canvas"); cv.width = 1920; cv.height = 1080;
-  const c = cv.getContext("2d"), chunks = [];
-  const rec = new MediaRecorder(cv.captureStream(30), {mimeType: mime, videoBitsPerSecond: 8e6});
+  if(!cv.captureStream) throw new Error("این مرورگر ضبط از canvas را پشتیبانی نمی‌کند (Chrome یا Edge جدید لازم است)");
+  const c = cv.getContext("2d"), chunks = []; let rec = null, lastErr = null, recErr = null, hiddenT = 0, lastT = 0;
+  for(const opt of [{mimeType: mime, videoBitsPerSecond: 8e6}, {mimeType: mime}, {}]){ try{ rec = new MediaRecorder(cv.captureStream(30), opt); break; }catch(e){ lastErr = e; } }
+  if(!rec) throw new Error("ساخت ضبط‌کننده‌ی ویدیو ممکن نشد: " + (lastErr && lastErr.message ? lastErr.message : lastErr));
   rec.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); };
+  rec.onerror = e => { recErr = (e && e.error) ? e.error : e; };
   const stopped = new Promise(r => rec.onstop = r);
-  drawFrame(c, 0, 0); rec.start(500);
+  drawFrame(c, 0, 0); try{ rec.start(500); }catch(e){ throw new Error("شروع ضبط ممکن نشد: " + (e && e.message ? e.message : e)); }
   const t0 = performance.now();
-  await new Promise(res => { (function loop(){
+  await new Promise((res, rej) => { (function loop(){
     const t = (performance.now() - t0) / 1000;
     if(t >= seconds){ res(); return; }
-    drawFrame(c, t/seconds, t); if(onProgress) onProgress(t/seconds);
+    if(document.hidden) hiddenT += t - lastT; lastT = t;
+    try{ drawFrame(c, t/seconds, t); }catch(e){ try{ rec.stop(); }catch(_){} rej(e); return; }
+    if(onProgress) onProgress(t/seconds);
     setTimeout(loop, 16);
   })(); });
   drawFrame(c, 1, seconds); await new Promise(r => setTimeout(r, 250)); rec.stop(); await stopped;
-  return new Blob(chunks, {type: mime.split(";")[0]});
+  if(recErr) throw new Error("خطای ضبط مرورگر: " + (recErr.message || recErr.name || recErr));
+  if(hiddenT > seconds*0.2) throw new Error("در حین ضبط این تب مدتی در پس‌زمینه بود و مرورگر ضبط را کند کرد — دوباره بزن و تا پایان ضبط روی همین تب بمان");
+  const blob = new Blob(chunks, {type: ((rec.mimeType || mime) + "").split(";")[0]});
+  if(!blob.size) throw new Error("ویدیوی ضبط‌شده خالی بود — دوباره امتحان کن (تب باز بماند)");
+  return blob;
 }
 const vidMix = (h1, h2, k) => { const a = g3.hex(h1), b = g3.hex(h2); return "#" + a.map((v,i) => Math.round(v + (b[i]-v)*k).toString(16).padStart(2,"0")).join(""); };
 const vidEase = k => k < 0.5 ? 2*k*k : 1 - Math.pow(-2*k+2, 2)/2;
@@ -10034,8 +10043,9 @@ function vidPrepText(c, p, shop, u){
   c.textAlign = "right"; c.fillStyle = GI.teal; c.fillText("Instant Digital Download", 1810, 1010);
   c.globalAlpha = 1;
 }
-async function vidBuild3d(p, seconds, onProgress){
-  const gs = giGet(); giApply(gs);
+async function vidBuild3d(p, seconds, onProgress, forceBox){
+  const gs = giGet(); giApply(forceBox ? Object.assign({}, gs, {shape3d: "box"}) : gs);
+  if(!(p.w > 0 && p.h > 0 && p.d > 0)) throw new Error("ابعاد محصول (طول، عرض، ارتفاع) باید بزرگ‌تر از صفر باشد — در بلوک «شکل ۳بعدی محصول» یا تب مشخصات وارد کن");
   if(!giHas3d(p)) throw new Error("برای چرخش ۳بعدی، شکل محصول را در بلوک «شکل ۳بعدی محصول» (بالای ویدیوها) مشخص کن: انتخاب شکل آماده یا آپلود فایل شکل/سیلوئت");
   const shop = giShopName() || "Shop";
   const sh = giShape(p,1), pitch = 0.45;
@@ -10144,13 +10154,22 @@ async function vidMake(slot){
   try{
     toast("⏳ ضبط ویدیو شروع شد — این تب را باز نگه دار (" + fa(dur) + " ثانیه)");
     const prog = u => { if(btn) btn.textContent = "⏳ " + fa(Math.round(u*100)) + "٪"; };
-    const blob = slot === "vid3d" ? await vidBuild3d(p, dur, prog) : await vidBuildTour(p, dur, prog);
+    let forceBox = false;
+    if(slot === "vid3d"){ giApply(giGet()); if(!giHas3d(p)){ if(!confirm("شکل ۳بعدی این محصول مشخص نیست.\nبا «جعبه‌ی مستطیلی» (از روی طول و عرض و ارتفاع) ساخته شود؟\n\nبرای شکل دیگر (قلب، دایره، فایل خودت...) لغو را بزن و در بلوک «شکل ۳بعدی محصول» انتخاب کن.")){ if(btn) btn.textContent = old; return; } forceBox = true; } }
+    vidShowErr("");
+    const blob = slot === "vid3d" ? await vidBuild3d(p, dur, prog, forceBox) : await vidBuildTour(p, dur, prog);
     const s = VID_SLOTS.find(x => x.k === slot), name = s.f + "." + vidExt(blob.type), key = p.id + ":videos:" + slot;
     if(vids(p)[slot]) await blobDel(vids(p)[slot].key);
     await blobPut(key, blob); vids(p)[slot] = {name, size: blob.size, type: blob.type, key};
     save(); renderVideos();
     toast("✅ " + s.t + " ساخته شد (" + kb(blob.size) + ")" + (/mp4/.test(blob.type) ? "" : " — فرمت WebM است؛ اگر Etsy نپذیرفت از Chrome/Edge جدید استفاده کن یا با مبدل به MP4 تبدیلش کن."));
-  }catch(e){ toast("خطا در ساخت ویدیو: " + (e && e.message ? e.message : e)); if(btn) btn.textContent = old; }
+  }catch(e){ const msg = e && e.message ? e.message : String(e); console.error("vidMake", e); vidShowErr(msg); toast("خطا در ساخت ویدیو: " + msg); if(btn) btn.textContent = old; }
+}
+// خطای ساخت ویدیو بالای کارت‌ها ماندگار نشان داده می‌شود (toast زود محو می‌شود)
+function vidShowErr(msg){
+  const box = $("st-vSlots"); if(!box) return; let el = $("st-vErr");
+  if(!el){ el = document.createElement("div"); el.id = "st-vErr"; el.style.cssText = "display:none;border:1px solid var(--cut);color:var(--cut);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:13px;white-space:pre-wrap"; box.parentNode.insertBefore(el, box); }
+  el.style.display = msg ? "block" : "none"; el.textContent = msg ? "⚠ ساخت ویدیو ناموفق بود: " + msg : "";
 }
 async function vidPick(slot, file){
   if(!file) return; const p = cur(), key = p.id + ":videos:" + slot;
