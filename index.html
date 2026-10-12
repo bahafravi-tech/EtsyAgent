@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v177</div>
+        <div class="logo-badge">v178</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1737,12 +1737,12 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
       <div class="block" style="margin-bottom:12px">
         <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
           <label class="fld" style="max-width:120px"><span>تعداد پیشنهاد</span><select id="ideaCount"><option value="1">۱</option><option value="2" selected>۲</option><option value="3">۳</option><option value="4">۴</option><option value="5">۵</option></select></label>
-          <label class="fld" style="max-width:150px"><span>📐 تعداد اندازه برای هر محصول</span><select id="ideaSizeN"><option value="1" selected>۱ (تک‌اندازه)</option><option value="2">۲</option><option value="3">۳</option><option value="4">۴</option><option value="5">۵</option><option value="6">۶</option></select></label>
+          <label class="fld" style="max-width:230px"><span>📐 تعداد اندازه برای هر محصول</span><select id="ideaSizeN"><option value="1" selected>۱ (تک‌اندازه)</option><option value="2">۲</option><option value="3">۳</option><option value="4">۴</option><option value="5">۵</option><option value="6">۶</option><option value="desc">📝 از توضیحات خودم (فقط «ایده‌ی خودم»)</option></select></label>
           <label class="fld" style="flex:1;min-width:200px"><span>موضوع/فصل دلخواه (اختیاری)</span><input id="ideaTopic" placeholder="مثلاً Valentine، Wedding favor، heart box..."></label>
           <label class="fld" style="max-width:230px"><span>مدل تحقیق</span><select id="ideaModel"><option value="opus">Claude Opus (سرور) — دقیق‌ترین ⭐</option><option value="sonnet">Claude Sonnet (سرور)</option><option value="app">همان مدل تنظیمات برنامه</option></select></label>
           <label style="font-size:12.5px"><input type="checkbox" id="ideaDigital" checked> فقط محصول دیجیتال</label>
         </div>
-        <p class="help" style="margin:6px 0 0">تعداد اندازه را قبل از تحقیق اینجا بگذار، یا بعد از ساخت هر پیشنهاد روی کارتش عوض کن. انتخاب نهایی بر اساس «امتیاز فرصت» (تقاضای واقعی ÷ رقابت) از ۸ تا ۱۲ کلیدواژه‌ی بررسی‌شده انجام می‌شود.</p>
+        <p class="help" style="margin:6px 0 0">تعداد اندازه را قبل از تحقیق اینجا بگذار، یا بعد از ساخت هر پیشنهاد روی کارتش عوض کن. اگر محصول را خودت در «💡 ایده‌ی خودم» معرفی می‌کنی و اندازه‌ها را در توضیحاتت نوشته‌ای، «از توضیحات خودم» را بزن تا همان اندازه‌ها (بدون اختراع اندازه‌ی جدید) در عنوان، توضیحات و تصویرها بیاید. انتخاب نهایی بر اساس «امتیاز فرصت» (تقاضای واقعی ÷ رقابت) از ۸ تا ۱۲ کلیدواژه‌ی بررسی‌شده انجام می‌شود.</p>
       </div>
       <div id="dailyProg" class="card hidden"><div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" id="dpFill"></div></div><div class="prog-text" id="dpText">در حال تحقیق...</div></div></div>
   <div class="card" style="margin-bottom:16px">
@@ -1786,12 +1786,20 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
       </div>
 
       <div class="block">
-        <h3>ابعاد نهایی جعبه</h3>
-        <p class="help">این سه عدد در عنوان و توضیحات هم استفاده می‌شوند. اگر در متن‌ها از نشانه‌های {W} و {H} و {D} استفاده کنید، هنگام تکثیر خودکار جای‌گذاری می‌شوند.</p>
+        <h3>ابعاد نهایی محصول</h3>
+        <p class="help">این اعداد در عنوان، توضیحات و تصویرها هم استفاده می‌شوند. اگر در متن‌ها از نشانه‌های {W} و {H} و {D} استفاده کنید، هنگام تکثیر خودکار جای‌گذاری می‌شوند. محصولِ تخت (استنسل، تابلو، طرح چاپی…) ارتفاع ندارد: فقط طول و عرض را بنویس و ارتفاع را خالی بگذار.</p>
+        <div class="f c3" style="margin-bottom:14px">
+          <label class="fld"><span>نوع محصول</span>
+            <select data-k="ptype">
+              <option value="auto">خودکار (از نام محصول)</option>
+              <option value="box">جعبه / بسته‌بندی — طول، عرض، ارتفاع، تصویر ۳بعدی</option>
+              <option value="flat">طرح تخت (استنسل، تابلو، فایل برش تخت…) — فقط طول و عرض</option>
+            </select></label>
+        </div>
         <div class="f c3">
           <label class="fld"><span>طول (mm)</span><input type="number" data-k="w"></label>
           <label class="fld"><span>عرض (mm)</span><input type="number" data-k="h"></label>
-          <label class="fld"><span>ارتفاع (mm)</span><input type="number" data-k="d"></label>
+          <label class="fld"><span>ارتفاع / ضخامت (mm) — اختیاری</span><input type="number" data-k="d" placeholder="برای محصول تخت خالی بگذار"></label>
         </div>
         <div class="f c3" style="margin-top:14px">
           <label class="fld"><span>دسته‌بندی</span><input type="text" data-k="category"></label>
@@ -3151,7 +3159,8 @@ async function ideaAI(prompt, maxTokens, tier){
 }
 function ideaOpts(){
   const g = id => document.getElementById(id);
-  return { count: Math.max(1, Math.min(5, Number((g('ideaCount') || {}).value) || 2)), sizeN: Math.max(1, Math.min(6, Number((g('ideaSizeN') || {}).value) || 1)),
+  // «desc»: اندازه‌ها در توضیحاتِ «ایده‌ی خودم» نوشته شده؛ همان‌ها خوانده می‌شود (تعداد از روی متن می‌آید)
+  return { count: Math.max(1, Math.min(5, Number((g('ideaCount') || {}).value) || 2)), sizeFromDesc: (g('ideaSizeN') || {}).value === 'desc', sizeN: Math.max(1, Math.min(6, Number((g('ideaSizeN') || {}).value) || 1)),
            topic: ((g('ideaTopic') || {}).value || '').trim(), digital: !g('ideaDigital') || g('ideaDigital').checked };
 }
 const medianOf = a => { const s = a.filter(v => isFinite(v)).sort((x,y) => x-y); if(!s.length) return null; const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m-1] + s[m]) / 2; };
@@ -3307,6 +3316,7 @@ async function generateFromOwnIdea(){
   if(!S.etsyApiKey){ alert('برای تحقیق واقعی رقبا، اول App API Key اتسی رو توی تنظیمات وارد کن.'); nav('settings'); return; }
   let keyword = document.getElementById('ownIdeaKeyword').value.trim();
   const imageDataUrl = window.__ownIdeaImageDataUrl || null;
+  const szOpt = ideaOpts();
 
   goToProductSuggestTab();
   document.getElementById('dailyProg').classList.remove('hidden');
@@ -3328,11 +3338,16 @@ async function generateFromOwnIdea(){
     fill.style.width='75%'; txt.textContent='ساخت عنوان/تگ/توضیحات کامل...';
     const researchLine = `${research.listingCount} لیستینگ فعال، قیمت میانگین ${research.avgPrice??'نامشخص'} (بازه ${research.minPrice??'?'} تا ${research.maxPrice??'?'})، محبوب‌ترین رقیب ${research.topFavorers??'?'} علاقه‌مندی، تگ‌های رایج: ${research.sampleTags.join(', ')||'—'}`;
     const langLine = `Write the title, tags, and description in natural, native ${S.contentLanguage||'English'} — not a literal word-for-word translation.`;
-    const finalPrompt=`فروشنده‌ی یه فروشگاه اتسی این ایده‌ی محصول خودش رو داره (این عیناً باید مبنای محصول باشه، نه یه ایده‌ی جدید):\n"${desc}"\n\nاین داده‌ی واقعی از جستجوی زنده‌ی اتسی برای همین محصوله:\n${researchLine}\n\nبر همین اساس، یه لیستینگ کامل و آماده برای همین ایده‌ی مشخص بساز. توی why_sellable مستقیماً به اعداد تحقیق اشاره کن.\n${langLine}\n\n${DESC_FORMAT_HINT}\n\nفقط این JSON رو برگردون:\n{"title":"عنوان SEO شده حداکثر 140 کاراکتر","tags":["13 تگ بدون underscore"],"description":"توضیح کامل حداقل 150 کلمه","price":3.95,"category":"نوع","why_sellable":"دلیل، با عدد از تحقیق"}\nفقط JSON.`;
+    const finalPrompt=`فروشنده‌ی یه فروشگاه اتسی این ایده‌ی محصول خودش رو داره (این عیناً باید مبنای محصول باشه، نه یه ایده‌ی جدید):\n"${desc}"\n\nاین داده‌ی واقعی از جستجوی زنده‌ی اتسی برای همین محصوله:\n${researchLine}\n\nبر همین اساس، یه لیستینگ کامل و آماده برای همین ایده‌ی مشخص بساز. توی why_sellable مستقیماً به اعداد تحقیق اشاره کن.\n${langLine}\n\n${DESC_FORMAT_HINT}${szOpt.sizeFromDesc ? '\n\nاندازه‌ها: فروشنده اندازه‌ها را خودش در توضیحاتش نوشته. دقیقاً همان‌ها را بخوان و استفاده کن، هیچ اندازه‌ی جدیدی اختراع نکن (cm را ×10 و inch را ×25.4 به میلی‌متر تبدیل کن). اگر محصول تخت است (مثل استنسل، تابلو، طرح چاپی) height را 0 بگذار. اگر بیش از یک اندازه هست، در عنوان "N Sizes" بیاور و در description بخشی به نام "📏 SIZES INCLUDED" با همان اندازه‌ها (mm و in) بگذار. اندازه‌ها را در کلید sizes هم برگردان (به ترتیب کوچک به بزرگ).' : ''}\n\nفقط این JSON رو برگردون:\n{"title":"عنوان SEO شده حداکثر 140 کاراکتر","tags":["13 تگ بدون underscore"],"description":"توضیح کامل حداقل 150 کلمه","price":3.95,"category":"نوع","why_sellable":"دلیل، با عدد از تحقیق"${szOpt.sizeFromDesc ? ',"sizes":[{"label":"Small","length":0,"width":0,"height":0}]' : ''}}\nفقط JSON.`;
     const text = await callClaude(finalPrompt, 3000);
     const p = parseJSON(text);
 
-    const item = { ...p, id:Date.now(), status:'pending', created:new Date().toLocaleDateString('fa-IR'), research, keyword, ownIdeaDesc:desc, ownIdeaImage:imageDataUrl, sizeN: ideaOpts().sizeN };
+    // اندازه‌های خوانده‌شده از توضیحات خودِ فروشنده (فقط وقتی «از توضیحات خودم» انتخاب شده)
+    const ideaSizes = szOpt.sizeFromDesc && Array.isArray(p.sizes)
+      ? p.sizes.slice(0,6).map(r => ({on:true, label:String(r.label || 'Size').slice(0,16), length:Math.round(Number(r.length) || 0), width:Math.round(Number(r.width) || 0), height:Math.round(Number(r.height) || 0), height_lid:''})).filter(r => r.length > 0 && r.width > 0)
+      : [];
+    const item = { ...p, id:Date.now(), status:'pending', created:new Date().toLocaleDateString('fa-IR'), research, keyword, ownIdeaDesc:desc, ownIdeaImage:imageDataUrl, sizeN: ideaSizes.length > 1 ? ideaSizes.length : szOpt.sizeN, sizes: ideaSizes.length ? ideaSizes : null };
+    if(szOpt.sizeFromDesc && !ideaSizes.length) log('ℹ️ اندازه‌ای در توضیحاتت پیدا نشد؛ اندازه‌ها را بعداً در استودیو وارد کن.', 'warn');
     fill.style.width='100%'; txt.textContent='✅ آماده!';
     S.dailyProducts.unshift(item);
     archiveDailyProduct(item);
@@ -3361,7 +3376,7 @@ function archiveDailyProduct(item){
     price: item.price||0, category: item.category||'', why_sellable: item.why_sellable||'',
     keyword: item.keyword||'', research: item.research||null,
     ownIdeaDesc: item.ownIdeaDesc||'', ownIdeaImage: item.ownIdeaImage||null,
-    status: item.status||'pending', sizeN: item.sizeN||1, created: new Date().toISOString()
+    status: item.status||'pending', sizeN: item.sizeN||1, sizes: item.sizes||null, created: new Date().toISOString()
   };
   S.dailyArchive.unshift(entry);
   if(S.dailyArchive.length>200) S.dailyArchive.length=200;
@@ -7802,7 +7817,7 @@ function blankProduct(){
   return {
     id: uid(), created: Date.now(), master:false,
     name:"محصول تازه", code:"BG-000", status:"wip",
-    w:100, h:70, d:30,
+    w:100, h:70, d:30, ptype:"auto",
     category:"Packaging Template",
     material:"Cardstock 250–300 gsm",
     machines:"Cricut / Silhouette / Laser",
@@ -7896,9 +7911,26 @@ function toast(msg){
   const el = $("st-toast"); el.textContent = msg; el.classList.add("on");
   clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove("on"), 2600);
 }
+/* نوع محصول: «box» جعبه/بسته‌بندی (سه بعد + تصویر ۳بعدی) | «flat» طرح تخت مثل استنسل، تابلو، فایل برش تخت (فقط طول و عرض)
+   «auto» (پیش‌فرض) از روی نام و عنوان حدس می‌زند؛ هر محصولی که طرح خودِ برنامه (dzSpec/dzStyle/dzShape) داشته باشد جعبه است. */
+const FLAT_RX = /stencil|استنسل|wall ?art|poster|پوستر|calligraph|خوشنویسی|تابلو|clip ?art|sticker|استیکر|printable|monogram|decal|silhouette art|svg art/i;
+function ptKind(p){
+  if(!p) return "box";
+  if(p.ptype === "box" || p.ptype === "flat") return p.ptype;
+  if(p.dzSpec || p.dzStyle || p.dzShape) return "box";
+  return FLAT_RX.test([p.name, p.title].join(" ")) ? "flat" : "box";
+}
+// دسته‌ی نمایش‌داده‌شده روی تصویرها؛ پیش‌فرضِ «Packaging Template» روی محصول تخت (استنسل و...) نمی‌آید
+function catTxt(p, fb){ const c = String(p.category || "").trim(); if(!c || (c === "Packaging Template" && ptKind(p) === "flat")) return fb != null ? fb : (ptKind(p) === "flat" ? "Design" : "Template"); return c; }
+// «طول × عرض» برای محصول تخت، «طول × عرض × ارتفاع» برای جعبه؛ بعدِ خالی یا صفر هیچ‌وقت نوشته نمی‌شود
+function dimTxt(p, sep){
+  return [p.w, p.h, p.d].map(v => Number(v) || 0).filter(v => v > 0).join(sep || " × ");
+}
+// ابعاد یک ردیفِ «چند اندازه»؛ ارتفاعِ خالی/صفر (محصول تخت) نوشته نمی‌شود
+function szDims(r, f, sep){ return [r.length, r.width, r.height].map(v => Number(v) || 0).filter(v => v > 0).map(f || (v => Math.round(v))).join(sep || " × "); }
 function tokens(p, s){
   return String(s||"")
-    .replaceAll("{W}", p.w).replaceAll("{H}", p.h).replaceAll("{D}", p.d)
+    .replaceAll("{W}", p.w).replaceAll("{H}", p.h).replaceAll("{D}", p.d || "")
     .replaceAll("{NAME}", p.name).replaceAll("{CODE}", p.code)
     .replaceAll("{KW}", (String(p.title||"").split("|")[0].trim() || p.name).slice(0,90))
     .replaceAll("{TAGS}", String(p.tags||"").split(/[,\n]/).map(t=>t.trim()).filter(Boolean).slice(0,3).join(", "));
@@ -8072,7 +8104,7 @@ function renderRail(){
       b.innerHTML =
         '<div class="n"><span>' + esc(p.name) + '</span>' +
         (p.master ? '<span class="master">قالب</span>' : '<span class="c">' + fa(pct) + '٪</span>') + '</div>' +
-        '<div class="c">' + esc(p.code) + ' · ' + fa(p.w) + '×' + fa(p.h) + '×' + fa(p.d) + '</div>' +
+        '<div class="c">' + esc(p.code) + ' · ' + fa(dimTxt(p, '×')) + '</div>' +
         '<div class="track"><i style="width:' + pct + '%"></i></div>';
       b.onclick = () => { state.active = p.id; queueSave(); renderAll(); };
       box.appendChild(b);
@@ -8082,7 +8114,8 @@ const esc = s => String(s==null?"":s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":
 
 function renderFields(){
   const p = cur();
-  document.querySelectorAll("[data-k]").forEach(el => { el.value = p[el.dataset.k] ?? ""; });
+  document.querySelectorAll("[data-k]").forEach(el => { el.value = p[el.dataset.k] ?? (el.dataset.k === "ptype" ? "auto" : ""); });
+  if(!(Number(p.d) > 0)) { const dEl = document.querySelector('[data-k="d"]'); if(dEl) dEl.value = ""; } // ارتفاعِ صفر/خالی (محصول تخت) به‌صورت خالی دیده شود
 }
 
 // هر جایگاه فایل می‌تواند چند فایل داشته باشد: اولی در p.files[slot]، بقیه در p.files[slot].more
@@ -8216,7 +8249,7 @@ function score(p){
 function renderHero(){
   const p = cur(), s = score(p);
   $("st-hName").textContent = p.name;
-  $("st-hDim").textContent = fa(p.w) + " × " + fa(p.h) + " × " + fa(p.d) + " میلی‌متر · " + p.code;
+  $("st-hDim").textContent = fa(dimTxt(p)) + " میلی‌متر · " + p.code;
   const st = $("st-hStatus");
   st.textContent = {wip:"در حال تکمیل", ready:"آماده انتشار", published:"منتشر شده"}[p.status];
   st.className = "pill" + (p.status === "ready" ? " ready" : p.status === "published" ? " pub" : "");
@@ -8289,7 +8322,7 @@ function listingText(p){
     "TAGS (13)", tagList(p).join(", "), "",
     "MATERIALS", matList(p).join(", "), "",
     "ALT TEXT", altResolved(p).map((x,i)=> (i+1) + ". [" + IMG_SLOTS[i].f + "] " + x).join("\n"), "",
-    "FINISHED SIZE", p.w + " x " + p.h + " x " + p.d + " mm", "",
+    "FINISHED SIZE", dimTxt(p, " x ") + " mm", "",
     "CODE", p.code
   ].join("\n");
 }
@@ -8808,7 +8841,7 @@ const GI_DRAW = {
       fm.forEach((s,i) => { giPill(c,lab(s),x,140,pillF,giOnTeal(),GI.teal); x += ws[i]; });
       c.fillStyle = GI.ink; c.font = "800 160px " + GI_FONT; c.textAlign = cen ? "center" : "left";
       const y = giWrap(c,p.name,cen ? GI.W/2 : 140,420,2100,176,2,cen ? "center" : "left");
-      c.fillStyle = GI.mute; c.font = "600 76px " + GI_FONT; c.textAlign = cen ? "center" : "left"; c.fillText((p.category || "Template") + " • " + L.dim, cen ? GI.W/2 : 140, y + 10);
+      c.fillStyle = GI.mute; c.font = "600 76px " + GI_FONT; c.textAlign = cen ? "center" : "left"; c.fillText(catTxt(p) + " • " + L.dim, cen ? GI.W/2 : 140, y + 10);
       giCard(c,140,y + 70,2120,GI.H - 170 - 60 - (y + 70),44);
       const cardY = y + 70, cardH = GI.H - 170 - 60 - cardY;
       giBox3dSimple(c,p,cen ? 1150 : 1300,cardH-120,cen ? GI.W/2 : 860,cardY + cardH/2,GI.acc,giOnAcc());
@@ -8828,7 +8861,7 @@ const GI_DRAW = {
     else giPreviewCard(c,1180,330,1100,1180,svgImg,p);
     c.fillStyle = GI.acc; c.font="800 68px " + GI_FONT; c.textAlign="left"; c.fillText("DIGITAL DOWNLOAD", 140, 470);
     c.fillStyle = GI.ink; c.font="800 150px " + GI_FONT; let y = giWrap(c,p.name,140,630,1000,170,3);
-    c.fillStyle = GI.mute; c.font="600 72px " + GI_FONT; y = giWrap(c,p.category||"Template",140,y+10,1000,86,2);
+    c.fillStyle = GI.mute; c.font="600 72px " + GI_FONT; y = giWrap(c,catTxt(p),140,y+10,1000,86,2);
     c.fillStyle = GI.ink; c.font="700 84px " + GI_FONT; c.fillText(L.dim, 140, y+90);
     let x=140; const py=y+160; L.fmts.slice(0,3).forEach(s=>{ x += giPill(c,s.k === "guide" ? "GUIDE" : s.t.toUpperCase(),x,py,pillF,giOnTeal(),GI.teal)+20; });
   },
@@ -8836,8 +8869,9 @@ const GI_DRAW = {
     if(p.sizes && p.sizes.length > 1){
       const rows = p.sizes.slice(0,6), rh = Math.min(150, 1000/rows.length), y0 = 560; c.textAlign = "left";
       rows.forEach((r,i) => { const y = y0 + i*(rh+14); giCard(c, 200, y, 2000, rh, 30); c.fillStyle = GI.acc; c.font = "800 70px " + GI_FONT; c.fillText(r.label, 260, y + rh/2 + 24);
-        c.fillStyle = GI.ink; c.font = "700 66px " + GI_FONT; c.fillText(Math.round(r.length) + " × " + Math.round(r.width) + " × " + Math.round(r.height) + " mm", 760, y + rh/2 + 22);
-        c.fillStyle = GI.mute; c.font = "600 56px " + GI_FONT; c.fillText((Math.round(r.length/25.4*10)/10) + " × " + (Math.round(r.width/25.4*10)/10) + " × " + (Math.round(r.height/25.4*10)/10) + " in", 1620, y + rh/2 + 20); });
+        const rd = [r.length, r.width, r.height].map(v => Number(v) || 0).filter(v => v > 0); // بعدِ خالی (محصول تخت) نوشته نمی‌شود
+        c.fillStyle = GI.ink; c.font = "700 66px " + GI_FONT; c.fillText(rd.map(v => Math.round(v)).join(" × ") + " mm", 760, y + rh/2 + 22);
+        c.fillStyle = GI.mute; c.font = "600 56px " + GI_FONT; c.fillText(rd.map(v => Math.round(v/25.4*10)/10).join(" × ") + " in", 1620, y + rh/2 + 20); });
       return;
     }
     const bw=1500, bh=Math.max(380,Math.min(620,bw*(p.h||70)/(p.w||100))), bx=(GI.W-bw)/2, by=760;
@@ -8846,7 +8880,7 @@ const GI_DRAW = {
     c.beginPath(); c.moveTo(bx,by-70); c.lineTo(bx+bw,by-70); c.stroke(); c.fillText("Length " + p.w + " mm",GI.W/2,by-105);
     c.save(); c.translate(bx+bw+170,by+bh/2); c.rotate(Math.PI/2); c.fillText("Width " + p.h + " mm",0,0); c.restore();
     c.beginPath(); c.moveTo(bx+bw+80,by); c.lineTo(bx+bw+80,by+bh); c.stroke();
-    giPill(c,"Height " + p.d + " mm",GI.W/2-330,by+bh+90,"800 76px " + GI_FONT,giOnTeal(),GI.teal);
+    if(Number(p.d) > 0) giPill(c,"Height " + p.d + " mm",GI.W/2-330,by+bh+90,"800 76px " + GI_FONT,giOnTeal(),GI.teal);
   },
   template(c,p,L,svgImg){
     giPreviewCard(c,360,520,1680,940,svgImg,p);
@@ -9116,7 +9150,7 @@ async function giSvgImage(p){
 }
 async function giLogo(){ if(S.brandLogoDataUrl){ try{ return await loadImage(S.brandLogoDataUrl); }catch(e){} } return null; }
 function giList(p){
-  const dim = p.w + " × " + p.h + " × " + p.d + " mm";
+  const dim = dimTxt(p) + " mm";
   const upl = FILE_SLOTS.filter(s=>p.files[s.k]);
   const fmts = upl.length ? upl : FILE_SLOTS.slice(0,4);
   const machines = String(p.machines||"").split(/[\/,&;]|\band\b/i).map(s=>s.trim()).filter(Boolean);
@@ -9127,7 +9161,8 @@ function giList(p){
     if(/^[A-Z][A-Z '&-]{3,}$/.test(head)) on = /PERFECT|IDEA|USE|OCCASION/i.test(head);
     else if(on && /^(•|✔|✅|-|\*)/.test(l)) ideas.push(l.replace(/^(•|✔|✅|-|\*)\s*/,""));
   }
-  if(ideas.length < 4) ideas = ["Wedding favors","Party gifts","Small business packaging","Holiday gift boxes","Product launches","Handmade shop packaging"];
+  const flat = ptKind(p) === "flat";
+  if(ideas.length < 4) ideas = flat ? ["Wall decor","Handmade gifts","Home decoration","Painting & DIY crafts","Art workshops","Custom signs & banners"] : ["Wedding favors","Party gifts","Small business packaging","Holiday gift boxes","Product launches","Handmade shop packaging"];
   return { dim, fmts, machines: machines.length ? machines : ["Cricut","Silhouette","Glowforge","Laser cutter"], ideas: ideas.slice(0,8) };
 }
 function giBg(c){
@@ -9165,7 +9200,7 @@ function giRenderCore(c,p,slotKey,ctx){
   if(slotKey === "finished" && giPhotoOn("finished", ctx)) t = ["Finished Product", ctx.L.dim];
   if(slotKey === "template" && p.dzStyle === "rigid_shape") t = ["All Parts Included", "12 parts: chipboard + paper"];
   else if(slotKey === "template" && ctx.svgImg && ctx.svgImg.sheet) t = ["Cutting Template", "Sheet " + ctx.svgImg.sheet.w + " × " + ctx.svgImg.sheet.h + " mm"];
-  if(slotKey === "hero" && GI_OPT.hero === "center" && !giPhotoOn("hero", ctx)) t = [p.name, p.category || ""];
+  if(slotKey === "hero" && GI_OPT.hero === "center" && !giPhotoOn("hero", ctx)) t = [p.name, catTxt(p, "")];
   { const so = (GI_OPT.slotText || {})[slotKey]; if(so && t && (so.t || so.s)) t = [so.t || t[0], (so.s != null && so.s !== "") ? so.s : t[1]]; }
   if(GI_3D_SLOTS.includes(slotKey) && !giHas3d(p)){ giFrame(c, "3D shape not set", "Choose a 3D shape in the image settings", ctx.shop, ctx.logo); return; }
   giFrame(c, t ? t[0] : "", t ? t[1] : "", ctx.shop, ctx.logo);
@@ -9184,9 +9219,10 @@ async function generateListingImages(opts){
   const skip3d = !giHas3d(p), kind3 = gi3dKind(p), sig3 = JSON.stringify([p.dzStyle, p.dzShape && p.dzShape.shape, kind3, p.w, p.h, p.d]);
   if(skip3d){ for(const s of IMG_SLOTS.filter(x => GI_3D_SLOTS.includes(x.k))){ const v = p.images[s.k]; if(v && v.name && v.name.includes(s.f)){ await blobDel(v.key); delete p.images[s.k]; } } }
   const force3d = !skip3d && ((p.img3dSig && p.img3dSig !== sig3) || (!p.img3dSig && !p.dzStyle && !p.dzShape));
-  const targets = IMG_SLOTS.filter(s => keys.includes(s.k) && (opts.overwrite || !p.images[s.k] || (force3d && GI_3D_SLOTS.includes(s.k))) && !(skip3d && GI_3D_SLOTS.includes(s.k)));
+  const isFlat = ptKind(p) === "flat"; // محصول تخت: مراحل مونتاژ و تصویرهای ۳بعدی جعبه معنی ندارد
+  const targets = IMG_SLOTS.filter(s => keys.includes(s.k) && (opts.overwrite || !p.images[s.k] || (force3d && GI_3D_SLOTS.includes(s.k))) && !(skip3d && GI_3D_SLOTS.includes(s.k)) && !(isFlat && s.k === "assembly"));
   if(!skip3d && targets.some(s => GI_3D_SLOTS.includes(s.k))) p.img3dSig = sig3;
-  if(skip3d && keys.some(k => GI_3D_SLOTS.includes(k))) toast("تصویرهای ۳بعدی ساخته نشد چون شکل ۳بعدی محصول معلوم نیست — از «شکل ۳بعدی» انتخاب کن.");
+  if(skip3d && !isFlat && keys.some(k => GI_3D_SLOTS.includes(k))) toast("تصویرهای ۳بعدی ساخته نشد چون شکل ۳بعدی محصول معلوم نیست — از «شکل ۳بعدی» انتخاب کن.");
   if(!targets.length) return toast("اسلات‌های انتخاب‌شده همه پر هستند — تیک «جایگزینی تصویرهای موجود» را بزن یا اسلات دیگری انتخاب کن.");
   toast("⏳ در حال ساخت " + fa(targets.length) + " تصویر...");
   giApply(gs);
@@ -9241,7 +9277,7 @@ async function giDrawPreview(){
   giRender(cv.getContext("2d"),p,$("st-gPrevSlot").value || "hero",ctx); giLastCanvas = cv;
   const pv = $("st-gPrev").getContext("2d"); pv.clearRect(0,0,600,450); pv.drawImage(cv,0,0,600,450);
   // گالری تم‌ها: کوچک‌شده‌ی تصویر اصلی با هر تم
-  const sig = p.id + "|" + gs.hero + gs.frame + gs.align + "|" + p.w + p.h + p.d + p.name;
+  const sig = p.id + "|" + gs.hero + gs.frame + gs.align + "|" + p.w + p.h + p.d + p.name + (p.ptype || "");
   if(sig !== giSig){
     giSig = sig; const box = $("st-gThemes"); box.innerHTML = "";
     for(const [key,t] of Object.entries(GI_THEMES)){
@@ -9761,7 +9797,12 @@ async function dzDesignCore(feedback){
       catch(e){ dzState.review = "(بازبینی بصری انجام نشد: " + (e && e.message ? e.message : e) + ")"; dzBuildAll(spec); }
     }
     dzState.spec = spec; dzState.dl = d; dzState.sizes = null; dzState.sizeN = 1;
-    { const pp = cur(), wantN = pp && pp.ideaSizeN > 1 ? pp.ideaSizeN : 1; if(wantN > 1 && spec.style !== "net"){ dzState.sizeN = wantN; dzState.sizes = dzScaleRows(spec, wantN); } }
+    { const pp = cur(), wantN = pp && pp.ideaSizeN > 1 ? pp.ideaSizeN : 1;
+      if(wantN > 1 && spec.style !== "net"){
+        dzState.sizeN = wantN;
+        // اندازه‌هایی که فروشنده خودش در توضیحاتش نوشته، به‌جای مقیاس‌کردن خودکار
+        dzState.sizes = (pp.ideaSizes && pp.ideaSizes.length === wantN) ? pp.ideaSizes.map(r => Object.assign({}, r, {on: true})) : dzScaleRows(spec, wantN);
+      } }
     dzRender();
   }catch(e){ $("st-dzOut").innerHTML = "<p class='help' style='color:var(--cut)'>خطا: " + dzEsc(e.message) + "</p>"; }
 }
@@ -9810,7 +9851,7 @@ async function dzSizesAi(){
 function dzApplySizesToProduct(p){
   const rows = p.sizes || []; if(rows.length < 2) return;
   const mm = v => Math.round(v), inch = v => (Math.round(v/25.4*100)/100);
-  const line = r => "• " + r.label + " — " + mm(r.length) + " × " + mm(r.width) + " × " + mm(r.height) + " mm (" + inch(r.length) + " × " + inch(r.width) + " × " + inch(r.height) + " in)";
+  const line = r => "• " + r.label + " — " + szDims(r, mm) + " mm (" + szDims(r, inch) + " in)";
   const sec = "📏 SIZES INCLUDED (" + rows.length + ")\n" + rows.map(line).join("\n") + "\n• Each size comes as its own SVG, DXF and PDF file";
   const blocks = String(p.description || "").split(/\n\s*\n/); let at = blocks.findIndex(b => /INSTANT|DOWNLOAD/i.test(b.split("\n")[0]));
   if(blocks.some(b => /SIZES INCLUDED/i.test(b))) at = -2;
@@ -9819,7 +9860,7 @@ function dzApplySizesToProduct(p){
   if(!/sizes/i.test(p.title || "") ){ const t2 = limitTitle(sanitizeEtsyTitle((p.title || p.name) + " | " + rows.length + " Sizes")); if(t2.length <= 140) p.title = t2; }
   const tags = String(p.tags || "").split(/[,\n]/).map(t => t.trim()).filter(Boolean); const miss = ["multiple sizes","size options"].filter(t => !tags.some(x => x.toLowerCase() === t)); while(tags.length + miss.length > 13) tags.pop(); miss.forEach(t => tags.push(t));
   p.tags = tags.slice(0,13).join(", ");
-  p.notes = (p.notes ? p.notes + "\n" : "") + "اندازه‌ها: " + rows.map(r => r.label + " " + mm(r.length) + "×" + mm(r.width) + "×" + mm(r.height)).join(" · ");
+  p.notes = (p.notes ? p.notes + "\n" : "") + "اندازه‌ها: " + rows.map(r => r.label + " " + szDims(r, mm, "×")).join(" · ");
 }
 async function dzMultiFiles(p, s, d, rows, base, put){
   const enc = new TextEncoder(), svgE = [], dxfE = [], pdfE = [], rigid = s.style === "rigid_shape", used = {};
@@ -9980,7 +10021,7 @@ async function dzBuildGuide(p){
   const pdf = new PdfDoc(), W = pdf.W, H = pdf.H, ink = GI.ink, mute = GI.mute, acc = GI.acc, teal = GI.teal;
   const dark = giLum(GI.bg) < 120, pageBg = dark ? "#ffffff" : GI.bg, txt = "#1e2a32", softTxt = "#5b6770", accSoft = vidMix(acc, "#ffffff", 0.88), onAcc = giOnAcc();
   const shop = giShopName() || "";
-  const name = spec.name || p.name, dim = p.w + " × " + p.h + " × " + p.d + " mm";
+  const name = spec.name || p.name, dim = dimTxt(p) + " mm";
   const g = spec.guide || {};
   let steps = (g.steps && g.steps.length) ? g.steps : (spec.assembly_steps && spec.assembly_steps.length ? spec.assembly_steps.map((t,i) => ({title: "Step " + (i+1), text: t})) : [
     {title:"Download", text:"Download and unzip the files from your Etsy purchases page."},
@@ -10213,7 +10254,7 @@ async function dzBuildRigidGuide(p){
   newPage();
   pdf.text(name, MX, 78, {size:30, font:"F2", color:accC, width:PW-2*MX, lh:34}); y = 78 + 34*Math.max(1, pdf.wrap(name, PW-2*MX, 30, true).length) - 8;
   pdf.text("Shaped Box with Lid — Cutting & Assembly Guide", MX, y, {size:12, color:soft}); y += 18;
-  if(p.sizes && p.sizes.length > 1){ y = pdf.text("Sizes included: " + p.sizes.map(r => r.label + " " + Math.round(r.length) + "×" + Math.round(r.width) + "×" + Math.round(r.height) + " mm").join("  ·  ") + ". Each size has its own folder in the ZIP; the part list below shows the base size.", MX, y, {size:9.5, color:soft, width:PW-2*MX, lh:12}) + 6; }
+  if(p.sizes && p.sizes.length > 1){ y = pdf.text("Sizes included: " + p.sizes.map(r => r.label + " " + szDims(r, null, "×") + " mm").join("  ·  ") + ". Each size has its own folder in the ZIP; the part list below shows the base size.", MX, y, {size:9.5, color:soft, width:PW-2*MX, lh:12}) + 6; }
   const panelH = 190; pdf.rect(MX, y, PW-2*MX, panelH, {fill:accSoft, r:12});
   const iw = (PW-2*MX-36)/2, ih = Math.min(panelH-46, iw*imgA.h/imgA.w); pdf.image(iA, MX+12, y+10, iw, ih); pdf.image(iB, MX+24+iw, y+10, iw, ih);
   pdf.text("Closed", MX+12+iw/2, y+panelH-12, {size:8.5, color:soft, align:"center"}); pdf.text("Open — lid off", MX+24+iw*1.5, y+panelH-12, {size:8.5, color:soft, align:"center"}); y += panelH + 16;
@@ -10311,7 +10352,7 @@ async function pdfFillProduct(file){
   if(Number(d.price) > 0) p.price = Number(d.price);
   p.notes = ("از فایل «" + file.name + "»" + (d.notes ? " — " + d.notes : "") + (p.price ? "\nقیمت: $" + p.price : "")).trim();
   fillAlt(p, true); save(); renderAll();
-  const miss = []; if(!num(d.w) || !num(d.h) || !num(d.d)) miss.push("ابعاد"); if(!(Number(d.price) > 0)) miss.push("قیمت"); if(!p.tags || p.tags.split(",").length < 13) miss.push("تگ‌ها (کمتر از ۱۳)");
+  const miss = []; if(!num(d.w) || !num(d.h)) miss.push("ابعاد"); if(!(Number(d.price) > 0)) miss.push("قیمت"); if(!p.tags || p.tags.split(",").length < 13) miss.push("تگ‌ها (کمتر از ۱۳)");
   document.querySelector("#page-studio .tab[data-p='st-p-product']").click();
   toast("✅ مشخصات از فایل پر شد" + (miss.length ? " — ناقص: " + miss.join("، ") : "") + ". حالا فایل‌ها و تصویرها را اضافه کن.");
 }
@@ -10585,7 +10626,7 @@ function vidPrepText(c, p, shop, u){
   c.globalAlpha = fade;
   c.textAlign = "left"; c.fillStyle = GI.acc; c.font = "800 44px " + GI_FONT; c.fillText("DIGITAL DOWNLOAD", 110, 330);
   c.fillStyle = GI.ink; c.font = "800 100px " + GI_FONT; const y = giWrap(c, p.name, 110, 450, 800, 116, 3);
-  c.fillStyle = GI.mute; c.font = "500 50px " + GI_FONT; c.fillText(p.category || "Template", 110, y + 20);
+  c.fillStyle = GI.mute; c.font = "500 50px " + GI_FONT; c.fillText(catTxt(p), 110, y + 20);
   c.fillStyle = GI.ink; c.font = "700 56px " + GI_FONT; c.fillText(p.w + " × " + p.h + " × " + p.d + " mm", 110, y + 100);
   c.fillStyle = GI.mute; c.font = "600 38px " + GI_FONT; c.fillText(shop, 110, 1010);
   c.textAlign = "right"; c.fillStyle = GI.teal; c.fillText("Instant Digital Download", 1810, 1010);
@@ -10844,7 +10885,7 @@ const GI_PHOTO = {
     c.font = pillF; const ws = fm.map(s => c.measureText(lab(s)).width + 64 + 24); let x = cen ? (GI.W - (ws.reduce((a,b) => a+b, 0) - 24))/2 : 140;
     fm.forEach((s,i) => { giPill(c, lab(s), x, 140, pillF, giOnTeal(), GI.teal); x += ws[i]; });
     c.fillStyle = GI.ink; c.font = "800 150px " + GI_FONT; c.textAlign = cen ? "center" : "left"; const y = giWrap(c, p.name, cen ? GI.W/2 : 140, 450, 2100, 166, 2, cen ? "center" : "left");
-    c.fillStyle = GI.mute; c.font = "600 72px " + GI_FONT; c.textAlign = cen ? "center" : "left"; c.fillText((p.category || "Template") + " • " + L.dim, cen ? GI.W/2 : 140, y + 6);
+    c.fillStyle = GI.mute; c.font = "600 72px " + GI_FONT; c.textAlign = cen ? "center" : "left"; c.fillText(catTxt(p) + " • " + L.dim, cen ? GI.W/2 : 140, y + 6);
     const top = y + 60, h = GI.H - 170 - 50 - top;
     if(cen){ giPhotoCard(c, ph[0], 200, top, 2000, h); return; }
     giPhotoCard(c, ph[0], 140, top, 1480, h);
@@ -10916,8 +10957,11 @@ function giAutoShape(p){
 }
 // نوع ۳بعدی: "own" (طرح خود برنامه) | نام شکل | "box" | null (نامعلوم)
 function gi3dKind(p){
+  const flat = ptKind(p) === "flat", m = GI_OPT.shape3d || "auto";
+  // محصول تخت (استنسل، تابلو...) جعبه نیست: تصویر ۳بعدی فقط وقتی که خودت شکل مشخصی بخواهی (یا طرح جعبه‌ی خود برنامه را ساخته باشی)
+  if(flat && p.ptype === "flat") return (m === "auto" || m === "none") ? null : m;
   if(p.dzShape || p.dzStyle) return "own";
-  const m = GI_OPT.shape3d || "auto"; if(m === "none") return null; if(m === "auto") return giAutoShape(p); return m;
+  if(m === "none") return null; if(m === "auto") return flat ? null : giAutoShape(p); return m;
 }
 function giHas3d(p){ return !!gi3dKind(p); }
 function giUiRefresh3(){
@@ -11049,6 +11093,16 @@ function addDraftFromIdea(data){
   if(data.price) p.notes = "قیمت پیشنهادی Agent: $" + data.price;
   if(data.why_sellable) p.notes += (p.notes ? "\n" : "") + "چرا فروش می‌ره: " + data.why_sellable;
   p.ideaId = data.id; p.ideaSizeN = Math.max(1, Math.min(6, Number(data.sizeN) || 1));
+  // محصولِ تخت (استنسل، تابلو...) جعبه نیست: پیش‌فرض‌های بسته‌بندی (جنس کاردستی، ارتفاع ۳۰، دستگاه برش) روی آن نمی‌نشیند
+  p.ptype = FLAT_RX.test([p.name, p.title].join(" ")) ? "flat" : "auto";
+  if(p.ptype === "flat"){ p.d = 0; p.material = ""; p.materials = ""; if(!/cricut|silhouette|laser|svg|dxf/i.test(String(data.description || "") + " " + String(data.title || ""))) p.machines = ""; }
+  // اندازه‌هایی که خودِ فروشنده در توضیحاتش نوشته (گزینه‌ی «از توضیحات خودم»): همان‌ها، نه اندازه‌ی ساختگی
+  const given = Array.isArray(data.sizes) ? data.sizes.filter(r => Number(r.length) > 0 && Number(r.width) > 0) : [];
+  if(given.length){
+    const std = given[Math.floor((given.length - 1) / 2)] || given[0]; // اندازه‌ی وسط به‌عنوان اندازه‌ی اصلی
+    p.w = Math.round(std.length); p.h = Math.round(std.width); p.d = Math.round(Number(std.height) || 0);
+    if(given.length > 1){ p.ideaSizes = given.map(r => Object.assign({}, r)); p.sizes = given.map(r => Object.assign({}, r)); p.ideaSizeN = Math.min(6, given.length); }
+  }
   state.products.push(p); state.active = p.id; save(); renderAll();
   return p.id;
 }
@@ -11065,7 +11119,7 @@ async function aiGenerateSeoForCurrent(){
   try{
     const lang = (typeof S !== "undefined" && S.contentLanguage) ? S.contentLanguage : "English";
     const prompt = 'یه فروشنده‌ی اتسی داره این محصول رو آماده می‌کنه: "' + p.name + '"'
-      + ' (دسته: ' + (p.category||'—') + '، جنس: ' + (p.material||'—') + '، ابعاد نهایی: ' + p.w + 'x' + p.h + 'x' + p.d + ' میلی‌متر).'
+      + ' (دسته: ' + (p.category||'—') + '، جنس: ' + (p.material||'—') + '، ابعاد نهایی: ' + dimTxt(p, 'x') + ' میلی‌متر' + (ptKind(p) === 'flat' ? '؛ محصول تخت است، نه جعبه و بسته‌بندی' : '') + ').'
       + (p.notes ? (' یادداشت فروشنده: ' + p.notes) : '')
       + '\nWrite the title, tags, and description in natural, native ' + lang + ' — not a literal word-for-word translation.'
       + '\nفقط این JSON رو برگردون: {"title":"عنوان SEO شده حداکثر ۱۴۰ کاراکتر"،"tags":["دقیقاً ۱۳ تگ، بدون underscore، هرکدوم حداکثر ۲۰ کاراکتر"]،"description":"توضیح کامل حداقل ۱۵۰ کلمه"،"materials":"چند جنس با کاما جدا"،"alt":["دقیقاً ۱۰ خط ALT توصیفیِ تصویر، به ترتیب: hero, dimensions, template, formats, machines, included, finished, ideas, assembly, promo — هرکدوم حداکثر ۲۰۰ کاراکتر"]}'
