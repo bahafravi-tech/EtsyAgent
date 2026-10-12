@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.40.2 -->
+<!-- APP_VERSION: 1.41.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v164</div>
+        <div class="logo-badge">v168</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -2188,6 +2188,10 @@ function loadShopToState(shopId){
   S.reportsArchive=shop.reportsArchive||[];
   S.apiRelayUrl=shop.apiRelayUrl||'';
   S.apiRelaySecret=shop.apiRelaySecret||'';
+  // رله (Worker) معمولاً یکی است؛ اگر این فروشگاه رله ندارد، از اولین فروشگاهی که دارد قرض می‌گیرد (وگرنه تماس مستقیم با Etsy «Failed to fetch» می‌دهد)
+  if(!S.apiRelayUrl){
+    try{ for(const it of ShopManager.list()){ if(it.id===shop.id) continue; const o=ShopManager.get(it.id); if(o && o.apiRelayUrl){ S.apiRelayUrl=o.apiRelayUrl; S.apiRelaySecret=o.apiRelaySecret||''; break; } } }catch(e){}
+  }
   S.etsyOAuthToken=shop.etsyOAuthToken||'';
   S.etsyRefreshToken=shop.etsyRefreshToken||'';
   S.products=shop.products||[];
@@ -2746,6 +2750,74 @@ function switchCrView(view, el){
 }
 
 // ══ Log ══
+// ══ نشانگر کارهای در حال انجام: نوار باریک بالای صفحه + فهرست کارها پایین صفحه (با زمان سپری‌شده و درصد) ══
+const Busy = (function(){
+  let seq = 0, box = null, bar = null, timer = null; const tasks = new Map();
+  const fa2 = n => String(n).replace(/\d/g, d => "۰۱۲۳۴۵۶۷۸۹"[d]);
+  const esc2 = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  function ensure(){
+    if(box) return;
+    const st = document.createElement("style");
+    st.textContent = "#busyBar{position:fixed;top:0;left:0;right:0;height:4px;z-index:100000;overflow:hidden;display:none;background:rgba(0,0,0,.07)}" +
+      "#busyBar i{position:absolute;top:0;bottom:0;width:35%;background:var(--orange,#e8590c);border-radius:2px;animation:busyMove 1.1s ease-in-out infinite}" +
+      "#busyBar.det i{animation:none;left:0;transition:width .3s}" +
+      "@keyframes busyMove{0%{left:-35%}100%{left:100%}}" +
+      "#busyDock{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:100000;display:none;flex-direction:column;gap:8px;width:min(92vw,460px);direction:rtl;pointer-events:none}" +
+      ".busyChip{pointer-events:auto;background:var(--surface,#fff);color:var(--text,#222);border:1px solid var(--border,#ddd);border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.2);padding:10px 14px;font-size:13px}" +
+      ".busyRow{display:flex;align-items:center;gap:10px}" +
+      ".busySpin{width:18px;height:18px;border:3px solid var(--border,#ddd);border-top-color:var(--orange,#e8590c);border-radius:50%;animation:busySpin .8s linear infinite;flex:none}" +
+      "@keyframes busySpin{to{transform:rotate(360deg)}}" +
+      ".busyLbl{flex:1;min-width:0;line-height:1.6}" +
+      ".busyT{color:var(--text2,#777);flex:none;font-size:12px}" +
+      ".busyPb{height:6px;background:var(--surface3,#eee);border-radius:3px;margin-top:8px;overflow:hidden}" +
+      ".busyPb i{display:block;height:100%;background:var(--orange,#e8590c);transition:width .3s}";
+    document.head.appendChild(st);
+    bar = document.createElement("div"); bar.id = "busyBar"; bar.appendChild(document.createElement("i")); document.body.appendChild(bar);
+    box = document.createElement("div"); box.id = "busyDock"; document.body.appendChild(box);
+  }
+  function render(){
+    ensure();
+    const now = Date.now(), all = [...tasks.values()], explicit = all.filter(t => !t.auto);
+    const vis = (explicit.length ? explicit : all).filter(t => now - t.t0 > 500);
+    if(!vis.length){ box.style.display = "none"; bar.style.display = "none"; return; }
+    box.style.display = "flex"; bar.style.display = "block";
+    const det = vis.length === 1 && vis[0].pct != null; bar.className = det ? "det" : ""; bar.firstChild.style.width = det ? Math.max(3, Math.min(100, vis[0].pct)) + "%" : "";
+    box.innerHTML = vis.map(t => {
+      const sec = Math.round((now - t.t0) / 1000), pc = t.pct != null ? Math.max(0, Math.min(100, t.pct)) : null;
+      return '<div class="busyChip"><div class="busyRow"><span class="busySpin"></span><span class="busyLbl">' + esc2(t.label) + (pc != null ? " — " + fa2(Math.round(pc)) + "٪" : "") + '</span><span class="busyT">' + fa2(sec) + " ثانیه</span></div>" + (pc != null ? '<div class="busyPb"><i style="width:' + Math.max(2, pc) + '%"></i></div>' : "") + "</div>";
+    }).join("");
+  }
+  function sync(){ if(tasks.size && !timer) timer = setInterval(render, 500); if(!tasks.size && timer){ clearInterval(timer); timer = null; } render(); }
+  return {
+    start(label, opt){ const id = ++seq; tasks.set(id, {label, t0: Date.now(), pct: (opt && opt.pct != null) ? opt.pct : null, auto: !!(opt && opt.auto)}); sync(); return id; },
+    set(id, label, pct){ const t = tasks.get(id); if(!t) return; if(label) t.label = label; if(pct != null) t.pct = pct; render(); },
+    end(id){ if(id == null) return; tasks.delete(id); sync(); },
+    async wrap(label, fn){ const id = this.start(label); try{ return await fn(id); } finally { this.end(id); } }
+  };
+})();
+// هر درخواست شبکه که بیش از نیم‌ثانیه طول بکشد خودکار نشانگر می‌گیرد
+(function(){
+  const _fetch = window.fetch.bind(window);
+  function lbl(url, opts){
+    const u = String(url && url.url ? url.url : url);
+    if(/design_ai\.php/.test(u)) return "Claude در حال کار روی درخواستت…";
+    if(/etsy_oauth_token/.test(u)) return "اتصال به Etsy…";
+    let inner = ""; try{ if(opts && typeof opts.body === "string" && opts.body.length < 20000 && opts.body.charAt(0) === "{"){ const b = JSON.parse(opts.body); if(b && typeof b.url === "string") inner = b.url; } }catch(e){}
+    const t = inner || u;
+    if(/etsy\.com/.test(t)) return "در حال ارتباط با Etsy…";
+    if(/anthropic|generativelanguage|googleapis|openai/.test(t)) return "در حال دریافت پاسخ از هوش مصنوعی…";
+    if(/pinterest/.test(t)) return "در حال ارتباط با Pinterest…";
+    if(/\/api\//.test(u)) return "در حال ارتباط با سرور…";
+    return "در حال ارتباط با اینترنت…";
+  }
+  window.fetch = function(url, opts){
+    const u = String(url && url.url ? url.url : url);
+    if(/^(data:|blob:)/.test(u)) return _fetch(url, opts);
+    const id = Busy.start(lbl(url, opts), {auto: true});
+    return _fetch(url, opts).finally(() => Busy.end(id));
+  };
+})();
+
 function log(msg, type='info') {
   const el = document.getElementById('mainLog');
   const t = new Date().toLocaleTimeString('fa-IR');
@@ -5592,7 +5664,7 @@ async function loadEtsySectionsUI(){
   const out = document.getElementById('etsySectionResult'); if(!S.etsyApiKey || !S.etsyShopId){ out.innerHTML = '<span style="color:var(--red)">اول App API Key و Shop ID را وارد و «ذخیره» کن.</span>'; return; }
   out.textContent = '⏳ در حال دریافت از Etsy...';
   try{ const list = await etsyLoadSections(true); out.innerHTML = list.length ? '<span style="color:var(--green)">✓ ' + list.length + ' گروه پیدا شد: ' + list.map(x => escHtml(x.title)).join('، ') + '</span>' : '<span style="color:var(--red)">این فروشگاه هنوز گروهی ندارد — در Etsy → Shop Manager → Listings → Sections بساز.</span>'; }
-  catch(e){ out.innerHTML = '<span style="color:var(--red)">خطا: ' + escHtml(e.message) + '</span>'; }
+  catch(e){ out.innerHTML = '<span style="color:var(--red)">خطا: ' + escHtml(etsyNetErr(e)) + '</span>'; }
 }
 // انتخاب گروه برای یک لیستینگ: گروه ثابتِ انتخاب‌شده در تنظیمات، وگرنه بهترین تطبیق نام، وگرنه پرسیدن از کاربر
 async function etsyResolveSection(item){
@@ -6969,13 +7041,21 @@ function saveSettings(){
 }
 
 // آدرسی که برنامه موقع اتصال به Etsy می‌فرستد (Redirect URI) — باید عیناً در تنظیمات اپ Etsy ثبت شده باشد
-function etsyRedirectUri(){ return window.location.href.split('?')[0].split('#')[0]; }
+function etsyRedirectUri(){
+  let o = ''; try{ o = (localStorage.getItem('etsy_redirect_override') || '').trim(); }catch(e){}
+  return o || window.location.href.split('?')[0].split('#')[0];
+}
+function etsyKeyMasked(){ const k = String(S.etsyApiKey || (document.getElementById('etsyApiKeyInput')?.value || '')).trim(); return k ? k.slice(0, 4) + ' … ' + k.slice(-4) + '  (' + k.length + ' کاراکتر)' : '— (خالی)'; }
+function saveEtsyRedirectOverride(v){ try{ localStorage.setItem('etsy_redirect_override', String(v || '').trim()); }catch(e){} renderEtsyRedirectInfo(); }
 function renderEtsyRedirectInfo(){
   const el = document.getElementById('etsyRedirectInfo'); if(!el) return;
   const u = etsyRedirectUri(), alt = u.endsWith('/') ? u + 'index.html' : (u.endsWith('index.html') ? u.slice(0, -10) : u + '/');
   el.innerHTML = '<div style="font-weight:700;margin-bottom:4px">🔗 Redirect URI این صفحه (باید عیناً در Etsy ثبت شود)</div>' +
     '<div dir="ltr" style="background:var(--surface3);border-radius:6px;padding:6px 8px;word-break:break-all;user-select:all">' + escHtml(u) + '</div>' +
+    '<div style="margin-top:6px">🔑 Keystring که برای اتصال فرستاده می‌شود: <b dir="ltr">' + escHtml(etsyKeyMasked()) + '</b> — باید با Keystring همان اپی که آدرس بالا در آن ثبت شده یکی باشد (۴ کاراکتر اول و آخر را در صفحه‌ی اپ در Etsy تطبیق بده).</div>' +
     '<div style="margin-top:6px"><button class="btn btn-secondary btn-sm" type="button" onclick="copyEtsyRedirect()">📋 کپی آدرس</button></div>' +
+    '<div style="margin-top:8px">اگر در Etsy آدرس دیگری ثبت کرده‌ای، همان را اینجا بنویس تا برنامه همان را بفرستد (باید آدرسی باشد که همین برنامه در آن باز می‌شود). خالی = آدرس همین صفحه:</div>' +
+    '<input type="text" class="input" dir="ltr" id="etsyRedirectOverrideInput" placeholder="https://etsyagent.afravi.com/index.html" style="margin-top:4px" value="' + escHtml((function(){ try{ return localStorage.getItem('etsy_redirect_override') || ''; }catch(e){ return ''; } })()) + '" onchange="saveEtsyRedirectOverride(this.value)">' +
     '<div style="color:var(--text3);margin-top:6px;line-height:1.7">اگر Etsy نوشت «The requested redirect URL is not permitted»: در developer.etsy.com ← Your Apps ← اپ همین فروشگاه ← «Callback URLs / Redirect URIs»، همین آدرس را <b>دقیقاً همین‌طور</b> (با https و بدون فاصله و با همین «/» آخر) اضافه کن و ذخیره بزن. برای اطمینان، آدرس دوم را هم اضافه کن: <span dir="ltr" style="user-select:all">' + escHtml(alt) + '</span>. صفحه را همیشه از همین آدرس باز کن (مثلاً با www یا بدون www فرق می‌کند).</div>';
 }
 function copyEtsyRedirect(){ const u = etsyRedirectUri(); (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(() => showEtsyStatus('✅ آدرس کپی شد', true)).catch(() => { prompt('این آدرس را کپی کن:', u); }); }
@@ -7008,6 +7088,7 @@ function syncEtsyInputs(){
   const key = g('etsyApiKeyInput'), sec = g('etsySharedSecretInput'), shop = g('etsyShopIdInput'), tax = g('etsyTaxonomyIdInput');
   if(key) S.etsyApiKey = key; if(sec) S.etsySharedSecret = sec; if(shop) S.etsyShopId = shop; if(tax) S.etsyTaxonomyId = tax;
   if(key || sec || shop || tax){ try{ saveCurrentShop(); }catch(e){} }
+  if(typeof renderEtsyRedirectInfo === 'function') renderEtsyRedirectInfo();
 }
 // پیدا کردن Taxonomy ID: دسته‌های لیستینگ‌های فعال خودت (با نام دسته) + پیشنهاد دسته‌های مرتبط با محصول دیجیتال
 async function findEtsyTaxonomy(){
@@ -7051,7 +7132,17 @@ async function findEtsyTaxonomy(){
     out.innerHTML=`<div style="font-weight:700;margin-bottom:6px;color:var(--green)">✅ بهترین گزینه برای محصولات تو انتخاب و در فیلد گذاشته شد:</div>${chip(best,true)}
       ${ranked.length>1?`<div style="font-weight:700;margin:10px 0 6px">گزینه‌های دیگر (روی هرکدام بزنی جایگزین می‌شود):</div>${ranked.slice(1).map(r=>chip(r,false)).join('')}`:''}
       <div style="color:var(--text3);margin-top:6px">حالا دکمه‌ی «ذخیره» Etsy را بزن.</div>`;
-  }catch(e){ out.innerHTML=`<span style="color:var(--red)">خطا: ${escHtml(e.message)}</span>`; }
+  }catch(e){ out.innerHTML=`<span style="color:var(--red)">خطا: ${escHtml(etsyNetErr(e))}</span>`; }
+}
+// «Failed to fetch» یعنی مرورگر اصلاً به Etsy نرسیده (مسدود بودن یا نبودن رله) — پیام قابل‌فهم
+function etsyNetErr(e){
+  const m = String(e && e.message ? e.message : e);
+  if(/failed to fetch|networkerror|load failed|network request failed/i.test(m)){
+    return S.apiRelayUrl
+      ? 'ارتباط با رله برقرار نشد (Failed to fetch). آدرس رله در «تنظیمات ← رله» را بررسی کن و مطمئن شو Worker در Cloudflare فعال و آدرسش درست است.'
+      : 'تماس مستقیم با Etsy از این مرورگر ممکن نیست (Failed to fetch). برای این فروشگاه در «تنظیمات ← رله» آدرس و رمز Worker (رله) را وارد و ذخیره کن — همان رله‌ی فروشگاه‌های دیگر هم جواب می‌دهد.';
+  }
+  return m;
 }
 function onBrandLogoSelected(evt){
   const file = evt.target.files[0];
@@ -7115,8 +7206,9 @@ async function startEtsyOAuthFlow(){
   const verifier=generateCodeVerifier();
   const challenge=await generateCodeChallenge(verifier);
   sessionStorage.setItem('etsy_code_verifier',verifier);
-  const redirectUri=window.location.href.split('?')[0].split('#')[0];
+  const redirectUri=etsyRedirectUri();
   sessionStorage.setItem('etsy_redirect_uri',redirectUri);
+  log('🔗 Redirect URI ارسالی به Etsy: '+redirectUri+' · Keystring: '+etsyKeyMasked()+' — هر دو باید با اپ در Etsy یکی باشد','info');
   const scopes='listings_r listings_w transactions_r shops_r';
   const state='etsyauth_'+Math.random().toString(36).slice(2);
   sessionStorage.setItem('etsy_oauth_state',state);
@@ -8921,8 +9013,9 @@ async function generateListingImages(opts){
   giApply(gs);
   const ctx = await giContext(p), cv = document.createElement("canvas"); cv.width = GI.W; cv.height = GI.H;
   const c = cv.getContext("2d");
-  let n = 0;
-  for(const s of targets){
+  let n = 0; const bt = Busy.start("ساخت تصویرهای لیستینگ", {pct: 0});
+  try{ for(const s of targets){
+    Busy.set(bt, "ساخت تصویر " + fa(n+1) + " از " + fa(targets.length), n/targets.length*100); await new Promise(r => setTimeout(r, 0));
     giRender(c,p,s.k,ctx);
     const blob = await new Promise(r => cv.toBlob(r,"image/jpeg",0.92));
     const kw = slug(tokens(p,"{KW}")).toLowerCase().slice(0,60);
@@ -8933,7 +9026,7 @@ async function generateListingImages(opts){
     const i = IMG_SLOTS.findIndex(x => x.k === s.k), raw = altRaw(p);
     if(i >= 0 && !raw[i]){ raw[i] = ALT_DEFAULTS[s.k]; p.alt = raw.join("\n"); }
     n++;
-  }
+  } }finally{ Busy.end(bt); }
   save(); renderAll();
   toast("✅ " + fa(n) + " تصویر ساخته شد" + (ctx.svgImg ? "" : " — با آپلود فایل SVG، پیش‌نمایش واقعی طرح هم داخل تصویرها می‌آید") + ".");
 }
@@ -9349,6 +9442,9 @@ async function dzCall(prompt, maxTokens, forceModel){
   return callClaude(prompt, maxTokens);
 }
 async function dzAsk(){
+  return Busy.wrap("Claude در حال آماده‌کردن سؤال‌ها", () => dzAskCore());
+}
+async function dzAskCore(){
   const brief = $("st-dzBrief").value.trim();
   if(!brief) return toast("اول ایده‌ی محصول رو بنویس.");
   dzState.brief = brief; $("st-dzOut").innerHTML = ""; $("st-dzQs").innerHTML = "<p class='help'>⏳ Claude دارد سؤال‌ها را آماده می‌کند...</p>";
@@ -9449,6 +9545,9 @@ async function dzReview(spec, d, rep){
   return {spec: ns, d: nd, note: "🔧 Claude طرح را اصلاح کرد — " + ((out.problems || []).join("؛ ") || "") + " " + (out.notes_fa || "")};
 }
 async function dzDesign(feedback){
+  return Busy.wrap("Claude در حال طراحی جعبه و نوشتن راهنما (۳۰ تا ۱۲۰ ثانیه)", () => dzDesignCore(feedback));
+}
+async function dzDesignCore(feedback){
   $("st-dzOut").innerHTML = "<p class='help'>⏳ Claude دارد جعبه را طراحی و راهنما/متن لیستینگ را می‌نویسد (۳۰ تا ۱۲۰ ثانیه)...</p>";
   try{
     const qa = dzState.qa.map(x => "Q: " + x.q + "\nA: " + x.a).join("\n");
@@ -10060,7 +10159,9 @@ async function zipData(buf, ent){
 }
 const ZIP_MIME = {svg:"image/svg+xml", dxf:"application/dxf", pdf:"application/pdf", jpg:"image/jpeg", jpeg:"image/jpeg", png:"image/png", webp:"image/webp", mp4:"video/mp4", webm:"video/webm", mov:"video/quicktime", txt:"text/plain", md:"text/plain", ai:"application/postscript", eps:"application/postscript"};
 async function zipImport(file){
-  if(!file) return;
+  if(!file) return; return Busy.wrap("باز کردن و جاگذاری فایل‌های ZIP", () => zipImportCore(file));
+}
+async function zipImportCore(file){
   if(file.size > 500*1024*1024) return toast("این ZIP بزرگ‌تر از ۵۰۰ مگابایت است.");
   toast("⏳ در حال باز کردن ZIP...");
   try{
@@ -10192,6 +10293,10 @@ async function fsEtsyPayload(p){
   log("ℹ️ Etsy فقط ۵ فایل دیجیتال می‌پذیرد — فایل‌های چندتایی هر جایگاه در یک ZIP قرار گرفت", "warn"); return items;
 }
 async function studioSendToEtsy(){
+  const bt = Busy.start("ارسال کامل به Etsy", {pct: 0});
+  try{ return await studioSendToEtsyCore(bt); } finally { Busy.end(bt); }
+}
+async function studioSendToEtsyCore(bt){
   const p = cur();
   if(!p.title || !tagList(p).length) return toast("عنوان و تگ‌ها خالی است — اول تب «سئو اتسی» را کامل کن.");
   let price = parseFloat(p.price) || parseFloat(((String(p.notes||"").match(/\$\s*([0-9]+(?:\.[0-9]+)?)/)||[])[1]));
@@ -10208,6 +10313,7 @@ async function studioSendToEtsy(){
   if(!confirm("«" + p.title + "»\nقیمت: $" + price + "\n" + files.length + " فایل، " + imgs.length + " تصویر و " + vidList.length + " ویدیو به‌صورت پیش‌نویس (Draft) روی Etsy ساخته بشه؟" + (nameFix.length ? "\n\n✂ نام " + nameFix.length + " فایل بلند یا نامناسب بود و کوتاه شد:\n" + nameFix.slice(0, 4).join("\n") : "") + "\n(منتشر نمی‌شود؛ خودت در Etsy بررسی و Publish می‌کنی.)")) return;
   const item = {title: p.title, tags: tagList(p), description: p.description, price, materials: matList(p), category: p.category};
   toast("⏳ در حال ساخت پیش‌نویس روی Etsy...");
+  Busy.set(bt, "ساخت پیش‌نویس روی Etsy", 3);
   const ok = await etsyCreateDraftListing(item);
   if(!ok) return toast("ساخت پیش‌نویس ناموفق بود — جزئیات را در «لاگ فعالیت» ببین.");
   const lid = item.etsyListingId; p.etsyListingId = lid; save();
@@ -10216,20 +10322,21 @@ async function studioSendToEtsy(){
     try{
       const v = {name: s.name}, b = s.blob;
       await etsyMultipartPost("listings/" + lid + "/files", {name: v.name, rank: i+1}, "file", b, v.name);
-      fOk++; toast("⬆ فایل " + fa(fOk) + "/" + fa(files.length) + " آپلود شد");
+      fOk++; Busy.set(bt, "آپلود فایل " + fa(fOk) + " از " + fa(files.length), 5 + fOk/(files.length+imgs.length+vidList.length)*95); toast("⬆ فایل " + fa(fOk) + "/" + fa(files.length) + " آپلود شد");
     }catch(e){ errs.push(s.t + ": " + e.message); }
   }
   for(const [i, s] of imgs.entries()){
     try{
       const v = p.images[s.k], b = await blobGet(v.key), idx = IMG_SLOTS.findIndex(x => x.k === s.k);
       await etsyMultipartPost("listings/" + lid + "/images", {rank: idx+1, overwrite: "true", alt_text: altResolved(p)[idx].slice(0,250)}, "image", b, v.name || (s.f + ".jpg"));
-      iOk++; toast("🖼 تصویر " + fa(iOk) + "/" + fa(imgs.length) + " آپلود شد");
+      iOk++; Busy.set(bt, "آپلود تصویر " + fa(iOk) + " از " + fa(imgs.length), 5 + (fOk+iOk)/(files.length+imgs.length+vidList.length)*95); toast("🖼 تصویر " + fa(iOk) + "/" + fa(imgs.length) + " آپلود شد");
     }catch(e){ errs.push(s.t + ": " + e.message); }
   }
   let vOk = 0;
   for(const s of vidList){
     try{
       const v = vids(p)[s.k], b = await blobGet(v.key);
+      Busy.set(bt, "آپلود ویدیو " + fa(vOk+1) + " از " + fa(vidList.length) + " (ممکن است طول بکشد)", 5 + (fOk+iOk+vOk)/(files.length+imgs.length+vidList.length)*95);
       toast("🎬 در حال آپلود ویدیو " + fa(vOk+1) + "/" + fa(vidList.length) + " (ممکن است کمی طول بکشد)...");
       await etsyMultipartPost("listings/" + lid + "/videos", {name: v.name}, "video", b, v.name);
       vOk++;
@@ -10452,10 +10559,11 @@ async function vidBuildTour(p, seconds, onProgress){
 }
 async function vidMake(slot){
   const p = cur(), dur = Number($("st-vDur").value) || 10, btn = document.querySelector("[data-vmake='" + slot + "']");
-  const old = btn ? btn.textContent : "";
+  const old = btn ? btn.textContent : ""; let bt = null;
   try{
+    bt = Busy.start("ضبط ویدیو — تا پایان همین تب را باز نگه دار", {pct: 0});
     toast("⏳ ضبط ویدیو شروع شد — این تب را باز نگه دار (" + fa(dur) + " ثانیه)");
-    const prog = u => { if(btn) btn.textContent = "⏳ " + fa(Math.round(u*100)) + "٪"; };
+    const prog = u => { Busy.set(bt, null, u*100); if(btn) btn.textContent = "⏳ " + fa(Math.round(u*100)) + "٪"; };
     let forceBox = false;
     if(slot === "vid3d" || slot === "vidbuild"){ giApply(giGet()); if(!giHas3d(p)){ if(!confirm("شکل ۳بعدی این محصول مشخص نیست.\nبا «جعبه‌ی مستطیلی» (از روی طول و عرض و ارتفاع) ساخته شود؟\n\nبرای شکل دیگر (قلب، دایره، فایل خودت...) لغو را بزن و در بلوک «شکل ۳بعدی محصول» انتخاب کن.")){ if(btn) btn.textContent = old; return; } forceBox = true; } }
     vidShowErr("");
@@ -10465,7 +10573,7 @@ async function vidMake(slot){
     await blobPut(key, blob); vids(p)[slot] = {name, size: blob.size, type: blob.type, key};
     save(); renderVideos();
     toast("✅ " + s.t + " ساخته شد (" + kb(blob.size) + ")" + (/mp4/.test(blob.type) ? "" : " — فرمت WebM است؛ اگر Etsy نپذیرفت از Chrome/Edge جدید استفاده کن یا با مبدل به MP4 تبدیلش کن."));
-  }catch(e){ const msg = e && e.message ? e.message : String(e); console.error("vidMake", e); vidShowErr(msg); toast("خطا در ساخت ویدیو: " + msg); if(btn) btn.textContent = old; }
+  }catch(e){ const msg = e && e.message ? e.message : String(e); console.error("vidMake", e); vidShowErr(msg); toast("خطا در ساخت ویدیو: " + msg); if(btn) btn.textContent = old; }finally{ Busy.end(bt); }
 }
 // خطای ساخت ویدیو بالای کارت‌ها ماندگار نشان داده می‌شود (toast زود محو می‌شود)
 function vidShowErr(msg){
