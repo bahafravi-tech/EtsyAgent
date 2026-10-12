@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.43.4 -->
+<!-- APP_VERSION: 1.43.5 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v175</div>
+        <div class="logo-badge">v176</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -6913,7 +6913,7 @@ async function loadFromEtsyCore(bt){
     let listings=[], total=null;
     for(let off=0; off<2000; off+=100){
       Busy.set(bt, 'دریافت محصولات از Etsy' + (total ? ' — ' + listings.length + ' از ' + total : '...'), total ? listings.length/total*100 : null);
-      const d = await etsyApiGet(`https://openapi.etsy.com/v3/application/shops/${shopId}/listings?state=active&limit=100&offset=${off}&includes=Images`, {'Authorization':`Bearer ${S.etsyOAuthToken}`});
+      const d = await etsyApiGetWithAuth(`https://openapi.etsy.com/v3/application/shops/${shopId}/listings?state=active&limit=100&offset=${off}&includes=Images`);
       const part = d.results||[]; listings = listings.concat(part); total = d.count!=null ? d.count : listings.length;
       if(!part.length || listings.length >= total) break;
     }
