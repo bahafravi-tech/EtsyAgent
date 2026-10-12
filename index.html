@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.43.3 -->
+<!-- APP_VERSION: 1.43.4 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v174</div>
+        <div class="logo-badge">v175</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -2757,7 +2757,7 @@ function switchCrView(view, el){
 // ══ Log ══
 // ══ نشانگر کارهای در حال انجام: نوار باریک بالای صفحه + فهرست کارها پایین صفحه (با زمان سپری‌شده و درصد) ══
 const Busy = (function(){
-  let seq = 0, box = null, bar = null, timer = null; const tasks = new Map();
+  let seq = 0, box = null, bar = null, timer = null, burstStart = 0, lastEnd = 0, lastLabel = ""; const tasks = new Map();
   const fa2 = n => String(n).replace(/\d/g, d => "۰۱۲۳۴۵۶۷۸۹"[d]);
   const esc2 = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   function ensure(){
@@ -2783,20 +2783,21 @@ const Busy = (function(){
   function render(){
     ensure();
     const now = Date.now(), all = [...tasks.values()], explicit = all.filter(t => !t.auto);
-    const vis = (explicit.length ? explicit : all).filter(t => now - t.t0 > 500);
-    if(!vis.length){ box.style.display = "none"; bar.style.display = "none"; return; }
+    let rows = (explicit.length ? explicit : all).filter(t => t.auto ? now - burstStart > 500 : now - t.t0 > 150), ghost = false;
+    if(!rows.length && !all.length && lastEnd && now - lastEnd < 1500 && lastEnd - burstStart > 500){ rows = [{label: lastLabel, t0: burstStart, pct: null, auto: true, done: true}]; ghost = true; }
+    if(!rows.length){ box.style.display = "none"; bar.style.display = "none"; if(!all.length && timer && (!lastEnd || now - lastEnd >= 1500)){ clearInterval(timer); timer = null; } return; }
     box.style.display = "flex"; bar.style.display = "block";
-    const det = vis.length === 1 && vis[0].pct != null; bar.className = det ? "det" : ""; bar.firstChild.style.width = det ? Math.max(3, Math.min(100, vis[0].pct)) + "%" : "";
-    box.innerHTML = vis.map(t => {
-      const sec = Math.round((now - t.t0) / 1000), pc = t.pct != null ? Math.max(0, Math.min(100, t.pct)) : null;
-      return '<div class="busyChip"><div class="busyRow"><span class="busySpin"></span><span class="busyLbl">' + esc2(t.label) + (pc != null ? " — " + fa2(Math.round(pc)) + "٪" : "") + '</span><span class="busyT">' + fa2(sec) + " ثانیه</span></div>" + (pc != null ? '<div class="busyPb"><i style="width:' + Math.max(2, pc) + '%"></i></div>' : "") + "</div>";
+    const det = rows.length === 1 && rows[0].pct != null && !ghost; bar.className = det || ghost ? "det" : ""; bar.firstChild.style.width = ghost ? "100%" : (det ? Math.max(3, Math.min(100, rows[0].pct)) + "%" : "");
+    box.innerHTML = rows.map(t => {
+      const start = t.auto ? burstStart : t.t0, endT = t.done ? lastEnd : now, sec = Math.round((endT - start) / 1000), pc = t.pct != null ? Math.max(0, Math.min(100, t.pct)) : null;
+      return '<div class="busyChip"><div class="busyRow">' + (t.done ? '<span style="color:#16a34a;font-weight:800;font-size:18px;flex:none">✓</span>' : '<span class="busySpin"></span>') + '<span class="busyLbl">' + esc2(t.label) + (t.done ? " — تمام شد" : "") + (pc != null ? " — " + fa2(Math.round(pc)) + "٪" : "") + '</span><span class="busyT">' + fa2(sec) + " ثانیه</span></div>" + (pc != null ? '<div class="busyPb"><i style="width:' + Math.max(2, pc) + '%"></i></div>' : "") + "</div>";
     }).join("");
   }
-  function sync(){ if(tasks.size && !timer) timer = setInterval(render, 500); if(!tasks.size && timer){ clearInterval(timer); timer = null; } render(); }
+  function sync(){ const act = tasks.size || (lastEnd && Date.now() - lastEnd < 1600); if(act && !timer) timer = setInterval(render, 400); if(!act && timer){ clearInterval(timer); timer = null; } render(); }
   return {
-    start(label, opt){ const id = ++seq; tasks.set(id, {label, t0: Date.now(), pct: (opt && opt.pct != null) ? opt.pct : null, auto: !!(opt && opt.auto)}); sync(); return id; },
+    start(label, opt){ const id = ++seq; if(!tasks.size && Date.now() - lastEnd > 1200) burstStart = Date.now(); tasks.set(id, {label, t0: Date.now(), pct: (opt && opt.pct != null) ? opt.pct : null, auto: !!(opt && opt.auto)}); sync(); return id; },
     set(id, label, pct){ const t = tasks.get(id); if(!t) return; if(label) t.label = label; if(pct != null) t.pct = pct; render(); },
-    end(id){ if(id == null) return; tasks.delete(id); sync(); },
+    end(id){ if(id == null) return; const t = tasks.get(id); tasks.delete(id); if(t && (!t.auto || !lastLabel || !tasks.size)) lastLabel = t.label; if(!tasks.size) lastEnd = Date.now(); sync(); },
     async wrap(label, fn){ const id = this.start(label); try{ return await fn(id); } finally { this.end(id); } }
   };
 })();
@@ -6895,6 +6896,10 @@ async function autoDetectNicheFromProducts(force=false){
 // ══ Etsy Load Products ══
 async function loadFromEtsy(){
   if(!S.etsyApiKey||!S.etsyShopId){alert('Etsy API Key و Shop ID لازم است');nav('settings');return;}
+  const bt = Busy.start("دریافت محصولات از Etsy...");
+  try{ return await loadFromEtsyCore(bt); } finally { Busy.end(bt); }
+}
+async function loadFromEtsyCore(bt){
   log('📦 بارگذاری محصولات از اتسی...','info');
   try{
     const shopId = await resolveEtsyShopId();
@@ -6905,8 +6910,13 @@ async function loadFromEtsy(){
     }
     // نکته: endpoint /listings/active اصلاً includes رو پشتیبانی نمی‌کنه (بی‌صدا نادیده می‌گیره).
     // برای گرفتن تصاویر باید از /listings (با state=active) استفاده کرد — که به OAuth (scope: listings_r) نیاز داره.
-    const d = await etsyApiGet(`https://openapi.etsy.com/v3/application/shops/${shopId}/listings?state=active&limit=100&includes=Images`, {'Authorization':`Bearer ${S.etsyOAuthToken}`});
-    const listings=d.results||[];
+    let listings=[], total=null;
+    for(let off=0; off<2000; off+=100){
+      Busy.set(bt, 'دریافت محصولات از Etsy' + (total ? ' — ' + listings.length + ' از ' + total : '...'), total ? listings.length/total*100 : null);
+      const d = await etsyApiGet(`https://openapi.etsy.com/v3/application/shops/${shopId}/listings?state=active&limit=100&offset=${off}&includes=Images`, {'Authorization':`Bearer ${S.etsyOAuthToken}`});
+      const part = d.results||[]; listings = listings.concat(part); total = d.count!=null ? d.count : listings.length;
+      if(!part.length || listings.length >= total) break;
+    }
     // Convert Etsy format to our CSV format
     const newProducts=listings.map(l=>{
       const imgs=l.images||[];
@@ -6928,7 +6938,9 @@ async function loadFromEtsy(){
         _listing_id:l.listing_id
       };
     });
+    const prevOpt = Object.keys(S.optimized||{}).length;
     remapAnalyzedState(S.products, newProducts);
+    const lostOpt = prevOpt - Object.keys(S.optimized||{}).length;
     S.products = newProducts;
     document.getElementById('statProducts').textContent=S.products.length;
     document.getElementById('sidebarProducts').textContent=S.products.length;
@@ -6938,6 +6950,7 @@ async function loadFromEtsy(){
     populateSocialProductSelect();
     renderSEOList();
     log(`✓ ${S.products.length} محصول از اتسی بارگذاری شد`,'ok');
+    toast('✅ ' + S.products.length + ' محصول از Etsy بارگذاری شد' + (lostOpt>0 ? ' — برای ' + lostOpt + ' محصول متن Etsy با نسخه‌ی قبلی فرق داشت؛ آنالیز و بهینه‌سازی قبلی‌شان پاک شد و باید دوباره انجام شود.' : '.'));
     etsyFetchStats();
     autoDetectNicheFromProducts();
   }catch(e){log('✗ خطا: '+e.message,'err');alert('خطا: '+e.message);}
