@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.43.5 -->
+<!-- APP_VERSION: 1.44.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v176</div>
+        <div class="logo-badge">v177</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1171,6 +1171,17 @@ margin:0;background:var(--paper);color:var(--ink);
     </div>
   </div>
   <!-- فیلتر بهینه‌سازی -->
+  <details class="card" id="bannedCard" style="margin-bottom:12px;padding:12px 16px">
+    <summary style="cursor:pointer;font-weight:700;font-size:14px">🚫 واژه‌های ممنوعه و حساس (ایران، نام برند و …) — برای این فروشگاه</summary>
+    <div style="font-size:12px;color:var(--text2);margin:8px 0;line-height:1.8">نام‌بردن از بعضی واژه‌ها (مثل نام کشور ایران، نام برند یا شخصیت ثبت‌شده) ممکن است باعث محدود شدن یا بلاک لیستینگ در Etsy شود. هر واژه را در یک خط بنویس: <b dir="ltr">Iran = Persian</b> یعنی به‌جای Iran همیشه Persian بیاید؛ اگر بعد از «=» چیزی ننویسی، خودِ واژه حذف می‌شود. این واژه‌ها در عنوان، تگ‌ها، توضیحات و متریال‌ها هم موقع تولید متن با AI رعایت می‌شوند و هم قبل از ارسال به Etsy خودکار جایگزین می‌شوند.</div>
+    <textarea id="bannedText" class="input" dir="ltr" rows="5" style="width:100%;font-family:monospace;font-size:13px" placeholder="Iran = Persian"></textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <button class="btn btn-primary btn-sm" onclick="saveBannedText()">💾 ذخیره</button>
+      <button class="btn btn-secondary btn-sm" onclick="scanBanned()">🔎 بررسی همه‌ی محصولات</button>
+    </div>
+    <div id="bannedScan"></div>
+    <div style="font-size:11.5px;color:var(--text3);margin-top:8px;line-height:1.8">هشدارهای ثابت (بدون جایگزینی خودکار): نام برند و شخصیت‌های ثبت‌شده مثل Disney، Marvel، Nike، Pokemon و …؛ نام دستگاه‌هایی مثل Cricut و Silhouette فقط به‌صورت «سازگار با …» مجاز است، نه به‌عنوان نام محصول.</div>
+  </details>
   <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
     <span style="font-size:12px;color:var(--text2)">نمایش:</span>
     <button class="btn btn-sm" id="optFilterAll" onclick="setOptFilter('all',this)" style="background:var(--orange);color:white;border:none;border-radius:8px;padding:4px 12px;font-size:12px;cursor:pointer">همه</button>
@@ -2208,6 +2219,7 @@ function loadShopToState(shopId){
   S.dailyArchive=shop.dailyArchive||[];
   S.shopStyle=shop.shopStyle||'';
   S.shopTarget=shop.shopTarget||'';
+  S.bannedText=(shop.bannedText==null?BANNED_DEFAULT:shop.bannedText);
   S_customers=shop.customers||[];
   GS.currentShopId=shopId;
   DB.save('global_current_shop',shopId);
@@ -2250,6 +2262,7 @@ function saveCurrentShop(){
   shop.dailyArchive=S.dailyArchive;
   shop.shopStyle=S.shopStyle||'';
   shop.shopTarget=S.shopTarget||'';
+  shop.bannedText=(S.bannedText==null?BANNED_DEFAULT:S.bannedText);
   shop.customers=S_customers||[];
   shop.updatedAt=new Date().toISOString();
   ShopManager.save(shop);
@@ -2374,6 +2387,7 @@ function applyShopToUI(){
   const etsyShopEl=document.getElementById('etsyShopIdInput'); if(etsyShopEl) etsyShopEl.value=S.etsyShopId||'';
   const etsyTaxEl=document.getElementById('etsyTaxonomyIdInput'); if(etsyTaxEl) etsyTaxEl.value=S.etsyTaxonomyId||'';
   if(typeof renderEtsySectionSelect==='function') renderEtsySectionSelect();
+  if(typeof renderBannedCard==='function') renderBannedCard();
   const cbUrlEl=document.getElementById('contentBackendUrlInput'); if(cbUrlEl) cbUrlEl.value=S.contentBackendUrl||'';
   const cbSecEl=document.getElementById('contentBackendSecretInput'); if(cbSecEl) cbSecEl.value=S.contentBackendSecret||'';
   const cbLangEl=document.getElementById('contentLanguageInput'); if(cbLangEl) cbLangEl.value=S.contentLanguage||'English';
@@ -3221,7 +3235,7 @@ ${shopCtx()}\nExisting or previously suggested products (never repeat or paraphr
     `RULES: the "keyword" field must be copied EXACTLY from the list. Price must be a USD number between that keyword's p25 and p75 (typical for the niche). ` +
     (o.digital ? (shopIsCutNiche() ? 'The product is a DIGITAL download (cut files / templates): write for that. ' : 'The product is a DIGITAL download that fits this shop\'s niche: write for that; mention cutting machines only if this specific product is a cut-file version, and then only as a minor point.') : '') +
     (o.sizeN > 1 ? `The product will be sold in ${o.sizeN} SIZE OPTIONS in one listing: mention "${o.sizeN} Sizes" naturally in the title, add a "SIZES INCLUDED" bullet in the description and a relevant tag; do NOT invent exact dimensions (the seller adds them later). ` : '') +
-    `\nTitle: max 14 words and 140 chars, starts with a letter/number, no characters $ ^ \` . °, at most one each of % : &, at most 3 ALL-CAPS words. Exactly 13 tags, each max 20 chars, no underscores. Write in natural, native ${S.contentLanguage || 'English'}.\n${descRules()}\n` +
+    `\n${bannedPromptLine()}Title: max 14 words and 140 chars, starts with a letter/number, no characters $ ^ \` . °, at most one each of % : &, at most 3 ALL-CAPS words. Exactly 13 tags, each max 20 chars, no underscores. Write in natural, native ${S.contentLanguage || 'English'}.\n${descRules()}\n` +
     `"reason_fa": 1-2 Persian sentences that cite the concrete numbers above (listings, price, views/day...) — never vague.\n` +
     `Return ONLY a JSON array: [{"keyword":"","title":"","tags":["..."],"description":"","price":0,"category":"","reason_fa":""}]`;
   try{
@@ -5439,7 +5453,7 @@ Return ONLY JSON (no markdown, no explanation):
     }
     if(r.new_description) S.products[idx].DESCRIPTION=normalizeDescription(r.new_description);
     if(r.new_materials&&r.new_materials.length) S.products[idx].MATERIALS=sanitizeMaterials(r.new_materials, parseMaterials(p.MATERIALS)).join(',');
-    S.optimized[idx]=true; if(S.pushedToEtsy) delete S.pushedToEtsy[idx];
+    bannedFixProduct(S.products[idx]); S.optimized[idx]=true; if(S.pushedToEtsy) delete S.pushedToEtsy[idx];
     // آنالیز مجدد محلی با قوانین واقعی
     const newScore=calcLocalScore(S.products[idx]);
     const scoreAfter=Math.min(100, Math.max(newScore, scoreBefore+8));
@@ -5497,6 +5511,87 @@ function limitTitle(t){
 }
 
 // ── قالب توضیحات: مقدمه‌ی کوتاه + بخش‌هایی با تیتر آیکن‌دار و بولت — خوندنش برای مشتری ساده باشه
+// ══ واژه‌های ممنوعه / حساس: جایگزینی خودکار، هشدار برند، و بررسی همه‌ی محصولات (برای هر فروشگاه جدا) ══
+// فرمت هر خط: «واژه = جایگزین» (جایگزین خالی = حذف واژه). مثال: Iran = Persian
+const BANNED_DEFAULT = "Iran = Persian\nIranian = Persian";
+// نام برند/شخصیت ثبت‌شده: فقط هشدار (جایگزین خودکار ندارد)
+const BRAND_WARN = ["Disney","Marvel","Pokemon","Harry Potter","Star Wars","Nike","Adidas","Gucci","Chanel","Louis Vuitton","Starbucks","Coca-Cola","Barbie","Hello Kitty","Minecraft","Taylor Swift","Nintendo","Lego","Apple","Etsy"];
+// نام دستگاه‌ها: فقط به‌صورت «سازگار با ...» مجاز است، نه به‌عنوان نام یا برند محصول
+const BRAND_COMPAT = ["Cricut","Silhouette","Glowforge"];
+function bannedList(){
+  const t = (S.bannedText == null ? BANNED_DEFAULT : S.bannedText);
+  return String(t).split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => { const m = l.split(/\s*(?:=|→|->)\s*/); return {w: (m[0] || "").trim(), r: (m[1] || "").trim()}; }).filter(x => x.w);
+}
+const escRe = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function bannedRe(w){ return new RegExp("(?<![\\p{L}\\p{N}])" + escRe(w) + "(?![\\p{L}\\p{N}])", "giu"); }
+function bannedReplace(text){
+  let out = String(text == null ? "" : text), n = 0;
+  for(const b of bannedList()){
+    out = out.replace(bannedRe(b.w), m => { n++; if(!b.r) return ""; if(m === m.toUpperCase() && m.length > 1) return b.r.toUpperCase(); return /^[A-Z]/.test(m) && /^[a-z]/.test(b.r) ? b.r[0].toUpperCase() + b.r.slice(1) : b.r; });
+  }
+  if(n) out = out.replace(/[ \t]{2,}/g, " ").replace(/ +([,;:.!?])/g, "$1").replace(/^[ \t]+|[ \t]+$/gm, "");
+  return {text: n ? out.trim() : out, n};
+}
+// فیلدهای یک محصول (TITLE/TAGS/DESCRIPTION/MATERIALS) را اصلاح می‌کند؛ تعداد جایگزینی را برمی‌گرداند
+function bannedFixProduct(p){
+  if(!p || !bannedList().length) return 0; let n = 0;
+  ["TITLE","DESCRIPTION","MATERIALS"].forEach(f => { if(p[f]){ const r = bannedReplace(p[f]); if(r.n){ p[f] = r.text; n += r.n; } } });
+  if(p.TAGS){ const parts = String(p.TAGS).split(","), seen = new Set(), out = []; parts.forEach(t => { const r = bannedReplace(t.trim()); n += r.n; const v = r.text.trim(); if(v && !seen.has(v.toLowerCase())){ seen.add(v.toLowerCase()); out.push(v); } }); if(out.join(",") !== parts.map(x => x.trim()).filter(Boolean).join(",")) p.TAGS = out.join(","); }
+  if(n) log("🚫 " + n + " واژه‌ی ممنوعه در «" + String(p.TITLE || "").slice(0, 40) + "» جایگزین شد", "warn");
+  return n;
+}
+function riskScan(text){
+  const t = String(text || ""), hits = {banned: [], brands: [], compat: []};
+  bannedList().forEach(b => { if(bannedRe(b.w).test(t)) hits.banned.push(b.w); });
+  BRAND_WARN.forEach(w => { if(bannedRe(w).test(t)) hits.brands.push(w); });
+  BRAND_COMPAT.forEach(w => { if(bannedRe(w).test(t)) hits.compat.push(w); });
+  return hits;
+}
+function productRiskText(p){ return [p.TITLE, p.TAGS, p.DESCRIPTION, p.MATERIALS].join("\n"); }
+// جمله‌ی اخطار برای همه‌ی پرامپت‌های تولید متن
+function bannedPromptLine(){
+  const l = bannedList(), nl = String.fromCharCode(10);
+  let t = "FORBIDDEN WORDS (Etsy may block or restrict listings for them): never use these words anywhere in the title, tags, materials or description";
+  if(l.length) t += " — " + l.map(b => '"' + b.w + '"' + (b.r ? ' (write "' + b.r + '" instead)' : " (leave it out)")).join("; ");
+  t += ". Also avoid trademarked brand, character and celebrity names (e.g. Disney, Marvel, Nike) and politically sensitive country or region names; use neutral wording such as \"Persian\" for Persian culture. Machine names like Cricut or Silhouette only as a brief \"compatible with\" mention, never as the product name or brand." + nl;
+  return t;
+}
+function renderBannedCard(){
+  const ta = document.getElementById("bannedText"); if(!ta) return;
+  ta.value = (S.bannedText == null ? BANNED_DEFAULT : S.bannedText);
+}
+function saveBannedText(){
+  const ta = document.getElementById("bannedText"); if(!ta) return;
+  S.bannedText = ta.value; saveCurrentShop(); toast("✅ فهرست واژه‌های ممنوعه ذخیره شد (" + bannedList().length + " واژه)");
+}
+function scanBanned(){
+  saveBannedText();
+  const out = document.getElementById("bannedScan"); if(!out) return;
+  const rows = [], brandRows = [], compat = {};
+  let nBanned = 0, nBrand = 0;
+  S.products.forEach((p, i) => { const h = riskScan(productRiskText(p)); if(h.banned.length){ nBanned++; if(rows.length < 12) rows.push("«" + escHtml(String(p.TITLE || "").slice(0, 48)) + "» ← " + h.banned.map(escHtml).join("، ")); } if(h.brands.length){ nBrand++; if(brandRows.length < 12) brandRows.push("«" + escHtml(String(p.TITLE || "").slice(0, 48)) + "» ← " + h.brands.map(escHtml).join("، ")); } h.compat.forEach(w => compat[w] = (compat[w] || 0) + 1); });
+  let html = "<div style=\"margin-top:8px;line-height:1.9\">";
+  html += nBanned ? "<div style=\"color:var(--red)\"><b>🚫 " + nBanned + " محصول واژه‌ی ممنوعه دارد:</b><br>" + rows.join("<br>") + (nBanned > rows.length ? "<br>…" : "") + "</div><div style=\"margin-top:6px\"><button class=\"btn btn-green btn-sm\" onclick=\"applyBannedAll()\">✨ جایگزینی خودکار در همه‌ی محصولات</button></div>" : "<div style=\"color:var(--green)\">✓ هیچ محصولی واژه‌ی ممنوعه ندارد.</div>";
+  html += nBrand ? "<div style=\"color:#92400e;margin-top:8px\"><b>⚠ " + nBrand + " محصول نام برند یا شخصیت ثبت‌شده دارد (ممکن است Etsy لیستینگ را حذف کند — این‌ها را خودت بررسی کن):</b><br>" + brandRows.join("<br>") + "</div>" : "";
+  const cw = Object.keys(compat); html += cw.length ? "<div style=\"color:var(--text2);margin-top:8px\">ℹ️ نام دستگاه در متن: " + cw.map(w => escHtml(w) + " (" + compat[w] + ")").join("، ") + " — فقط به‌صورت «سازگار با …» و نه به‌عنوان نام محصول بیاید.</div>" : "";
+  out.innerHTML = html + "</div>";
+}
+function applyBannedAll(){
+  let changed = 0;
+  S.products.forEach((p, i) => { if(bannedFixProduct(p)){ changed++; if(S.pushedToEtsy) delete S.pushedToEtsy[i]; } });
+  saveCurrentShop(); try{ renderSEOList(); renderOptimizeList(); }catch(e){}
+  toast(changed ? "✅ واژه‌های ممنوعه در " + changed + " محصول جایگزین شد — برای اعمال روی Etsy «ارسال گروهی» را بزن." : "محصولی برای اصلاح نبود.");
+  scanBanned();
+}
+// هشدار نام برند/ممنوعه قبل از ارسال؛ متن هشدار را برمی‌گرداند (خالی = مشکلی نیست)
+function riskWarningFor(products){
+  const brands = new Set(), banned = new Set();
+  products.forEach(p => { const h = riskScan(productRiskText(p)); h.brands.forEach(w => brands.add(w)); h.banned.forEach(w => banned.add(w)); });
+  let m = ""; if(brands.size) m += String.fromCharCode(10) + "⚠ نام برند/شخصیت ثبت‌شده در متن: " + [...brands].join(", ") + " — ممکن است Etsy مشکل ایجاد کند.";
+  if(banned.size) m += String.fromCharCode(10) + "🚫 واژه‌ی ممنوعه (هنگام ارسال جایگزین می‌شود): " + [...banned].join(", ");
+  return m;
+}
+
 // ══ آگاهی از نوع فروشگاه: پرامپت‌ها نباید مفاهیم یک فروشگاه (مثلاً Cricut/لیزر/بسته‌بندی) را به فروشگاه دیگر ببرند ══
 function shopIsCutNiche(){
   const t = [S.shopNicheVal, S.shopStyle, S.shopTarget, S.shopName].join(' ').toLowerCase();
@@ -5513,7 +5608,7 @@ function shopCtx(p){
   else if(p && productIsCut(p)) t += 'A few products of this shop are ALSO offered as cut files for laser/Cricut/Silhouette machines, and this product appears to be one: you may mention cutting-machine compatibility (Cricut, Silhouette, laser, SVG/DXF) briefly as a SECONDARY point, but the main focus MUST stay on the artwork itself (calligraphy style, text and meaning, occasions, who it is for). Never present the shop as a cutting-machine or packaging shop. If the current text pushes cutting machines more than the artwork deserves (leftovers from earlier automatic edits), shorten or remove those mentions.' + String.fromCharCode(10);
   else if(p) t += 'This product is NOT a cut file: do not mention cutting machines, Cricut, Silhouette, laser, SVG/DXF, cardstock, boxes or packaging anywhere in the title, tags, materials or description. If the current listing already contains such mentions, REMOVE them (this overrides the instruction to preserve original details).' + String.fromCharCode(10);
   else t += 'This shop is NOT a cutting-machine or packaging shop. Cut-file versions for laser/Cricut/Silhouette are at most a minor side line: never make them the focus, and only treat them as relevant when the specific product is itself a cut file.' + String.fromCharCode(10);
-  return t;
+  return t + bannedPromptLine();
 }
 function descRules(){
   if(shopIsCutNiche()) return DESC_FORMAT_RULES;
@@ -5525,7 +5620,7 @@ const DESC_FORMAT_RULES=`DESCRIPTION FORMAT (mandatory — it must be easy for b
 - Then short sections. Each section has a heading line that STARTS WITH AN ICON EMOJI (e.g. 📦 WHAT'S INCLUDED, 📏 SIZE, ✂️ COMPATIBLE WITH, 🛠 HOW TO USE, ⬇️ INSTANT DOWNLOAD, ❤️ PERFECT FOR) followed by bullet lines that each start with "• " or "✔ " — ONE fact per bullet, max ~15 words. Put a blank line between sections.
 - Keep EVERY factual detail from the original (sizes, file formats, what's included, usage/licence notes, the "digital download — no physical item will be shipped" notice). You may reorganize and improve the wording, but never invent facts and never replace it with generic text.`;
 function normalizeDescription(d){
-  return String(d||'').replace(/\r/g,'').replace(/\*\*(.+?)\*\*/g,'$1').replace(/^[ \t]*[-*–][ \t]+/gm,'• ').replace(/\n{3,}/g,'\n\n').trim();
+  return bannedReplace(String(d||'')).text.replace(/\r/g,'').replace(/\*\*(.+?)\*\*/g,'$1').replace(/^[ \t]*[-*–][ \t]+/gm,'• ').replace(/\n{3,}/g,'\n\n').trim();
 }
 function descFormatOk(d){
   const bullets=String(d||'').split('\n').filter(l=>/^\s*(•|✔|✅|🔹|▪|➤|→)/u.test(l)).length;
@@ -5533,7 +5628,7 @@ function descFormatOk(d){
 }
 
 function sanitizeEtsyTitle(title){
-  let t=String(title||'').replace(/[$^`.°]/g,'').trim();
+  let t=bannedReplace(String(title||'')).text.replace(/[$^`.°]/g,'').trim();
   t=t.replace(/^[^a-zA-Z0-9]+/,''); // باید با حرف یا عدد شروع بشه
   ['%',':','&'].forEach(ch=>{
     let seen=false;
@@ -5621,6 +5716,7 @@ async function etsyUpdateListing(product, _isRetry){
   const headers={'x-api-key':etsyApiKeyHeader(),'Authorization':`Bearer ${S.etsyOAuthToken}`,'Content-Type':'application/json'};
   // پاکسازی عنوان همین‌جا (نه فقط موقع تولید) — پس حتی محصولاتی که قبل از این رفع
   // بهینه شده بودن هم بدون نیاز به بهینه‌سازی دوباره، با عنوان معتبر فرستاده می‌شن
+  bannedFixProduct(product);
   const safeTitle=sanitizeEtsyTitle(product.TITLE);
   if(safeTitle!==product.TITLE) product.TITLE=safeTitle;
   const body={
@@ -5730,7 +5826,7 @@ async function etsyCreateDraftListing(item, _isRetry, _noMat, _wmIdx, _noSec){
   const price=parseFloat(String(item.price).replace(/[^0-9.]/g,''));
   if(!(price>0)){ alert('قیمت پیشنهاد معتبر نیست.'); return false; }
   const tags=(item.tags||[])
-    .map(t=>String(t).replace(/_/g,' ').trim())
+    .map(t=>bannedReplace(String(t).replace(/_/g,' ').trim()).text.trim())
     .filter(t=>t.length>=1&&t.length<=20)
     .filter((t,i,a)=>a.findIndex(x=>x.toLowerCase()===t.toLowerCase())===i)
     .slice(0,13);
@@ -5747,7 +5843,7 @@ async function etsyCreateDraftListing(item, _isRetry, _noMat, _wmIdx, _noSec){
     tags
   };
   if(!_noSec){ try{ const sid=await etsyResolveSection(item); if(sid) body.shop_section_id=parseInt(sid,10); }catch(e){ log('⚠ انتخاب گروه فروشگاه ممکن نشد: '+e.message,'warn'); } }
-  const mats=sanitizeMaterials(item.materials,[]);
+  const mats=sanitizeMaterials((item.materials||[]).map(m=>bannedReplace(m).text),[]);
   if(mats.length && !_noMat){ body.materials=mats; log('ℹ️ متریال‌های ارسالی: '+mats.join(' | '),'info'); }
   log(`📤 در حال ساخت پیش‌نویس "${body.title}" روی Etsy...`,'info');
   try{
@@ -5930,7 +6026,7 @@ async function sendAllOptimizedToEtsy(again){
     .map((p,i)=>({p,i}))
     .filter(({p,i})=>S.optimized[i]&&p._listing_id&&(again===true||!(S.pushedToEtsy&&S.pushedToEtsy[i])));
   if(!toSend.length){alert('محصول بهینه‌شده‌ی ارسال‌نشده‌ای پیدا نشد');return;}
-  if(!confirm(`${toSend.length} محصول بهینه‌شده روی Etsy جایگزین بشه؟`+(again===true?'\n(شامل محصولاتی که قبلاً هم ارسال شده‌اند — متن فعلی جایگزین نسخه‌ی روی Etsy می‌شود.)':'')))return;
+  if(!confirm(`${toSend.length} محصول بهینه‌شده روی Etsy جایگزین بشه؟`+riskWarningFor(toSend.map(x=>x.p))+(again===true?'\n(شامل محصولاتی که قبلاً هم ارسال شده‌اند — متن فعلی جایگزین نسخه‌ی روی Etsy می‌شود.)':'')))return;
   let done=0,errors=0;
   for(const {p,i} of toSend){
     log(`📤 (${done+1}/${toSend.length}) ارسال «${p.TITLE.slice(0,40)}»...`,'info');
@@ -9642,7 +9738,7 @@ async function dzDesignCore(feedback){
       "SIZE RULES: length/width/height are the FINISHED INNER box size in mm. Choose realistic numbers for the use case and material thickness (allow tolerances). Keep the whole sheet under ~500 mm.\n" +
       "ENGINEERING CHECKLIST (verify silently before answering): every panel that folds has a score line on BOTH shared edges; one glue tab on exactly one side panel; every closing flap has a lock/tuck and is not deeper than ~90% of the adjacent panel width; polygon side length = wall panel width; lid is slightly larger than the base by about 2x the board thickness plus 0.6 mm; no two cut outlines may cross; every fold line must reach a cut edge or another fold line; choose the style whose assembled shape matches the request (do not simplify a heart/round/hexagon request into a rectangle).\n" +
       "GUIDE: write a friendly assembly guide for buyers: guide.steps = 5-8 items {title (max 4 words), text (1-2 short sentences), tip (optional short)}; guide.tools = 4-6 items; guide.tips = 4-6 items {title, text}. Plain English, no emojis.\n\n" +
-      "LISTING RULES: title in English, max 14 words and 140 chars, must start with a letter or number, no characters $ ^ ` . °, at most one each of % : &, no more than 3 ALL-CAPS words (SVG/DXF/PDF count). tags: exactly 13, each max 20 chars, no underscores. materials: up to 13 short items. price: realistic USD number for this digital template.\n" + DESC_FORMAT_RULES + "\n" +
+      bannedPromptLine() + "LISTING RULES: title in English, max 14 words and 140 chars, must start with a letter or number, no characters $ ^ ` . °, at most one each of % : &, no more than 3 ALL-CAPS words (SVG/DXF/PDF count). tags: exactly 13, each max 20 chars, no underscores. materials: up to 13 short items. price: realistic USD number for this digital template.\n" + DESC_FORMAT_RULES + "\n" +
       "notes_fa: 2-4 Persian sentences telling the seller what was designed (style, sizes, material, closure) and what to test-cut.\n\n" +
       'Return ONLY JSON: {"style":"tuck_end","units":"in","board_thickness":1,"shape":null,"outline_svg":null,"outline":null,"smooth":true,"name":"Short English product name","category":"Packaging Template","length":100,"width":70,"height":30,"height_lid":15,"sleeve_length":60,"glue_flap":12,"thickness":0.3,"material":"Cardstock 250-300 gsm","machines":["Cricut","Silhouette","Glowforge"],"net":null,"assembly_steps":["..."],"guide":{"steps":[{"title":"...","text":"...","tip":"..."}],"tools":["..."],"tips":[{"title":"...","text":"..."}]},"price":4.5,"notes_fa":"...","listing":{"title":"...","tags":["..."],"description":"...","materials":["..."]}}';
     let spec = null, d = null, err = "";
@@ -10193,7 +10289,7 @@ async function pdfFillProduct(file){
   toast("⏳ Claude دارد مشخصات را از فایل استخراج می‌کند...");
   const prompt = "You are an Etsy listing specialist for digital cut-file templates (SVG/DXF/PDF for Cricut, Silhouette, laser). Below is the text of a document (PDF) that describes ONE product. Extract the product data and write the listing. The document may be in Persian or English; write all listing text in English.\n\nDOCUMENT TEXT:\n\"\"\"\n" + text.slice(0, 40000) + "\n\"\"\"\n\n" +
     "RULES: use ONLY facts present in the document (never invent sizes, materials or claims). Convert every size to millimetres (1 in = 25.4 mm). If a value is missing use null. Finished size: w = length, h = width, d = height/depth of the finished product.\n" +
-    "LISTING RULES: title max 14 words and 140 chars, starts with a letter or number, no characters $ ^ ` . °, at most one each of % : &, no more than 3 ALL-CAPS words. tags: exactly 13, each max 20 chars, no underscores. materials: up to 13 short items. price: number in USD if the document states one, else null.\n" + DESC_FORMAT_RULES + "\n" +
+    bannedPromptLine() + "LISTING RULES: title max 14 words and 140 chars, starts with a letter or number, no characters $ ^ ` . °, at most one each of % : &, no more than 3 ALL-CAPS words. tags: exactly 13, each max 20 chars, no underscores. materials: up to 13 short items. price: number in USD if the document states one, else null.\n" + DESC_FORMAT_RULES + "\n" +
     'Return ONLY JSON: {"name":"short product name","code":null,"category":"...","material":"...","machines":["..."],"w":null,"h":null,"d":null,"price":null,"notes":"short Persian summary of what the document contains and anything important/missing","title":"...","tags":["..."],"description":"...","materials":["..."]}';
   let d;
   try{ d = parseJSON(await dzCall(prompt, 8000)); }catch(e){ return toast("استخراج با AI ناموفق بود: " + (e && e.message ? e.message : e)); }
@@ -10388,12 +10484,13 @@ async function studioSendToEtsyCore(bt){
     if(!canvaOk(String(p.canvaLink || "").trim())){ toast("گزینه‌ی Canva روشن است ولی لینک تمپلیت معتبر وارد نشده — در تب «فایل‌ها» لینک را بگذار یا تیک Canva را بردار."); return; }
     try{ await canvaBuildLinkFile(p); renderAll(); }catch(e){ return toast("ساخت فایل لینک Canva ممکن نشد: " + (e && e.message ? e.message : e)); }
   }
+  { const tmp = {TITLE: p.title, TAGS: tagList(p).join(","), DESCRIPTION: p.description}; if(bannedFixProduct(tmp)){ p.title = tmp.TITLE; p.tags = tmp.TAGS; p.description = tmp.DESCRIPTION; } }
   p.price = price; save();
   const files = await fsEtsyPayload(p), imgs = IMG_SLOTS.filter(s => p.images[s.k]);
   const vidList = VID_SLOTS.filter(s => vids(p)[s.k]);
   const nameFix = etsyFixFileNames(files, slug(p.name));
   if(nameFix.length) log("✂ نام " + nameFix.length + " فایل برای Etsy کوتاه/اصلاح شد: " + nameFix.slice(0, 5).join(" | "), "warn");
-  if(!confirm("«" + p.title + "»\nقیمت: $" + price + "\n" + files.length + " فایل، " + imgs.length + " تصویر و " + vidList.length + " ویدیو به‌صورت پیش‌نویس (Draft) روی Etsy ساخته بشه؟" + (nameFix.length ? "\n\n✂ نام " + nameFix.length + " فایل بلند یا نامناسب بود و کوتاه شد:\n" + nameFix.slice(0, 4).join("\n") : "") + "\n(منتشر نمی‌شود؛ خودت در Etsy بررسی و Publish می‌کنی.)")) return;
+  if(!confirm("«" + p.title + "»\nقیمت: $" + price + "\n" + files.length + " فایل، " + imgs.length + " تصویر و " + vidList.length + " ویدیو به‌صورت پیش‌نویس (Draft) روی Etsy ساخته بشه؟" + (riskWarningFor([{TITLE: p.title, TAGS: tagList(p).join(","), DESCRIPTION: p.description, MATERIALS: ""}])) + (nameFix.length ? "\n\n✂ نام " + nameFix.length + " فایل بلند یا نامناسب بود و کوتاه شد:\n" + nameFix.slice(0, 4).join("\n") : "") + "\n(منتشر نمی‌شود؛ خودت در Etsy بررسی و Publish می‌کنی.)")) return;
   const item = {title: p.title, tags: tagList(p), description: p.description, price, materials: matList(p), category: p.category};
   toast("⏳ در حال ساخت پیش‌نویس روی Etsy...");
   Busy.set(bt, "ساخت پیش‌نویس روی Etsy", 3);
