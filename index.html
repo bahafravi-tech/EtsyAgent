@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.41.1 -->
+<!-- APP_VERSION: 1.41.2 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v168</div>
+        <div class="logo-badge">v169</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1441,6 +1441,7 @@ margin:0;background:var(--paper);color:var(--ink);
           <div id="etsyOAuthSection">
             <div class="input-label" style="margin-bottom:6px">اتصال OAuth <span style="color:var(--text3);font-weight:400">(برای آپلود خودکار)</span></div>
             <div id="etsyOAuthStatus" style="margin-bottom:8px"></div>
+            <div style="margin-bottom:8px"><button class="btn btn-secondary btn-sm" type="button" onclick="etsyCheckConnection()">🔍 بررسی اتصال (توکن مال کدام فروشگاه است؟)</button><div id="etsyConnResult" style="margin-top:6px;font-size:12px;line-height:1.8"></div></div>
             <div id="etsyRedirectInfo" style="margin-bottom:10px;padding:8px 10px;border:1px dashed var(--border);border-radius:8px;font-size:12px"></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
               <button class="btn btn-primary btn-sm" onclick="startEtsyOAuthFlow()" id="btnEtsyOAuth">🔗 اتصال به Etsy</button>
@@ -6158,14 +6159,40 @@ async function etsyApiGet(url, extraHeaders={}){
     });
     const text = await res.text();
     let d; try{ d = JSON.parse(text); }catch(e){ throw new Error('پاسخ رله قابل‌خوندن نبود: '+text.slice(0,150)); }
-    if(!res.ok) throw new Error(d.error || ('خطای '+res.status));
+    if(!res.ok) throw new Error(etsyFriendlyErr(d.error || ('خطای '+res.status)));
     return d;
   }
   const res = await fetch(url, { headers });
   const d = await res.json();
-  if(!res.ok) throw new Error(d.error || ('خطای اتسی: '+res.status));
+  if(!res.ok) throw new Error(etsyFriendlyErr(d.error || ('خطای اتسی: '+res.status)));
   return d;
 }
+// پیام‌های رایج Etsy به فارسی قابل‌فهم
+function etsyFriendlyErr(msg){
+  const m = String(msg || '');
+  if(/does not own shop/i.test(m)) return 'حسابِ Etsyیِ متصل‌شده صاحب این فروشگاه نیست (' + m + '). یا توکن با حساب یک فروشگاه دیگر گرفته شده، یا Shop ID اشتباه است. در «تنظیمات ← Etsy API» دکمه‌ی «🔍 بررسی اتصال» را بزن تا ببینی توکن مال کدام فروشگاه است.';
+  return m;
+}
+// بررسی اینکه توکن OAuth ذخیره‌شده مال کدام فروشگاه است و با Shop ID تنظیم‌شده می‌خواند یا نه
+async function etsyCheckConnection(){
+  const out = document.getElementById('etsyConnResult'); out.textContent = '⏳ در حال بررسی...';
+  try{
+    if(typeof syncEtsyInputs === 'function') syncEtsyInputs();
+    if(!S.etsyOAuthToken) throw new Error('هنوز به Etsy متصل نشده‌ای — اول «🔗 اتصال به Etsy» را بزن.');
+    const me = await etsyApiGetWithAuth('https://openapi.etsy.com/v3/application/users/me');
+    const tokenShop = String(me.shop_id || '');
+    const nameOf = async id => { try{ const d = await etsyApiGet('https://openapi.etsy.com/v3/application/shops/' + id); return d.shop_name || ''; }catch(e){ return ''; } };
+    let cfg = ''; try{ cfg = String(await resolveEtsyShopId()); }catch(e){}
+    if(!tokenShop){ out.innerHTML = '<span style="color:var(--red)">حسابِ متصل‌شده فروشگاهی ندارد (shop_id برنگشت). با حساب صاحب فروشگاه دوباره وصل شو.</span>'; return; }
+    const tn = await nameOf(tokenShop);
+    if(cfg && cfg === tokenShop){ out.innerHTML = '<span style="color:var(--green)">✓ اتصال درست است: توکن مال فروشگاه «' + escHtml(tn || tokenShop) + '» (' + tokenShop + ') است و با Shop ID تنظیم‌شده یکی است.</span>'; return; }
+    const cn = cfg ? await nameOf(cfg) : '';
+    out.innerHTML = '<span style="color:var(--red)">✗ ناسازگار: توکن مال فروشگاه «' + escHtml(tn || tokenShop) + '» (' + tokenShop + ') است، ولی Shop ID این فروشگاه در برنامه «' + escHtml(cn || cfg || '؟') + '» (' + (cfg || '؟') + ') است.</span>' +
+      '<div style="margin-top:4px">اگر این برنامه باید به فروشگاه «' + escHtml(tn || tokenShop) + '» وصل باشد، دکمه‌ی زیر Shop ID را عوض می‌کند. اگر نه، توکن با حساب اشتباه گرفته شده: در Etsy از حساب فعلی خارج شو (یا پنجره‌ی ناشناس باز کن)، با حساب صاحب فروشگاه «' + escHtml(cn || cfg || '') + '» وارد شو و دوباره «اتصال به Etsy» را بزن.</div>' +
+      '<div style="margin-top:6px"><button class="btn btn-secondary btn-sm" type="button" onclick="adoptEtsyTokenShop(\'' + tokenShop + '\')">Shop ID را به «' + escHtml(tn || tokenShop) + '» تغییر بده</button></div>';
+  }catch(e){ out.innerHTML = '<span style="color:var(--red)">خطا: ' + escHtml(etsyNetErr(e)) + '</span>'; }
+}
+function adoptEtsyTokenShop(id){ S.etsyShopId = String(id); const el = document.getElementById('etsyShopIdInput'); if(el) el.value = String(id); saveCurrentShop(); document.getElementById('etsyConnResult').innerHTML = '<span style="color:var(--green)">✓ Shop ID به ' + escHtml(String(id)) + ' تغییر کرد.</span>'; }
 
 function parseEtsyUrl(url){
   const listingMatch = url.match(/(?:listing_id=|\/listing\/)(\d+)/);
