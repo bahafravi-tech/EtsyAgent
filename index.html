@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.40.0 -->
+<!-- APP_VERSION: 1.40.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -315,6 +315,10 @@ header {
 }
 
 /* ── Input ── */
+.pw-wrap{position:relative;display:block}
+.pw-wrap > input{padding-left:46px !important}
+.pw-eye{position:absolute;left:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;cursor:pointer;font-size:17px;line-height:1;padding:6px;border-radius:8px;opacity:.65}
+.pw-eye:hover{opacity:1;background:var(--surface3,rgba(0,0,0,.06))}
 .input {
   width: 100%; padding: 10px 14px;
   background: var(--surface); border: 1.5px solid var(--border);
@@ -693,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v162</div>
+        <div class="logo-badge">v163</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -5583,6 +5587,7 @@ async function etsyLoadSections(force){
   saveCurrentShop(); renderEtsySectionSelect(); return S.etsySections;
 }
 async function loadEtsySectionsUI(){
+  if(typeof syncEtsyInputs==='function') syncEtsyInputs();
   const out = document.getElementById('etsySectionResult'); if(!S.etsyApiKey || !S.etsyShopId){ out.innerHTML = '<span style="color:var(--red)">اول App API Key و Shop ID را وارد و «ذخیره» کن.</span>'; return; }
   out.textContent = '⏳ در حال دریافت از Etsy...';
   try{ const list = await etsyLoadSections(true); out.innerHTML = list.length ? '<span style="color:var(--green)">✓ ' + list.length + ' گروه پیدا شد: ' + list.map(x => escHtml(x.title)).join('، ') + '</span>' : '<span style="color:var(--red)">این فروشگاه هنوز گروهی ندارد — در Etsy → Shop Manager → Listings → Sections بساز.</span>'; }
@@ -6962,6 +6967,16 @@ function saveSettings(){
   alert('✅ ذخیره شد!');
 }
 
+// ══ چشمِ نمایش/پنهان‌کردن کدها ══
+function initPasswordEyes(){
+  document.querySelectorAll('#page-settings input[type="password"]').forEach(inp => {
+    if(inp.dataset.eye) return; inp.dataset.eye = '1';
+    const wrap = document.createElement('span'); wrap.className = 'pw-wrap'; inp.parentNode.insertBefore(wrap, inp); wrap.appendChild(inp);
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'pw-eye'; b.title = 'نمایش / پنهان کردن'; b.textContent = '👁';
+    b.onclick = () => { const show = inp.type === 'password'; inp.type = show ? 'text' : 'password'; b.textContent = show ? '🙈' : '👁'; };
+    wrap.appendChild(b);
+  });
+}
 // ══ Etsy API ══
 function saveEtsySettings(){
   const key=document.getElementById('etsyApiKeyInput').value.trim();
@@ -6976,12 +6991,20 @@ function saveEtsySettings(){
   showEtsyStatus(sharedSecret?'✅ ذخیره شد':'⚠️ ذخیره شد — ولی بدون Shared Secret، اتسی از ۹ فوریه ۲۰۲۶ درخواست‌ها رو رد می‌کنه',!!sharedSecret);
   log('✓ Etsy API Key ذخیره شد','ok');
 }
+function syncEtsyInputs(){
+  const g = id => (document.getElementById(id)?.value || '').trim();
+  const key = g('etsyApiKeyInput'), sec = g('etsySharedSecretInput'), shop = g('etsyShopIdInput'), tax = g('etsyTaxonomyIdInput');
+  if(key) S.etsyApiKey = key; if(sec) S.etsySharedSecret = sec; if(shop) S.etsyShopId = shop; if(tax) S.etsyTaxonomyId = tax;
+  if(key || sec || shop || tax){ try{ saveCurrentShop(); }catch(e){} }
+}
 // پیدا کردن Taxonomy ID: دسته‌های لیستینگ‌های فعال خودت (با نام دسته) + پیشنهاد دسته‌های مرتبط با محصول دیجیتال
 async function findEtsyTaxonomy(){
   const out=document.getElementById('etsyTaxonomyResult');
+  syncEtsyInputs();
   const key=document.getElementById('etsyApiKeyInput').value.trim()||S.etsyApiKey;
   const shop=document.getElementById('etsyShopIdInput').value.trim()||S.etsyShopId;
-  if(!key||!shop){ out.innerHTML='<span style="color:var(--red)">اول App API Key و Shop ID را وارد و «ذخیره» کن.</span>'; return; }
+  if(!key||!shop){ out.innerHTML='<span style="color:var(--red)">اول App API Key و Shop ID را وارد کن.</span>'; return; }
+  if(!S.etsySharedSecret){ out.innerHTML='<span style="color:var(--red)">کادر «Shared Secret» خالی است — Etsy بدون آن درخواست را رد می‌کند. آن را هم وارد کن.</span>'; return; }
   S.etsyApiKey=key; S.etsyShopId=shop;
   out.textContent='⏳ در حال دریافت از Etsy...';
   try{
@@ -7074,6 +7097,7 @@ async function generateCodeChallenge(verifier){
 }
 
 async function startEtsyOAuthFlow(){
+  if(typeof syncEtsyInputs==='function') syncEtsyInputs();
   const key=S.etsyApiKey||document.getElementById('etsyApiKeyInput').value.trim();
   if(!key){showEtsyStatus('❌ ابتدا App API Key را وارد و ذخیره کن',false);return;}
   const verifier=generateCodeVerifier();
@@ -7209,6 +7233,7 @@ function saveOAuthTokenManual(){
 // چک callback هنگام لود صفحه
 window.addEventListener('load',function(){
   try{ uiInitPersistence(); }catch(e){ console.warn('ui persist', e); }
+  try{ initPasswordEyes(); }catch(e){ console.warn('pw eyes', e); }
   const params=new URLSearchParams(window.location.search);
   if(params.get('code')&&params.get('state')){
     nav('settings');
