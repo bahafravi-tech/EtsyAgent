@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.41.2 -->
+<!-- APP_VERSION: 1.43.3 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v169</div>
+        <div class="logo-badge">v174</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1138,6 +1138,8 @@ margin:0;background:var(--paper);color:var(--ink);
       <button class="btn btn-secondary btn-sm" onclick="toggleSelectMode()" id="btnSelectMode" data-tip="انتخاب محصولات برای آنالیز یا بهینه‌سازی">☑ انتخاب</button>
       <button class="btn btn-primary" onclick="runSEOAnalysis()" id="btnRunSEO" data-tip="آنالیز SEO با AI — اعتبار API مصرف می‌شود">▶ شروع آنالیز</button>
       <button class="btn btn-green btn-sm" onclick="sendAllOptimizedToEtsy()" data-tip="همه‌ی محصولات بهینه‌شده که هنوز روی Etsy جایگزین نشدن رو یکجا بفرست">📤 ارسال گروهی به Etsy</button>
+      <button class="btn btn-secondary btn-sm" onclick="sendAllOptimizedToEtsy(true)" data-tip="همه‌ی محصولات بهینه‌شده را دوباره بفرست، حتی آن‌هایی که قبلاً ارسال شده‌اند">🔁 ارسال دوباره‌ی همه</button>
+      <label style="font-size:12px;display:inline-flex;gap:4px;align-items:center;cursor:pointer" data-tip="بعد از هر بهینه‌سازی گروهی، خودکار پیشنهاد ارسال به Etsy می‌آید (یک تأیید می‌گیرد)"><input type="checkbox" class="autoPushChk" onchange="setAutoPush(this.checked)"> ارسال خودکار پس از بهینه‌سازی</label>
     </div>
   </div>
   <div id="selectModeBar" style="display:none;background:var(--orange-light);border:1px solid var(--orange-mid);border-radius:12px;padding:12px 16px;margin-bottom:14px;align-items:center;gap:12px">
@@ -1176,6 +1178,8 @@ margin:0;background:var(--paper);color:var(--ink);
     <button class="btn btn-sm" id="optFilterNotOpt" onclick="setOptFilter('notopt',this)" style="background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:4px 12px;font-size:12px;cursor:pointer">بهینه نشده</button>
     <button class="btn btn-sm" id="optFilterOpt" onclick="setOptFilter('opt',this)" style="background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:4px 12px;font-size:12px;cursor:pointer">بهینه‌شده</button>
     <button class="btn btn-green btn-sm" onclick="sendAllOptimizedToEtsy()" data-tip="همه‌ی محصولات بهینه‌شده که هنوز روی Etsy جایگزین نشدن رو یکجا بفرست">📤 ارسال گروهی به Etsy</button>
+      <button class="btn btn-secondary btn-sm" onclick="sendAllOptimizedToEtsy(true)" data-tip="همه‌ی محصولات بهینه‌شده را دوباره بفرست، حتی آن‌هایی که قبلاً ارسال شده‌اند">🔁 ارسال دوباره‌ی همه</button>
+      <label style="font-size:12px;display:inline-flex;gap:4px;align-items:center;cursor:pointer" data-tip="بعد از هر بهینه‌سازی گروهی، خودکار پیشنهاد ارسال به Etsy می‌آید (یک تأیید می‌گیرد)"><input type="checkbox" class="autoPushChk" onchange="setAutoPush(this.checked)"> ارسال خودکار پس از بهینه‌سازی</label>
     <span id="optFilterCount" style="font-size:11px;color:var(--text2);margin-right:auto"></span>
   </div>
 
@@ -2338,7 +2342,7 @@ window.addEventListener('load', function(){
 });
 
 function applyShopToUI(){
-  setTimeout(() => { if(typeof uiRestore === "function") uiRestore(); }, 0);
+  setTimeout(() => { if(typeof uiRestore === "function") uiRestore(); if(typeof setAutoPush === "function") setAutoPush(isAutoPush()); }, 0);
   // Sidebar
   document.getElementById('sidebarShopNameText').textContent=S.shopName||'انتخاب فروشگاه';
   updateArchiveBadge();
@@ -3049,7 +3053,7 @@ function hideProgress(msg=''){
   }
 }
 function getShopName(){ return S.shopName || document.getElementById('shopNameInput')?.value?.trim() || 'My Shop'; }
-function getNiche(){ return document.getElementById('shopNiche')?.value?.trim() || 'SVG templates'; }
+function getNiche(){ return document.getElementById('shopNiche')?.value?.trim() || S.shopNicheVal || 'Etsy shop products'; }
 function contentLangLine(){ const l=S.contentLanguage||'English'; return `به زبان ${l} (طبیعی و بومی، نه ترجمه‌ی کلمه‌به‌کلمه)`; }
 // از ۹ فوریه‌ی ۲۰۲۶، اتسی هدر x-api-key رو به‌فرمت keystring:shared_secret می‌خواد، نه فقط keystring تنها
 function etsyApiKeyHeader(){ return S.etsySharedSecret ? `${S.etsyApiKey}:${S.etsySharedSecret}` : S.etsyApiKey; }
@@ -3181,9 +3185,10 @@ async function researchAndSuggestProducts(silent=false){
 
   fill.style.width = '8%'; txt.textContent = 'ساخت لیست ایده‌های اولیه (با توجه به فصل و فروشگاه)...';
   const nCand = Math.min(12, Math.max(8, o.count*4));
-  const candidatePrompt = `You are an Etsy market researcher. Shop niche: ${niche}. Today is ${today}.\nExisting or previously suggested products (never repeat or paraphrase them):\n${existing || '(none)'}\n\n` +
+  const candidatePrompt = `You are an Etsy market researcher. Shop niche: ${niche}. Today is ${today}.
+${shopCtx()}\nExisting or previously suggested products (never repeat or paraphrase them):\n${existing || '(none)'}\n\n` +
     (o.topic ? `The seller wants ideas around: ${o.topic}\n` : '') +
-    (o.digital ? 'ONLY digital-download products (SVG/DXF/PDF cut files, templates, printables). No physical items.\n' : '') +
+    (o.digital ? (shopIsCutNiche() ? 'ONLY digital-download products (SVG/DXF/PDF cut files, templates, printables). No physical items.\n' : 'ONLY digital-download products that fit this shop\'s niche (printable art, templates, downloadable files). No physical items. Focus on the niche itself; at most ONE of the ideas may be a cut-file version (laser/Cricut/Silhouette) of the same kind of artwork, and never suggest packaging or boxes.\n') : '') +
     `Suggest ${nCand} distinct product ideas. For each give ONLY the exact short English search phrase (2-4 words) a buyer types into Etsy search. Mix evergreen proven demand with seasonal demand that peaks within the next 2 months. Prefer concrete, specific products over broad categories.\nReturn ONLY JSON: {"candidates":["phrase 1","phrase 2"]}`;
   let candidates;
   try{
@@ -3213,9 +3218,9 @@ async function researchAndSuggestProducts(silent=false){
   const finalPrompt = `You are an expert Etsy SEO copywriter and market analyst. Shop niche: ${niche}.\nREAL data from a live Etsy search (not guesses), already ranked by opportunity:\n${block}\n\n` +
     `Choose exactly ${o.count} product(s) from this list with the best balance of real demand (views/favorites per day) and manageable competition. Prefer higher OPPORTUNITY SCORE unless there is a clear reason not to, and avoid near-duplicates of each other.\n` +
     `RULES: the "keyword" field must be copied EXACTLY from the list. Price must be a USD number between that keyword's p25 and p75 (typical for the niche). ` +
-    (o.digital ? 'The product is a DIGITAL download (cut files / templates): write for that. ' : '') +
+    (o.digital ? (shopIsCutNiche() ? 'The product is a DIGITAL download (cut files / templates): write for that. ' : 'The product is a DIGITAL download that fits this shop\'s niche: write for that; mention cutting machines only if this specific product is a cut-file version, and then only as a minor point.') : '') +
     (o.sizeN > 1 ? `The product will be sold in ${o.sizeN} SIZE OPTIONS in one listing: mention "${o.sizeN} Sizes" naturally in the title, add a "SIZES INCLUDED" bullet in the description and a relevant tag; do NOT invent exact dimensions (the seller adds them later). ` : '') +
-    `\nTitle: max 14 words and 140 chars, starts with a letter/number, no characters $ ^ \` . °, at most one each of % : &, at most 3 ALL-CAPS words. Exactly 13 tags, each max 20 chars, no underscores. Write in natural, native ${S.contentLanguage || 'English'}.\n${DESC_FORMAT_RULES}\n` +
+    `\nTitle: max 14 words and 140 chars, starts with a letter/number, no characters $ ^ \` . °, at most one each of % : &, at most 3 ALL-CAPS words. Exactly 13 tags, each max 20 chars, no underscores. Write in natural, native ${S.contentLanguage || 'English'}.\n${descRules()}\n` +
     `"reason_fa": 1-2 Persian sentences that cite the concrete numbers above (listings, price, views/day...) — never vague.\n` +
     `Return ONLY a JSON array: [{"keyword":"","title":"","tags":["..."],"description":"","price":0,"category":"","reason_fa":""}]`;
   try{
@@ -4867,11 +4872,12 @@ async function analyzeBatch(batch,startIdx,indices){
 
 RULES (updated 2025-2026):
 1. Title: Primary keyword in FIRST 40 chars, total 120-140 chars, natural language (NOT keyword stuffed), include gift/occasion words for US/UK/Canada buyers
-2. Tags: EXACTLY 13 UNIQUE tags. MAX 20 CHARACTERS each (count every char including spaces). NO underscores. NO duplicates. 2-3 short words. "laser cutting files"=19✅ "laser cutting templates"=23❌
+2. Tags: EXACTLY 13 UNIQUE tags. MAX 20 CHARACTERS each (count every char including spaces). NO underscores. NO duplicates. 2-3 short words. ${cutOr('"laser cutting files"=19✅ "laser cutting templates"=23❌','"wall art print"=14✅ "persian calligraphy wall art"=28❌')}
 3. Description: Keywords in first 160 chars (Google shows this), 300+ chars total, mention return policy, seasonal occasions
 4. International: Include terms popular in USA, UK, Canada (74%+26% of Etsy GMS)
 5. Mobile-first: Short impactful first sentence (46% buy on mobile app)
 Shop niche: ${niche2} | Shop: ${shopName2}
+${shopCtx()}
 
 Analyze these ${batch.length} listings. Keep each issue "text" SHORT (under 12 words) so the response doesn't get cut off. Return ONLY JSON array, no markdown:
 [{"idx":0,"score":75,"issues":[{"type":"error","text":"کلمه کلیدی اصلی اول title نیست"},{"type":"warn","text":"تگ تک‌کلمه‌ای"},{"type":"ok","text":"تعداد تگ کامل"}],"tag_count":13}]
@@ -5173,6 +5179,7 @@ async function runOptimizeSelected(){
   hideProgress(summary);
   renderSEOList(); saveCurrentShop(); updateOptimizedCount();
   log(summary,failed?'warn':'ok');
+  if(done) await maybeAutoPush();
 }
 
 let optCurrentFilter='all';
@@ -5290,7 +5297,7 @@ async function startOptimize(idx){
                   titleLen>140?`⚠️ CURRENT TITLE IS ${titleLen} CHARS — MUST shorten to under 140 chars`:'Title length OK';
   const prompt=`Optimize this Etsy listing for SEO. Return ONLY valid JSON, no extra text.
 Write new_title, new_tags, and new_description in natural, native ${S.contentLanguage||'English'} — not a literal word-for-word translation.
-
+${shopCtx(p)}
 CURRENT LISTING:
 Title (${titleLen} chars): ${p.TITLE}
 Tags: ${p.TAGS}
@@ -5301,9 +5308,9 @@ TITLE REQUIREMENT: ${titleNote}
 The new title MUST be between 100-140 characters AND contain AT MOST 14 WORDS (hard limit — count the words before responding; a word is any chunk with letters/digits, separators like "|" or "-" don't count). If you can't reach 100+ characters within 14 words, use fewer, longer, higher-value words — never exceed 14 words or 140 characters.
 Put the PRIMARY keyword in the FIRST 40 characters (most visible on mobile search results).
 Structure: [Primary Keyword] | [Secondary Keyword + modifier] | [Occasion/Recipient] — separate phrases with ", " (comma + space), not just a bare space, so Etsy's parser reads them as distinct phrases.
-Add: materials, occasions (gift, birthday, wedding), target users (Cricut, Silhouette), file formats.
+${cutOr('Add: materials, occasions (gift, birthday, wedding), target users (Cricut, Silhouette), file formats.','Add: the real medium/materials, style, occasions (gift, housewarming, wedding) and the target buyers — only what truly applies to this product.')}
 ⚠️ ETSY VALIDATION RULES (violating these gets the listing REJECTED, not just a lower score):
-- More than 3 words that start with 2+ consecutive capital letters (acronyms like SVG, DXF, PDF, AI, CDR, DIY, CNC, EPS, WMF — mixed-case brand names like Cricut/Silhouette don't count) is REJECTED. Count every such word before responding — use AT MOST 3 total; drop or lowercase the rest.
+- More than 3 words that start with 2+ consecutive capital letters ${cutOr("(acronyms like SVG, DXF, PDF, AI, CDR, DIY, CNC, EPS, WMF — mixed-case brand names like Cricut/Silhouette don't count)","(all-caps acronyms such as PDF, DIY, USA)")} is REJECTED. Count every such word before responding — use AT MOST 3 total; drop or lowercase the rest.
 - Must start with a letter or number, never a quote mark or symbol.
 - Never use these characters anywhere in the title: $ ^ \` . ° (no dollar sign, caret, backtick, period, or degree sign).
 - The characters % : & may each appear AT MOST ONCE in the whole title.
@@ -5315,15 +5322,15 @@ BANNED IN TITLE: premium, beautiful, amazing, best, gorgeous, luxury, stunning, 
 - No underscores (use spaces), no duplicates, no single words
 - Each tag targets DIFFERENT search intent (variety > repetition)
 - Don't just repeat the exact title phrases as tags — tags should EXPAND reach with different phrasing buyers might search, not duplicate what's already in the title
-- Examples OK: "gift box svg"(12✅) "laser cut files"(15✅) "cricut templates"(16✅)
-- Examples FAIL: "laser cutting templates"(23❌) "svg files"+"svg templates"(same intent❌)
+${cutOr('- Examples OK: "gift box svg"(12✅) "laser cut files"(15✅) "cricut templates"(16✅)','- Examples OK: "wall art print"(14✅) "calligraphy gift"(16✅)')}
+${cutOr('- Examples FAIL: "laser cutting templates"(23❌) "svg files"+"svg templates"(same intent❌)','- Examples FAIL: any tag over 20 characters (e.g. "persian calligraphy wall art"(28❌)) or two tags with the same intent')}
 
-MATERIALS RULES: 5-13 short items (each max 45 characters, letters/numbers/spaces/hyphens only, no duplicates) naming what the product is made from or meant to be cut/used with (e.g. cardstock, kraft paper, vinyl, wood, acrylic, felt). Improve/complete the current materials, don't invent unrelated ones.
+MATERIALS RULES: 5-13 short items (each max 45 characters, letters/numbers/spaces/hyphens only, no duplicates) ${cutOr('naming what the product is made from or meant to be cut/used with (e.g. cardstock, kraft paper, vinyl, wood, acrylic, felt).','naming what the product is really made from (only materials that truly apply, e.g. paper, ink, canvas, wood).')} Improve/complete the current materials, don't invent unrelated ones.
 
-${DESC_FORMAT_RULES}
+${descRules()}
 
 Return JSON:
-{"new_title":"keyword-rich title, 100-140 chars, MAX 14 words","new_tags":["2-3 word tag 1","tag 2","tag 3","tag 4","tag 5","tag 6","tag 7","tag 8","tag 9","tag 10","tag 11","tag 12","tag 13"],"new_materials":["cardstock","paper","vinyl"],"new_description":"formatted per DESCRIPTION FORMAT: keyword hook, then icon headings with • bullets","improvements":["what changed 1","what changed 2","what changed 3"]}`;
+{"new_title":"keyword-rich title, 100-140 chars, MAX 14 words","new_tags":["2-3 word tag 1","tag 2","tag 3","tag 4","tag 5","tag 6","tag 7","tag 8","tag 9","tag 10","tag 11","tag 12","tag 13"],"new_materials":${cutOr('["cardstock","paper","vinyl"]','["paper","ink"]')},"new_description":"formatted per DESCRIPTION FORMAT: keyword hook, then icon headings with • bullets","improvements":["what changed 1","what changed 2","what changed 3"]}`;
   try{
     const text=await callClaude(prompt, 2800);
     log("📝 پاسخ بهینه‌سازی: "+text.slice(0,100)+"...","info");
@@ -5365,6 +5372,7 @@ async function runOptimizeAll(){
   if(!weak.length){alert('ابتدا آنالیز SEO را اجرا کنید');return;}
   for(const [i] of weak.slice(0,5)) await autoOpt(parseInt(i));
   renderOptimizeList();renderSEOList();saveCurrentShop();
+  await maybeAutoPush();
 }
 
 async function autoOpt(idx){
@@ -5380,15 +5388,16 @@ async function autoOpt(idx){
     const tWarn=tLen<80?`⚠️ CRITICAL: Title is only ${tLen} chars. You MUST write a NEW title of 100-140 characters (max 14 words). Do NOT keep the short title.`:
                 tLen>140?`⚠️ Title is ${tLen} chars, must be under 140.`:`Title is ${tLen} chars (good range).`;
     const prompt=`Etsy SEO Expert. Shop: ${shopN} | Niche: ${nicheN}
+${shopCtx(p)}
 Write the new title, tags, and description in natural, native ${S.contentLanguage||'English'} — not a literal word-for-word translation.
 
 CURRENT TITLE (${tLen} chars): ${p.TITLE}
 ${tWarn}
 
 RULES:
-1. TITLE: MUST be 100-140 characters (count every character) AND AT MOST 14 WORDS — hard limit, count words before answering (a word = any chunk with letters/digits; "|" or "-" separators don't count); if 100+ chars isn't reachable in 14 words, use fewer, longer, higher-value words. Structure: [Primary Keyword] | [Secondary Keyword+modifier] | [Occasion/Recipient], separated by ", " (comma+space, not bare space). Primary keyword in first 40 chars. Add: file formats, machine compatibility (Cricut/Silhouette/laser), occasions (gift/birthday/wedding), sizes, digital download.
+1. TITLE: MUST be 100-140 characters (count every character) AND AT MOST 14 WORDS — hard limit, count words before answering (a word = any chunk with letters/digits; "|" or "-" separators don't count); if 100+ chars isn't reachable in 14 words, use fewer, longer, higher-value words. Structure: [Primary Keyword] | [Secondary Keyword+modifier] | [Occasion/Recipient], separated by ", " (comma+space, not bare space). Primary keyword in first 40 chars. ${cutOr("Add: file formats, machine compatibility (Cricut/Silhouette/laser), occasions (gift/birthday/wedding), sizes, digital download.","Add: the real medium/materials, style, occasions (gift/housewarming/wedding), sizes, and the product format — only what truly applies to this product.")}
 ⚠️ ETSY VALIDATION (violating these gets the listing REJECTED, not just a lower score):
-- More than 3 words starting with 2+ consecutive capital letters (SVG, DXF, PDF, AI, CDR, DIY, CNC, EPS, WMF — Cricut/Silhouette don't count) is REJECTED. Use AT MOST 3 total; drop or lowercase the rest.
+- More than 3 words starting with 2+ consecutive capital letters ${cutOr("(SVG, DXF, PDF, AI, CDR, DIY, CNC, EPS, WMF — Cricut/Silhouette don't count)","(all-caps acronyms such as PDF, DIY, USA)")} is REJECTED. Use AT MOST 3 total; drop or lowercase the rest.
 - Must start with a letter/number, never a quote or symbol. Never use: $ ^ \` . ° anywhere. Characters % : & may each appear AT MOST ONCE.
 2. TAGS (strictly enforced):
 BANNED IN TITLE: premium, beautiful, amazing, best, gorgeous, luxury, stunning, perfect — use in description instead.
@@ -5396,18 +5405,18 @@ BANNED IN TITLE: premium, beautiful, amazing, best, gorgeous, luxury, stunning, 
 - Each tag: 1-20 characters MAX (count spaces)
 - No underscores (use spaces), no duplicates, no single words
 - Each tag targets DIFFERENT search intent (variety > repetition) — don't just repeat exact title phrases, expand reach with different buyer phrasing
-- Examples OK: "gift box svg"(12✅) "laser cut files"(15✅) "cricut templates"(16✅)
-- Examples FAIL: "laser cutting templates"(23❌) "svg files"+"svg templates"(same intent❌)
+${cutOr('- Examples OK: "gift box svg"(12✅) "laser cut files"(15✅) "cricut templates"(16✅)','- Examples OK: "wall art print"(14✅) "calligraphy gift"(16✅)')}
+${cutOr('- Examples FAIL: "laser cutting templates"(23❌) "svg files"+"svg templates"(same intent❌)','- Examples FAIL: any tag over 20 characters (e.g. "persian calligraphy wall art"(28❌)) or two tags with the same intent')}
  Include US/UK/seasonal terms.
-3. ${DESC_FORMAT_RULES}
-4. MATERIALS: 5-13 short items (each max 45 chars, letters/numbers/spaces/hyphens only, no duplicates) naming what the product is made from or meant to be cut/used with (cardstock, kraft paper, vinyl, wood, acrylic...). Improve/complete the current materials: ${p.MATERIALS||'none'}
+3. ${descRules()}
+4. MATERIALS: 5-13 short items (each max 45 chars, letters/numbers/spaces/hyphens only, no duplicates) ${cutOr('naming what the product is made from or meant to be cut/used with (cardstock, kraft paper, vinyl, wood, acrylic...).','naming what the product is really made from (only materials that truly apply, e.g. paper, ink, canvas, wood).')} Improve/complete the current materials: ${p.MATERIALS||'none'}
 
 Current Tags: ${p.TAGS}
 Description (${fullDesc.length} chars — preserve ALL):
 ${fullDesc}
 
 Return ONLY JSON (no markdown, no explanation):
-{"new_title":"MUST BE 100-140 CHARS AND MAX 14 WORDS — write it here","new_tags":["phrase one","phrase two","phrase three","phrase four","phrase five","phrase six","phrase seven","phrase eight","phrase nine","phrase ten","phrase eleven","phrase twelve","phrase thirteen"],"new_materials":["cardstock","paper","vinyl"],"new_description":"formatted per DESCRIPTION FORMAT: keyword hook, then icon headings with • bullets"}`;
+{"new_title":"MUST BE 100-140 CHARS AND MAX 14 WORDS — write it here","new_tags":["phrase one","phrase two","phrase three","phrase four","phrase five","phrase six","phrase seven","phrase eight","phrase nine","phrase ten","phrase eleven","phrase twelve","phrase thirteen"],"new_materials":${cutOr('["cardstock","paper","vinyl"]','["paper","ink"]')},"new_description":"formatted per DESCRIPTION FORMAT: keyword hook, then icon headings with • bullets"}`;
     const text=await callClaude(prompt,2800);
     let r;
     try{ r=parseJSON(text); } catch(e){ const m=text.match(/\{[\s\S]*\}/); if(m) r=JSON.parse(m[0]); else throw e; }
@@ -5429,7 +5438,7 @@ Return ONLY JSON (no markdown, no explanation):
     }
     if(r.new_description) S.products[idx].DESCRIPTION=normalizeDescription(r.new_description);
     if(r.new_materials&&r.new_materials.length) S.products[idx].MATERIALS=sanitizeMaterials(r.new_materials, parseMaterials(p.MATERIALS)).join(',');
-    S.optimized[idx]=true;
+    S.optimized[idx]=true; if(S.pushedToEtsy) delete S.pushedToEtsy[idx];
     // آنالیز مجدد محلی با قوانین واقعی
     const newScore=calcLocalScore(S.products[idx]);
     const scoreAfter=Math.min(100, Math.max(newScore, scoreBefore+8));
@@ -5487,6 +5496,28 @@ function limitTitle(t){
 }
 
 // ── قالب توضیحات: مقدمه‌ی کوتاه + بخش‌هایی با تیتر آیکن‌دار و بولت — خوندنش برای مشتری ساده باشه
+// ══ آگاهی از نوع فروشگاه: پرامپت‌ها نباید مفاهیم یک فروشگاه (مثلاً Cricut/لیزر/بسته‌بندی) را به فروشگاه دیگر ببرند ══
+function shopIsCutNiche(){
+  const t = [S.shopNicheVal, S.shopStyle, S.shopTarget, S.shopName].join(' ').toLowerCase();
+  return /cricut|silhouette|glowforge|laser|svg|dxf|die.?cut|cnc|cut(ting)? ?files?|packaging|pack|box(es)? template|gift box|کریکات|لیزر|بسته.?بندی|جعبه/.test(t);
+}
+const cutOr = (cutText, otherText) => shopIsCutNiche() ? cutText : otherText;
+// آیا خودِ این محصول یک فایل برش (Cricut/Silhouette/لیزر) است؟ (از روی عنوان، تگ‌ها، توضیحات و متریال‌های همان محصول)
+function productIsCut(p){ return !!p && /cricut|silhouette|glowforge|laser|svg|dxf|die.?cut|cut(ting)? ?files?|\bcnc\b/i.test([p.TITLE, p.TAGS, p.DESCRIPTION, p.MATERIALS].join(' ')); }
+function shopCtx(p){
+  const niche = (S.shopNicheVal || '').trim(), style = (S.shopStyle || '').trim(), target = (S.shopTarget || '').trim();
+  let t = 'SHOP CONTEXT (follow strictly): this listing belongs to the Etsy shop "' + (S.shopName || 'My Shop') + '"' + (niche ? ', niche: ' + niche : '') + (style ? '; style: ' + style : '') + (target ? '; target buyers: ' + target : '') + '.' + String.fromCharCode(10);
+  t += 'Write ONLY about what this specific shop really sells, using facts present in the listing data; never carry over ideas from other shops. ';
+  if(shopIsCutNiche()) t += String.fromCharCode(10);
+  else if(p && productIsCut(p)) t += 'A few products of this shop are ALSO offered as cut files for laser/Cricut/Silhouette machines, and this product appears to be one: you may mention cutting-machine compatibility (Cricut, Silhouette, laser, SVG/DXF) briefly as a SECONDARY point, but the main focus MUST stay on the artwork itself (calligraphy style, text and meaning, occasions, who it is for). Never present the shop as a cutting-machine or packaging shop. If the current text pushes cutting machines more than the artwork deserves (leftovers from earlier automatic edits), shorten or remove those mentions.' + String.fromCharCode(10);
+  else if(p) t += 'This product is NOT a cut file: do not mention cutting machines, Cricut, Silhouette, laser, SVG/DXF, cardstock, boxes or packaging anywhere in the title, tags, materials or description. If the current listing already contains such mentions, REMOVE them (this overrides the instruction to preserve original details).' + String.fromCharCode(10);
+  else t += 'This shop is NOT a cutting-machine or packaging shop. Cut-file versions for laser/Cricut/Silhouette are at most a minor side line: never make them the focus, and only treat them as relevant when the specific product is itself a cut file.' + String.fromCharCode(10);
+  return t;
+}
+function descRules(){
+  if(shopIsCutNiche()) return DESC_FORMAT_RULES;
+  return DESC_FORMAT_RULES.replace(/✂️? COMPATIBLE WITH[\s\S]*?PERFECT FOR/, '🎨 ABOUT THE ARTWORK, 🖼 HOW TO DISPLAY, ❤️ PERFECT FOR') + String.fromCharCode(10) + '- Mention digital download or file formats ONLY if the listing data says the product is digital.';
+}
 const DESC_FORMAT_RULES=`DESCRIPTION FORMAT (mandatory — it must be easy for buyers to scan):
 - Plain text only (no markdown, no HTML, no ** or #).
 - Start with a 1-2 sentence keyword-rich hook (the first 160 characters carry the main keywords).
@@ -5886,13 +5917,19 @@ async function sendOptimizedToEtsy(idx){
   }
 }
 
-async function sendAllOptimizedToEtsy(){
+// ارسال خودکار بعد از بهینه‌سازی: تیک در حافظه‌ی مرورگر (برای هر فروشگاه جدا)
+function autoPushKey(){ return 'eap_autopush_'+(S.shopId||'x'); }
+function isAutoPush(){ try{ return localStorage.getItem(autoPushKey())==='1'; }catch(e){ return false; } }
+function setAutoPush(v){ try{ localStorage.setItem(autoPushKey(), v?'1':'0'); }catch(e){} document.querySelectorAll('.autoPushChk').forEach(c=>c.checked=!!v); }
+async function maybeAutoPush(){ if(isAutoPush()) await sendAllOptimizedToEtsy(); }
+// again=true: همه‌ی بهینه‌شده‌ها حتی آن‌هایی که قبلاً ارسال شده‌اند دوباره جایگزین شوند
+async function sendAllOptimizedToEtsy(again){
   if(!S.etsyOAuthToken){alert('اول توی تنظیمات «اتصال به Etsy» (OAuth) رو انجام بده');nav('settings');return;}
   const toSend=S.products
     .map((p,i)=>({p,i}))
-    .filter(({p,i})=>S.optimized[i]&&p._listing_id&&!(S.pushedToEtsy&&S.pushedToEtsy[i]));
+    .filter(({p,i})=>S.optimized[i]&&p._listing_id&&(again===true||!(S.pushedToEtsy&&S.pushedToEtsy[i])));
   if(!toSend.length){alert('محصول بهینه‌شده‌ی ارسال‌نشده‌ای پیدا نشد');return;}
-  if(!confirm(`${toSend.length} محصول بهینه‌شده روی Etsy جایگزین بشه؟`))return;
+  if(!confirm(`${toSend.length} محصول بهینه‌شده روی Etsy جایگزین بشه؟`+(again===true?'\n(شامل محصولاتی که قبلاً هم ارسال شده‌اند — متن فعلی جایگزین نسخه‌ی روی Etsy می‌شود.)':'')))return;
   let done=0,errors=0;
   for(const {p,i} of toSend){
     log(`📤 (${done+1}/${toSend.length}) ارسال «${p.TITLE.slice(0,40)}»...`,'info');
@@ -6817,17 +6854,23 @@ function remapAnalyzedState(oldProducts, newProducts){
   const keyOf = p => p._listing_id || p.SKU || p.TITLE || '';
   const oldByKey = {};
   (oldProducts||[]).forEach((p,i)=>{ const k=keyOf(p); if(k) oldByKey[k]=i; });
-  const newAnalyzed = {}, newOptimized = {};
+  const newAnalyzed = {}, newOptimized = {}, newPushed = {};
+  // فقط وقتی متن محصول عوض نشده، وضعیت آنالیز/بهینه‌سازی/ارسال معتبر می‌ماند؛ اگر متن جدید (مثلاً دوباره از Etsy بارگذاری شده) فرق دارد، آنالیز و بهینه‌سازی قدیمی دیگر درست نیست و پاک می‌شود
+  const nz = t => String(t||'').replace(/\s+/g,' ').trim();
+  const nzTags = t => String(t||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean).join('|');
+  const same = (a,b) => nz(a.TITLE)===nz(b.TITLE) && nz(a.DESCRIPTION)===nz(b.DESCRIPTION) && nzTags(a.TAGS)===nzTags(b.TAGS);
   (newProducts||[]).forEach((p,newIdx)=>{
     const k = keyOf(p);
     const oldIdx = k ? oldByKey[k] : undefined;
-    if(oldIdx!=null){
+    if(oldIdx!=null && same(oldProducts[oldIdx], p)){
       if(S.analyzed[oldIdx]) newAnalyzed[newIdx]=S.analyzed[oldIdx];
       if(S.optimized[oldIdx]) newOptimized[newIdx]=S.optimized[oldIdx];
+      if(S.pushedToEtsy && S.pushedToEtsy[oldIdx]) newPushed[newIdx]=true;
     }
   });
   S.analyzed = newAnalyzed;
   S.optimized = newOptimized;
+  S.pushedToEtsy = newPushed;
 }
 
 // وقتی محصولات آپلود/سینک می‌شن، اگه هنوز نیش/سبک فروشگاه دستی پر نشده، از روی خودِ همین محصولات واقعی حدس بزن —
