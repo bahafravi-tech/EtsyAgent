@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.44.0 -->
+<!-- APP_VERSION: 1.44.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -917,7 +917,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
       <div>
         <div class="card-title" style="margin-bottom:2px">🔄 تکمیل عکس‌های قدیمی</div>
-        <div style="font-size:12px;color:var(--text2)">برای هر موضوعی که عنوانش دقیقاً با یکی از محصولات خودت یکیه، همه‌ی عکس‌های اون محصول (نه فقط اولی) رو اضافه می‌کنه — برای موارد قدیمی‌ای که قبل از این قابلیت ساخته شدن</div>
+        <div style="font-size:12px;color:var(--text2)">برای هر موضوعی که عنوانش با عنوان یکی از محصولات خودت یکی یا خیلی شبیهه (بعد از بهینه‌سازی عنوان‌ها کمی فرق می‌کنن)، همه‌ی عکس‌های اون محصول از Etsy (نه فقط اولی) رو اضافه می‌کنه. اول «🛍️ بارگذاری از Etsy» رو بزن تا محصولات و عکس‌هاشون توی برنامه باشن. برای موضوع‌هایی که محصول مشابهی ندارن و عکسی هم ندارن، یک عکس با AI می‌سازه و اگه نشد، علت خطا رو همین‌جا می‌نویسه.</div>
       </div>
       <button class="btn btn-secondary btn-sm" onclick="backfillOldContentImages(this)">🔄 شروع تکمیل</button>
     </div>
@@ -3468,6 +3468,9 @@ async function pushApprovedToBackend(item){
     const d = await res.json();
     if(!res.ok) throw new Error(d.error||('خطای بک‌اند: '+res.status));
     log('✓ برای تولید محتوای معرفی به بک‌اند سوشال مدیا فرستاده شد','ok');
+    // اگر سرور نتوانست عکس یا کپشن بسازد، علتش را نشان بده (قبلاً بی‌صدا رد می‌شد و کارت بدون عکس می‌ماند)
+    if(d.image_ok===false) log('⚠ عکس این موضوع ساخته نشد: '+String(d.image_error||'نامشخص').slice(0,260),'warn');
+    if(d.caption_ok===false) log('⚠ کپشن این موضوع ساخته نشد: '+String(d.caption_error||'نامشخص').slice(0,260),'warn');
   }catch(e){
     log('⚠ ارسال به بک‌اند سوشال مدیا ناموفق بود: '+e.message,'warn');
   }
@@ -4060,15 +4063,27 @@ async function backfillOldContentImages(btn){
     const items = d.items || [];
 
     // برای هر آیتم، دنبال محصولی با عنوان دقیقاً یکسان بگرد
+    // تطبیق عنوان: اول دقیقاً یکسان، وگرنه شبیه‌ترین عنوان (عنوان لیستینگ بعد از بهینه‌سازی با عنوان اولیه‌ی ایده فرق می‌کند)
     const productByTitle = {};
     S.products.forEach(p=>{ if(p.TITLE) productByTitle[p.TITLE.trim().toLowerCase()] = p; });
-
-    const candidates = items.filter(it => productByTitle[it.title?.trim().toLowerCase()]);
-    if(!candidates.length){ progEl.textContent = 'هیچ موضوعی با عنوان دقیقاً یکسان با یکی از محصولاتت پیدا نشد'; btn.disabled=false; btn.textContent=t; return; }
+    const stop = new Set(['the','for','and','with','file','files','cut','digital','download','instant']);
+    const tokSet = s => new Set(String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').split(' ').filter(w=>w.length>2 && !stop.has(w)));
+    const prodToks = S.products.filter(p=>p.TITLE).map(p=>({p, toks: tokSet(p.TITLE)}));
+    const matchProduct = it => {
+      const exact = productByTitle[String(it.title||'').trim().toLowerCase()]; if(exact) return exact;
+      const a = tokSet(it.title); if(a.size < 2) return null;
+      let best = null, bs = 0;
+      prodToks.forEach(({p, toks}) => { let inter = 0; a.forEach(w => { if(toks.has(w)) inter++; }); const j = inter / (a.size + toks.size - inter || 1); if(j > bs){ bs = j; best = p; } });
+      return bs >= 0.5 ? best : null;
+    };
+    const matchOf = new Map(); items.forEach(it => { const m = matchProduct(it); if(m) matchOf.set(it.id, m); });
+    const candidates = items.filter(it => matchOf.has(it.id));
+    const unmatched = items.filter(it => !matchOf.has(it.id) && !(it.images||[]).length && !it.hero_image_path);
+    if(!candidates.length && !unmatched.length){ progEl.textContent = 'هیچ موضوعی برای تکمیل عکس پیدا نشد (همه عکس دارند یا با محصولی نمی‌خوانند)'; btn.disabled=false; btn.textContent=t; return; }
 
     let done=0, addedImgs=0;
     for(const it of candidates){
-      const p = productByTitle[it.title.trim().toLowerCase()];
+      const p = matchOf.get(it.id);
       const existingCount = (it.images||[]).length;
       const allImgUrls=[];
       for(let n=1;n<=10;n++){ const u=p['IMAGE'+n]; if(u) allImgUrls.push(u); }
@@ -4088,8 +4103,18 @@ async function backfillOldContentImages(btn){
         }
       }
     }
-    progEl.textContent = `✅ تمام شد — ${candidates.length} موضوع بررسی شد، ${addedImgs} عکس اضافه شد`;
-    log(progEl.textContent,'ok');
+    // موضوع‌هایی که هیچ محصول مشابهی ندارند و عکسی هم ندارند: با هوش مصنوعی (Gemini روی سرور) یک عکس می‌سازیم و علت خطا را نشان می‌دهیم
+    let genOk = 0; const genErrs = new Set();
+    for(let i = 0; i < unmatched.length; i++){
+      progEl.textContent = `⏳ ساخت عکس با AI برای موضوع‌های بدون محصول مشابه: ${i+1}/${unmatched.length}`;
+      try{
+        const gr = await fetch(crApiUrl('generate_image.php'), { method:'POST', headers:crHeaders(), body:JSON.stringify({id: unmatched[i].id}) });
+        const gd = await gr.json().catch(()=>({}));
+        if(gr.ok) genOk++; else genErrs.add(String(gd.error || ('خطای ' + gr.status)).slice(0, 220));
+      }catch(e){ genErrs.add(e.message); }
+    }
+    progEl.textContent = `✅ تمام شد — ${candidates.length} موضوع با محصول مشابه بررسی شد (${addedImgs} عکس از Etsy اضافه شد)` + (unmatched.length ? ` · ${unmatched.length} موضوع بدون محصول مشابه: ${genOk} عکس با AI ساخته شد${genErrs.size ? ' — علت خطا: ' + [...genErrs].join(' | ') : ''}` : '');
+    log(progEl.textContent, genErrs.size ? 'warn' : 'ok');
     loadContentReview();
   }catch(e){
     progEl.textContent = '❌ خطا: '+e.message;
@@ -11159,20 +11184,26 @@ async function pushCurrentToContentReview(){
     const d = await res.json();
     if(!res.ok) throw new Error(d.error || 'خطا');
     const newId = d.id;
-    const heroSlot = p.images && p.images.hero;
-    if(heroSlot){
-      const blob = await blobGet(heroSlot.key);
-      if(blob && typeof processImageForUpload === "function"){
-        try{
-          const processed = await processImageForUpload(blob, (typeof S!=="undefined"?S.brandFooterText:null));
-          const form = new FormData();
-          form.append('file', processed, 'image.jpg');
-          form.append('id', newId);
-          await fetch(crApiUrl('upload_slide.php'), { method:'POST', headers:{'X-Agent-Secret': S.contentBackendSecret||''}, body: form });
-        }catch(e){ /* اگه پردازش عکس نشد، حداقل خودِ متن اضافه شده */ }
+    // تا ۸ تصویر محصول (اول تصویر اصلی، بعد بقیه به ترتیب اسلات‌ها) به‌صورت کاروسل فرستاده می‌شود، نه فقط تصویر اصلی
+    const slotsToSend = IMG_SLOTS.filter(s => p.images && p.images[s.k]).sort((a, b) => (a.k === "hero" ? -1 : 0) - (b.k === "hero" ? -1 : 0)).slice(0, 8);
+    let sentImgs = 0; const bt2 = Busy.start("ارسال تصویرها به محتوای معرفی", {pct: 0});
+    try{
+      for(const [i, sl] of slotsToSend.entries()){
+        Busy.set(bt2, "ارسال تصویر " + fa(i+1) + " از " + fa(slotsToSend.length), i/slotsToSend.length*100);
+        const blob = await blobGet(p.images[sl.k].key);
+        if(blob && typeof processImageForUpload === "function"){
+          try{
+            const processed = await processImageForUpload(blob, (typeof S!=="undefined"?S.brandFooterText:null));
+            const form = new FormData();
+            form.append('file', processed, 'image.jpg');
+            form.append('id', newId);
+            const up = await fetch(crApiUrl('upload_slide.php'), { method:'POST', headers:{'X-Agent-Secret': S.contentBackendSecret||''}, body: form });
+            if(up.ok) sentImgs++;
+          }catch(e){ /* اگه پردازش عکس نشد، همان تصویر رد می‌شود */ }
+        }
       }
-    }
-    toast("✅ به «محتوای معرفی» اضافه شد.");
+    } finally { Busy.end(bt2); }
+    toast("✅ به «محتوای معرفی» اضافه شد" + (sentImgs ? " با " + fa(sentImgs) + " تصویر." : " (بدون تصویر — تصویری در تب «تصویرها» ساخته یا انتخاب کن)."));
     if(typeof log === "function") log('✓ «' + (p.title||p.name) + '» به محتوای معرفی اضافه شد', 'ok');
   }catch(e){
     toast("خطا: " + (e && e.message ? e.message : "نامشخص"));
