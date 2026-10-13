@@ -156,6 +156,11 @@ function publishToInstagram($item){
 
 function publishToPinterestPlatform($item){
   $c = cfg();
+  // حالت RSS: «انتشار» یعنی آیتم به فید api/pinterest_feed.php اضافه می‌شود و خودِ Pinterest (Auto-publish) روزانه پین می‌سازد
+  if(getSetting('PINTEREST_MODE', $c['PINTEREST_MODE'] ?? 'api') === 'rss'){
+    if(empty($item['hero_image_path'])) return ['ok'=>false, 'message'=>'عکس هنوز ساخته نشده'];
+    return ['ok'=>true, 'external_id'=>'rss-feed'];
+  }
   if(empty($c['PINTEREST_ACCESS_TOKEN']) || empty($c['PINTEREST_BOARD_ID'])) return ['ok'=>false, 'message'=>'تنظیمات پینترست کامل نیست'];
   $img = imageUrl($item);
   if(!$img) return ['ok'=>false, 'message'=>'عکس هنوز ساخته نشده'];

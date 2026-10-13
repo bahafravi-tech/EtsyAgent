@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.45.0 -->
+<!-- APP_VERSION: 1.46.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v181</div>
+        <div class="logo-badge">v182</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1567,6 +1567,23 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
       <div class="card">
         <div class="card-title" style="margin-bottom:6px">📌 Pinterest API</div>
         <div style="font-size:12px;color:var(--text2);margin-bottom:12px">برای پست خودکار پین به بوردهایت</div>
+        <div id="pinRssBox" style="border:2px solid var(--orange);border-radius:12px;padding:12px 14px;margin-bottom:14px">
+          <div style="font-weight:800;margin-bottom:6px">⚡ پیشنهادی: انتشار خودکار با فید RSS (بدون نیاز به API و بدون تأیید Standard)</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.9">API رسمی Pinterest برای اپ‌های تازه فقط در حالت Trial است و پین‌ها عمومی نمی‌شوند. در حالت RSS هر محتوایی که تأیید کنی و پینترست را تیک زده باشی، سرور خودکار به یک فید اضافه می‌کند و خودِ Pinterest (قابلیت Auto-publish) روزانه از آن پین می‌سازد. برای هر فروشگاه یک فید جدا هست تا هر کدام به برد خودش برود.</div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;margin:10px 0;font-size:13px">
+            <label><input type="radio" name="pinMode" value="rss" checked> فید RSS (پیشنهادی)</label>
+            <label><input type="radio" name="pinMode" value="api"> API پینترست (نیاز به Standard access)</label>
+          </div>
+          <div class="input-label">آدرس فید این فروشگاه</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <input type="text" class="input" id="pinFeedUrl" readonly dir="ltr" style="flex:1;min-width:240px">
+            <button class="btn btn-secondary btn-sm" type="button" onclick="copyPinFeedUrl()">📋 کپی</button>
+            <button class="btn btn-secondary btn-sm" type="button" onclick="window.open(document.getElementById('pinFeedUrl').value,'_blank')">🔍 باز کردن فید</button>
+          </div>
+          <div style="margin-top:8px"><button class="btn btn-primary btn-sm" type="button" onclick="savePinterestMode()">💾 ذخیره و فعال کن</button></div>
+          <div id="pinRssStatus" style="font-size:12px;margin-top:8px;line-height:1.8"></div>
+          <div style="font-size:12px;color:var(--text2);line-height:2;margin-top:8px"><b>یک‌بار تنظیم در Pinterest:</b> اول با حساب Business وارد شو و وب‌سایت (دامنه‌ی همین بک‌اند) را Claim کن: Settings ← Claimed accounts ← Website. Pinterest یک فایل HTML یا متاتگ می‌دهد؛ فایل را در cPanel داخل پوشه‌ی اصلی سایت آپلود کن. بعد در Pinterest وارد «Create ← Bulk create pins» شو، بخش Auto-publish (انتشار خودکار) را باز کن، آدرس فید بالا را بچسبان و برد را انتخاب کن. پین‌های اول تا حدود ۲۴ ساعت بعد می‌آیند. از آن به بعد فقط در «محتوای معرفی» آیتم‌ها را تأیید می‌کنی و بقیه خودکار است.</div>
+        </div>
         <div style="display:grid;gap:10px">
           <div>
             <div class="input-label">Access Token <span style="color:var(--text3);font-weight:400">(از developers.pinterest.com)</span></div>
@@ -2753,6 +2770,7 @@ function nav(name, el) {
   if(name==='content-review') loadContentReview();
   if(name==='marketing') loadMarketing();
   if(name==='customers'){ if(typeof uiRestore === 'function') uiRestore(); renderCustomersFromCache(); }
+  if(name==='settings' && typeof renderPinterestRss === 'function') renderPinterestRss();
   if(name==='studio' && window.studioReloadForShop) window.studioReloadForShop(); // هر بار که استودیو باز می‌شه با فروشگاه فعلی همگام می‌شه
   // وقتی صفحه optimize باز می‌شود لیست را render کن
   if(name==='optimize' && Object.keys(S.analyzed).length){
@@ -7330,6 +7348,34 @@ function renderEtsyRedirectInfo(){
     '<div style="color:var(--text3);margin-top:6px;line-height:1.7">اگر Etsy نوشت «The requested redirect URL is not permitted»: در developer.etsy.com ← Your Apps ← اپ همین فروشگاه ← «Callback URLs / Redirect URIs»، همین آدرس را <b>دقیقاً همین‌طور</b> (با https و بدون فاصله و با همین «/» آخر) اضافه کن و ذخیره بزن. برای اطمینان، آدرس دوم را هم اضافه کن: <span dir="ltr" style="user-select:all">' + escHtml(alt) + '</span>. صفحه را همیشه از همین آدرس باز کن (مثلاً با www یا بدون www فرق می‌کند).</div>';
 }
 function copyEtsyRedirect(){ const u = etsyRedirectUri(); (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(() => showEtsyStatus('✅ آدرس کپی شد', true)).catch(() => { prompt('این آدرس را کپی کن:', u); }); }
+// ══ انتشار خودکار پینترست با فید RSS ══
+function pinFeedUrlGuess(){ return S.contentBackendUrl ? S.contentBackendUrl.replace(/\/$/,'') + '/api/pinterest_feed.php?shop=' + encodeURIComponent(S.shopName||'') : ''; }
+async function renderPinterestRss(){
+  const u = document.getElementById('pinFeedUrl'), st = document.getElementById('pinRssStatus'); if(!u) return;
+  u.value = pinFeedUrlGuess();
+  if(!S.contentBackendUrl){ st.innerHTML = '<span style="color:var(--red)">اول آدرس و رمز بک‌اند سوشال مدیا را در همین صفحه وارد کن.</span>'; return; }
+  try{
+    const r = await fetch(crApiUrl('pinterest_mode.php?shop=' + encodeURIComponent(S.shopName||'')), { headers: crHeaders() });
+    const d = await r.json(); if(!r.ok) throw new Error(d.error || ('خطای ' + r.status));
+    if(d.feed_url) u.value = d.feed_url;
+    document.querySelectorAll('input[name="pinMode"]').forEach(x => x.checked = x.value === (d.mode === 'rss' ? 'rss' : 'api'));
+    st.innerHTML = d.mode === 'rss' ? '<span style="color:var(--green)">✓ حالت RSS فعال است — ' + (d.items_in_feed || 0) + ' آیتم الان در فید این فروشگاه هست.</span>' : '<span style="color:var(--text2)">حالت فعلی: API پینترست. برای فعال کردن فید، «فید RSS» را انتخاب و ذخیره کن.</span>';
+  }catch(e){ st.innerHTML = '<span style="color:var(--red)">خطا: ' + escHtml(e.message) + ' — فایل‌های جدید سرور (api/pinterest_mode.php و ...) باید آپلود شده باشند.</span>'; }
+}
+async function savePinterestMode(){
+  const st = document.getElementById('pinRssStatus'); if(!S.contentBackendUrl){ st.innerHTML = '<span style="color:var(--red)">آدرس بک‌اند وارد نشده.</span>'; return; }
+  const mode = (document.querySelector('input[name="pinMode"]:checked') || {}).value === 'api' ? 'api' : 'rss';
+  const etsy = /^[A-Za-z]/.test(String(S.etsyShopId||'')) ? S.etsyShopId : '';
+  st.textContent = '⏳ در حال ذخیره...';
+  try{
+    const r = await fetch(crApiUrl('pinterest_mode.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify({ mode, shop_name: S.shopName||'', etsy_shop: etsy }) });
+    const d = await r.json(); if(!r.ok) throw new Error(d.error || ('خطای ' + r.status));
+    log('📌 حالت پینترست روی ' + (mode === 'rss' ? 'فید RSS' : 'API') + ' تنظیم شد', 'ok'); toast('✅ حالت پینترست ذخیره شد.');
+    if(mode === 'rss' && !etsy) st.innerHTML = '<span style="color:#92400e">⚠ Shop ID فروشگاه Etsy در تنظیمات اسم (حروف) نیست، پس لینک پین‌ها با اسم فروشگاه «' + escHtml(S.shopName||'') + '» ساخته می‌شود. اگر اسم Etsy فرق دارد، Shop ID را به‌صورت اسم فروشگاه وارد کن و دوباره ذخیره بزن.</span>';
+    else await renderPinterestRss();
+  }catch(e){ st.innerHTML = '<span style="color:var(--red)">خطا: ' + escHtml(e.message) + '</span>'; }
+}
+function copyPinFeedUrl(){ const v = (document.getElementById('pinFeedUrl') || {}).value || ''; if(!v) return; (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(() => toast('✅ آدرس فید کپی شد')).catch(() => prompt('این آدرس را کپی کن:', v)); }
 // ══ چشمِ نمایش/پنهان‌کردن کدها ══
 function initPasswordEyes(){
   document.querySelectorAll('#page-settings input[type="password"]').forEach(inp => {
