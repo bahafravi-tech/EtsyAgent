@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.46.4 -->
+<!-- APP_VERSION: 1.46.5 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v185</div>
+        <div class="logo-badge">v186</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -4030,6 +4030,16 @@ function updateCrTabCounts(counts){
 
 let crCurrentCategory = '';
 let crShopSel = '', crShopAutoTried = false;
+// انتقال محتواهای یک نام فروشگاه به نام دیگر (روی سرور)؛ تعداد آیتم‌های منتقل‌شده را برمی‌گرداند
+async function renameShopOnBackend(oldName, newName){
+  if(!S.contentBackendUrl || !oldName || !newName || oldName === newName) return 0;
+  try{
+    const r = await fetch(crApiUrl('rename_shop.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify({ old: oldName, new: newName }) });
+    const d = await r.json(); if(!r.ok) throw new Error(d.error || ('خطای ' + r.status));
+    if(d.moved) log('🔁 ' + d.moved + ' محتوا از «' + oldName + '» به «' + newName + '» منتقل شد', 'ok');
+    return d.moved || 0;
+  }catch(e){ log('⚠ انتقال محتوا به نام جدید فروشگاه ممکن نشد: ' + e.message + ' (فایل api/rename_shop.php باید روی سرور باشد)', 'warn'); return 0; }
+}
 function onCrShopChange(){ crShopSel = document.getElementById('crShopFilter').value; crShopAutoTried = true; const n = document.getElementById('crShopNotice'); if(n) n.remove(); loadContentReview(); }
 function populateCrShopFilter(shops){
   const sel = document.getElementById('crShopFilter'); if(!sel) return;
@@ -4104,7 +4114,16 @@ async function loadContentReview(){
     const totalAll = Object.values(d.counts||{}).reduce((a,b)=>a+Number(b||0),0);
     const otherShops = (d.shops||[]).filter(x => x && x !== S.shopName);
     if(!totalAll && !(d.items||[]).length && crShopSel === '' && otherShops.length && !crShopAutoTried){
-      crShopAutoTried = true; crShopSel = '*';
+      crShopAutoTried = true;
+      // اگر فروشگاهی با آن نام قبلی دیگر وجود ندارد، همه‌ی محتواهایش به نام فعلی منتقل شود (برای هر نام جدا تأیید می‌گیرد)
+      let movedAny = false;
+      for(const nm of otherShops){
+        if(confirm('برای «' + S.shopName + '» محتوایی ثبت نشده، ولی محتوایی با نام فروشگاه «' + nm + '» هست.\n\nاگر فروشگاهی با نام «' + nm + '» دیگر وجود ندارد (یعنی نام فروشگاه را عوض کرده‌ای)، همه‌ی آن محتواها به «' + S.shopName + '» منتقل شود؟\n\n(اگر «' + nm + '» فروشگاه دیگری است که هنوز داری، لغو را بزن.)')){
+          if(await renameShopOnBackend(nm, S.shopName)) movedAny = true;
+        }
+      }
+      if(movedAny) return loadContentReview();
+      crShopSel = '*';
       listEl.insertAdjacentHTML('beforebegin', '<div id="crShopNotice" style="margin-bottom:10px;padding:10px 14px;border-radius:10px;background:var(--yellow-light);color:#92400e;font-size:12.5px;line-height:1.8">ℹ️ برای نام فروشگاه فعلی («' + escHtml(S.shopName||'') + '») محتوایی ثبت نشده بود، ولی محتوا با نام‌های دیگر هست (' + otherShops.map(escHtml).join('، ') + ') — احتمالاً نام فروشگاه را بعداً عوض کرده‌ای. حالا همه‌ی فروشگاه‌ها نشان داده می‌شوند. از انتخاب‌گر فروشگاه بالا می‌توانی فیلتر کنی.</div>');
       return loadContentReview();
     }
@@ -7328,7 +7347,10 @@ function saveSettings(){
   const style=(document.getElementById('shopStyle')?.value||'').trim();
   const target=(document.getElementById('shopTarget')?.value||'').trim();
   if(!name){alert('نام فروشگاه را وارد کنید');return;}
+  const oldShopName = S.shopName;
   S.shopName=name; S.shopNicheVal=niche; S.shopStyle=style; S.shopTarget=target;
+  // با عوض‌شدن نام فروشگاه، همه‌ی محتواهای معرفیِ قبلی هم با همان نام جدید بمانند (نه اینکه با نام قبلی گم شوند)
+  if(oldShopName && oldShopName !== name) renameShopOnBackend(oldShopName, name).then(n => { if(n) toast('✅ ' + n + ' محتوای معرفی به نام جدید فروشگاه منتقل شد.'); });
   // ذخیره در DB + آپدیت index
   saveCurrentShop();
   ShopManager.save({
