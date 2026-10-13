@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.44.2 -->
+<!-- APP_VERSION: 1.45.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v180</div>
+        <div class="logo-badge">v181</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -913,6 +913,19 @@ margin:0;background:var(--paper);color:var(--ink);
       <button class="btn btn-secondary btn-sm" onclick="generateAllCrDrafts()">🪄 تولید کپشن+عکس برای همه‌ی پیش‌نویس‌ها</button>
     </div>
   </div>
+  <details class="card" id="pinCsvCard" style="padding:12px 16px" ontoggle="if(this.open) pinCsvLoad()">
+    <summary style="cursor:pointer;font-weight:700;font-size:14px">📌 خروجی CSV برای Pinterest (آپلود گروهی — وقتی ارسال خودکار API کار نمی‌کند)</summary>
+    <div style="font-size:12px;color:var(--text2);margin:8px 0;line-height:1.9">آیتم‌های فهرست فعلیِ همین صفحه (یا فقط آیتم‌هایی که با «☑ انتخاب» تیک زده‌ای) را به فایل CSV تبدیل می‌کند. بعد در Pinterest: ساخت پین ← «Bulk create pins» (آپلود گروهی) ← همین فایل را آپلود کن. تصویر هر پین از آدرس عمومی سرور خودت خوانده می‌شود. اگر Pinterest نام ستون‌ها را نپذیرفت، فایل نمونه‌ی خودش را دانلود کن و فقط نام ستون‌های ردیف اول را مطابقش کن.</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">
+      <div><div class="input-label">نام برد (دقیقاً مثل Pinterest)</div><input class="input" id="pinCsvBoard" dir="ltr" placeholder="Beguchee Gift Boxes" onchange="pinCsvSave()"></div>
+      <div><div class="input-label">لینک مقصد پین‌ها</div><input class="input" id="pinCsvLink" dir="ltr" placeholder="https://www.etsy.com/shop/YourShop" onchange="pinCsvSave()"></div>
+      <div><div class="input-label">زمان‌بندی (اختیاری): شروع از</div><input class="input" id="pinCsvStart" type="datetime-local" dir="ltr"></div>
+      <div><div class="input-label">فاصله‌ی بین پین‌ها</div><select class="input" id="pinCsvEvery" onchange="pinCsvSave()"><option value="6">۶ ساعت</option><option value="12">۱۲ ساعت</option><option value="24" selected>۱ روز</option><option value="48">۲ روز</option></select></div>
+    </div>
+    <label style="display:block;font-size:12.5px;margin-top:8px"><input type="checkbox" id="pinCsvAll" onchange="pinCsvSave()"> برای هر تصویرِ هر آیتم یک پین جدا بساز (وگرنه فقط تصویر اول هر آیتم)</label>
+    <div style="margin-top:10px"><button class="btn btn-primary btn-sm" onclick="exportPinterestCsv()">⬇ ساخت و دانلود فایل CSV</button></div>
+    <div id="pinCsvMsg" style="font-size:12.5px;margin-top:8px;color:var(--text2)"></div>
+  </details>
   <div class="card hidden" id="backfillImagesCard">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
       <div>
@@ -3477,6 +3490,45 @@ async function pushApprovedToBackend(item){
 }
 
 // ══ Content Review — همون کاری که پنل جدا انجام می‌داد، حالا همین‌جا ══
+// ══ خروجی CSV برای «Bulk create pins» پینترست (جایگزین API وقتی Trial است یا پاسخ نمی‌دهد) ══
+function pinCsvKey(){ return 'eap_pincsv_' + (S.shopId || 'x'); }
+function pinCsvLoad(){
+  let o = {}; try{ o = JSON.parse(localStorage.getItem(pinCsvKey()) || '{}'); }catch(e){}
+  const set = (id, v) => { const el = document.getElementById(id); if(el && v != null) el.value = v; };
+  set('pinCsvBoard', o.board || ''); set('pinCsvLink', o.link != null ? o.link : (/^[A-Za-z]/.test(String(S.etsyShopId || '')) ? 'https://www.etsy.com/shop/' + S.etsyShopId : ''));
+  set('pinCsvEvery', o.every || '24'); const ai = document.getElementById('pinCsvAll'); if(ai) ai.checked = !!o.all;
+}
+function pinCsvSave(){
+  const g = id => (document.getElementById(id) || {}).value || '';
+  try{ localStorage.setItem(pinCsvKey(), JSON.stringify({board: g('pinCsvBoard'), link: g('pinCsvLink'), every: g('pinCsvEvery'), all: !!(document.getElementById('pinCsvAll') || {}).checked})); }catch(e){}
+}
+const pinCsvCell = v => '"' + String(v == null ? '' : v).replace(/"/g, '""').replace(/\r?\n/g, ' ') + '"';
+function exportPinterestCsv(){
+  pinCsvSave();
+  const g = id => (document.getElementById(id) || {}).value || '';
+  const board = g('pinCsvBoard').trim(), link = g('pinCsvLink').trim(), allImgs = !!(document.getElementById('pinCsvAll') || {}).checked;
+  const msg = document.getElementById('pinCsvMsg');
+  if(!S.contentBackendUrl){ msg.textContent = 'آدرس بک‌اند در تنظیمات وارد نشده است.'; return; }
+  if(!board){ msg.textContent = 'اول نام برد (Board) را بنویس — دقیقاً مثل اسمی که در Pinterest دارد.'; return; }
+  let items = (crSelectMode && crSelected.size) ? crCurrentItems.filter(it => crSelected.has(it.id)) : crCurrentItems.slice();
+  if(!items.length){ msg.textContent = 'آیتمی در فهرست فعلی نیست — اول یکی از تب‌های «محتوای معرفی» را باز کن یا آیتم‌ها را انتخاب کن.'; return; }
+  const base = S.contentBackendUrl.replace(/\/$/, '') + '/api/image.php?path=';
+  const startVal = g('pinCsvStart'), everyH = Number(g('pinCsvEvery')) || 24, rows = []; let skipped = 0, idx = 0;
+  const when = i => { if(!startVal) return ''; const d = new Date(new Date(startVal).getTime() + i * everyH * 3600 * 1000), p = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':00'; };
+  items.forEach(it => {
+    const imgs = (it.images && it.images.length) ? it.images : (it.hero_image_path ? [it.hero_image_path] : []);
+    if(!imgs.length){ skipped++; return; }
+    const tags = String(it.hashtags || '').split(',').map(h => h.replace(/[^A-Za-z0-9_]/g, '')).filter(Boolean);
+    const desc = (String(it.caption || it.source_content || '').trim() + (tags.length ? '\n\n' + tags.map(t => '#' + t).join(' ') : '')).slice(0, 500);
+    (allImgs ? imgs : imgs.slice(0, 1)).forEach(pth => { rows.push([String(it.title || '').slice(0, 100), base + encodeURIComponent(pth), board, desc, link, when(idx++), tags.slice(0, 10).join(',')]); });
+  });
+  if(!rows.length){ msg.textContent = 'هیچ‌کدام از آیتم‌ها تصویر ندارند — اول تصویر اضافه کن («تکمیل عکس‌های قدیمی» یا آپلود تصویر).'; return; }
+  const head = ['Title', 'Media URL', 'Pinterest board', 'Description', 'Link', 'Publish date', 'Keywords'];
+  const csv = '﻿' + [head.map(pinCsvCell).join(',')].concat(rows.map(r => r.map(pinCsvCell).join(','))).join('\r\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv;charset=utf-8'})); a.download = 'pinterest-pins-' + new Date().toISOString().slice(0, 10) + '.csv'; document.body.appendChild(a); a.click(); a.remove();
+  msg.innerHTML = '<span style="color:var(--green)">✅ ' + rows.length + ' پین در فایل CSV ساخته شد' + (skipped ? ' — ' + skipped + ' آیتم بدون تصویر رد شد' : '') + (rows.length > 200 ? ' (Pinterest در هر آپلود حدود ۲۰۰ پین می‌پذیرد؛ فایل را تکه‌تکه کن یا آیتم‌ها را انتخاب کن)' : '') + '.</span>';
+  log('📌 فایل CSV پینترست با ' + rows.length + ' پین ساخته شد', 'ok');
+}
 let crCurrentStatus = '';
 function crApiUrl(path){ return S.contentBackendUrl.replace(/\/$/,'')+'/api/'+path; }
 function crHeaders(){ return {'Content-Type':'application/json','X-Agent-Secret':S.contentBackendSecret||''}; }
