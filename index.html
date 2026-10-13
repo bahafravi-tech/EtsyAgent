@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.46.3 -->
+<!-- APP_VERSION: 1.46.4 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v184</div>
+        <div class="logo-badge">v185</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -964,7 +964,8 @@ margin:0;background:var(--paper);color:var(--ink);
     <div class="cr-tab" data-status="published" onclick="setContentReviewTab('published',this)">📤 منتشرشده <span id="crCount-published">0</span></div>
     <div class="cr-tab" data-status="failed" onclick="setContentReviewTab('failed',this)">❌ ناموفق <span id="crCount-failed">0</span></div>
     <div class="cr-tab" data-status="rejected" onclick="setContentReviewTab('rejected',this)">🗑 ردشده <span id="crCount-rejected">0</span></div>
-    <select class="input" id="crCategoryFilter" onchange="onCrCategoryChange()" style="width:auto;margin-inline-start:auto;font-size:12.5px">
+    <select class="input" id="crShopFilter" onchange="onCrShopChange()" title="فروشگاهِ محتوا" style="width:auto;margin-inline-start:auto;font-size:12.5px"><option value="">این فروشگاه</option></select>
+    <select class="input" id="crCategoryFilter" onchange="onCrCategoryChange()" style="width:auto;font-size:12.5px">
       <option value="">همه دسته‌ها</option>
     </select>
     <button class="btn btn-secondary btn-sm" id="btnCrSelectMode" onclick="toggleCrSelectMode()">☑ انتخاب</button>
@@ -2533,7 +2534,7 @@ function resetShopScopedState(){
   S.dailyProducts=[]; S.currentOpt=null; S.pendingOpt=null; S.currentDaily=null;
   seoSelectMode=false; seoSelected=new Set(); seoShowWeak=false;
   optSelectMode=false; optSelected=new Set();
-  crSelectMode=false; crSelected=new Set(); crCurrentItems=[]; crCurrentStatus=''; crCurrentCategory='';
+  crSelectMode=false; crSelected=new Set(); crCurrentItems=[]; crCurrentStatus=''; crCurrentCategory=''; crShopSel=''; crShopAutoTried=false;
   Object.keys(_shopUiInitial.html).forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML=_shopUiInitial.html[id]; });
   Object.keys(_shopUiInitial.text).forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=_shopUiInitial.text[id]; });
   SHOP_UI_INPUT_IDS.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
@@ -4028,6 +4029,13 @@ function updateCrTabCounts(counts){
 }
 
 let crCurrentCategory = '';
+let crShopSel = '', crShopAutoTried = false;
+function onCrShopChange(){ crShopSel = document.getElementById('crShopFilter').value; crShopAutoTried = true; const n = document.getElementById('crShopNotice'); if(n) n.remove(); loadContentReview(); }
+function populateCrShopFilter(shops){
+  const sel = document.getElementById('crShopFilter'); if(!sel) return;
+  sel.innerHTML = '<option value="">این فروشگاه (' + escHtml(S.shopName||'') + ')</option><option value="*">همه‌ی فروشگاه‌ها</option>' + (shops||[]).filter(x => x && x !== S.shopName).map(x => '<option value="' + escHtml(x) + '">' + escHtml(x) + '</option>').join('');
+  sel.value = crShopSel;
+}
 function onCrCategoryChange(){
   crCurrentCategory = document.getElementById('crCategoryFilter').value;
   loadContentReview();
@@ -4084,13 +4092,23 @@ async function loadContentReview(){
   try{
     const params = [];
     if(crCurrentStatus) params.push('status='+encodeURIComponent(crCurrentStatus));
-    if(S.shopName) params.push('shop='+encodeURIComponent(S.shopName));
+    const shopParam = crShopSel === '*' ? '' : (crShopSel || S.shopName || '');
+    if(shopParam) params.push('shop='+encodeURIComponent(shopParam));
     if(crCurrentCategory) params.push('category='+encodeURIComponent(crCurrentCategory));
     const q = params.length ? ('?'+params.join('&')) : '';
     const res = await fetch(crApiUrl('list_content.php'+q), { headers: crHeaders() });
     const d = await res.json();
     if(!res.ok) throw new Error(d.error||('خطای '+res.status));
     populateCrCategoryFilter(d.categories||[]);
+    populateCrShopFilter(d.shops||[]);
+    const totalAll = Object.values(d.counts||{}).reduce((a,b)=>a+Number(b||0),0);
+    const otherShops = (d.shops||[]).filter(x => x && x !== S.shopName);
+    if(!totalAll && !(d.items||[]).length && crShopSel === '' && otherShops.length && !crShopAutoTried){
+      crShopAutoTried = true; crShopSel = '*';
+      listEl.insertAdjacentHTML('beforebegin', '<div id="crShopNotice" style="margin-bottom:10px;padding:10px 14px;border-radius:10px;background:var(--yellow-light);color:#92400e;font-size:12.5px;line-height:1.8">ℹ️ برای نام فروشگاه فعلی («' + escHtml(S.shopName||'') + '») محتوایی ثبت نشده بود، ولی محتوا با نام‌های دیگر هست (' + otherShops.map(escHtml).join('، ') + ') — احتمالاً نام فروشگاه را بعداً عوض کرده‌ای. حالا همه‌ی فروشگاه‌ها نشان داده می‌شوند. از انتخاب‌گر فروشگاه بالا می‌توانی فیلتر کنی.</div>');
+      return loadContentReview();
+    }
+    const oldNote = document.getElementById('crShopNotice'); if(oldNote && crShopSel === '') oldNote.remove();
     updateCrTabCounts(d.counts||{});
     renderContentReviewList(d.items||[]);
   }catch(e){
