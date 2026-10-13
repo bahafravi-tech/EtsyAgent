@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.46.0 -->
+<!-- APP_VERSION: 1.46.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v182</div>
+        <div class="logo-badge">v183</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1574,6 +1574,8 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
             <label><input type="radio" name="pinMode" value="rss" checked> فید RSS (پیشنهادی)</label>
             <label><input type="radio" name="pinMode" value="api"> API پینترست (نیاز به Standard access)</label>
           </div>
+          <div class="input-label">نام فروشگاه در Etsy (برای لینک پین‌ها) <span style="color:var(--text3);font-weight:400">— همان که در آدرس etsy.com/shop/… است، مثلاً Beguchee</span></div>
+          <input type="text" class="input" id="pinEtsyName" dir="ltr" placeholder="Beguchee" style="margin-bottom:10px">
           <div class="input-label">آدرس فید این فروشگاه</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
             <input type="text" class="input" id="pinFeedUrl" readonly dir="ltr" style="flex:1;min-width:240px">
@@ -7358,6 +7360,14 @@ async function renderPinterestRss(){
     const r = await fetch(crApiUrl('pinterest_mode.php?shop=' + encodeURIComponent(S.shopName||'')), { headers: crHeaders() });
     const d = await r.json(); if(!r.ok) throw new Error(d.error || ('خطای ' + r.status));
     if(d.feed_url) u.value = d.feed_url;
+    // نام فروشگاه Etsy: اول چیزی که روی سرور ذخیره شده، بعد Shop ID اگر اسم است، وگرنه از Etsy پرسیده می‌شود
+    const en = document.getElementById('pinEtsyName');
+    if(en && !en.value){
+      en.value = d.etsy_shop || (/^[A-Za-z]/.test(String(S.etsyShopId||'')) ? S.etsyShopId : '');
+      if(!en.value && /^\d+$/.test(String(S.etsyShopId||'')) && S.etsyApiKey){
+        try{ const sh = await etsyApiGet('https://openapi.etsy.com/v3/application/shops/' + S.etsyShopId); if(sh && sh.shop_name) en.value = sh.shop_name; }catch(e){}
+      }
+    }
     document.querySelectorAll('input[name="pinMode"]').forEach(x => x.checked = x.value === (d.mode === 'rss' ? 'rss' : 'api'));
     st.innerHTML = d.mode === 'rss' ? '<span style="color:var(--green)">✓ حالت RSS فعال است — ' + (d.items_in_feed || 0) + ' آیتم الان در فید این فروشگاه هست.</span>' : '<span style="color:var(--text2)">حالت فعلی: API پینترست. برای فعال کردن فید، «فید RSS» را انتخاب و ذخیره کن.</span>';
   }catch(e){ st.innerHTML = '<span style="color:var(--red)">خطا: ' + escHtml(e.message) + ' — فایل‌های جدید سرور (api/pinterest_mode.php و ...) باید آپلود شده باشند.</span>'; }
@@ -7365,14 +7375,14 @@ async function renderPinterestRss(){
 async function savePinterestMode(){
   const st = document.getElementById('pinRssStatus'); if(!S.contentBackendUrl){ st.innerHTML = '<span style="color:var(--red)">آدرس بک‌اند وارد نشده.</span>'; return; }
   const mode = (document.querySelector('input[name="pinMode"]:checked') || {}).value === 'api' ? 'api' : 'rss';
-  const etsy = /^[A-Za-z]/.test(String(S.etsyShopId||'')) ? S.etsyShopId : '';
+  const etsy = ((document.getElementById('pinEtsyName') || {}).value || '').trim() || (/^[A-Za-z]/.test(String(S.etsyShopId||'')) ? S.etsyShopId : '');
+  if(mode === 'rss' && !etsy){ st.innerHTML = '<span style="color:var(--red)">نام فروشگاه Etsy را بنویس (مثلاً Beguchee) تا لینک پین‌ها به فروشگاه درست برود.</span>'; return; }
   st.textContent = '⏳ در حال ذخیره...';
   try{
     const r = await fetch(crApiUrl('pinterest_mode.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify({ mode, shop_name: S.shopName||'', etsy_shop: etsy }) });
     const d = await r.json(); if(!r.ok) throw new Error(d.error || ('خطای ' + r.status));
     log('📌 حالت پینترست روی ' + (mode === 'rss' ? 'فید RSS' : 'API') + ' تنظیم شد', 'ok'); toast('✅ حالت پینترست ذخیره شد.');
-    if(mode === 'rss' && !etsy) st.innerHTML = '<span style="color:#92400e">⚠ Shop ID فروشگاه Etsy در تنظیمات اسم (حروف) نیست، پس لینک پین‌ها با اسم فروشگاه «' + escHtml(S.shopName||'') + '» ساخته می‌شود. اگر اسم Etsy فرق دارد، Shop ID را به‌صورت اسم فروشگاه وارد کن و دوباره ذخیره بزن.</span>';
-    else await renderPinterestRss();
+    await renderPinterestRss();
   }catch(e){ st.innerHTML = '<span style="color:var(--red)">خطا: ' + escHtml(e.message) + '</span>'; }
 }
 function copyPinFeedUrl(){ const v = (document.getElementById('pinFeedUrl') || {}).value || ''; if(!v) return; (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(() => toast('✅ آدرس فید کپی شد')).catch(() => prompt('این آدرس را کپی کن:', v)); }

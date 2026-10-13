@@ -27,7 +27,10 @@ $params = [];
 if($shop !== ''){ $sql .= ' AND i.shop=?'; $params[] = $shop; }
 $st = db()->prepare($sql);
 $st->execute($params);
+$map = json_decode((string)getSetting('PIN_ETSY_SHOP_MAP', '{}'), true);
+if(!is_array($map)) $map = [];
 jsonResponse([
+  'etsy_shop' => $map[strtolower($shop)] ?? '',
   'mode' => getSetting('PINTEREST_MODE', cfg()['PINTEREST_MODE'] ?? 'api'),
   'feed_url' => $siteUrl.'/api/pinterest_feed.php'.($shop !== '' ? '?shop='.rawurlencode($shop) : ''),
   'site_url' => $siteUrl,
