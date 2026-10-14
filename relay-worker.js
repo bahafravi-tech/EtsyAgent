@@ -7,6 +7,7 @@
 
 const ALLOWED_HOSTS = [
   'graph.facebook.com',
+  'graph.instagram.com', // توکن «ورود با اینستاگرام» (انتشار پست و تمدید خودکار توکن)
   'api.pinterest.com',
   'generativelanguage.googleapis.com',
   'api.telegram.org',

@@ -5,6 +5,7 @@ require_once __DIR__.'/db.php';
 
 function runCronOnce(){
   @set_time_limit(300); // کاروسل چندعکسی ممکنه هر عکس تا ۳۰ ثانیه طول بکشه، پس سقف رو بازتر می‌ذاریم
+  try{ refreshInstagramTokenIfNeeded(); }catch(Throwable $e){ /* تمدید ناموفق نباید انتشار را متوقف کند */ }
   $pdo = db();
   $items = $pdo->query("SELECT * FROM content_items WHERE status='approved' AND (scheduled_at IS NULL OR scheduled_at <= NOW())")->fetchAll();
   $summary = ['checked'=>count($items), 'attempted'=>0, 'published'=>0, 'failed'=>0, 'details'=>[]];
@@ -87,9 +88,29 @@ function publishToTelegram($item){
   return ['ok'=>false, 'message'=>$data['description'] ?? ($res['body'] ?? 'خطای نامشخص')];
 }
 
+// توکن/شناسه‌ی اینستاگرام: اول از تنظیمات ذخیره‌شده توسط برنامه (api/instagram_token.php)، وگرنه از config.php
+function igToken(){ $t = (string)getSetting('IG_ACCESS_TOKEN', ''); return $t !== '' ? $t : (string)(cfg()['IG_ACCESS_TOKEN'] ?? ''); }
+function igAccountId(){ $t = (string)getSetting('IG_BUSINESS_ACCOUNT_ID', ''); return $t !== '' ? $t : (string)(cfg()['IG_BUSINESS_ACCOUNT_ID'] ?? ''); }
+// توکن «ورود با اینستاگرام» (با IG شروع می‌شود) از graph.instagram.com کار می‌کند؛ توکن فیسبوک از graph.facebook.com
+function igGraphBase($token){ return (strpos((string)$token, 'IG') === 0) ? 'https://graph.instagram.com/v21.0' : 'https://graph.facebook.com/v19.0'; }
+// توکن اینستاگرام ۶۰ روز اعتبار دارد؛ هر ۲۰ روز خودکار تمدید می‌شود (فقط توکن‌های «ورود با اینستاگرام»)
+function refreshInstagramTokenIfNeeded(){
+  $t = igToken();
+  if(strpos($t, 'IG') !== 0) return;
+  $last = (int)getSetting('IG_TOKEN_REFRESHED_AT', '0');
+  if(!$last){ setSetting('IG_TOKEN_REFRESHED_AT', (string)time()); return; }
+  if(time() - $last < 20*86400) return;
+  $res = relayFetch('https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token='.urlencode($t), 'GET');
+  $d = json_decode($res['body'] ?? '', true);
+  if($res['ok'] && !empty($d['access_token'])){
+    setSetting('IG_ACCESS_TOKEN', $d['access_token']);
+    setSetting('IG_TOKEN_REFRESHED_AT', (string)time());
+  }
+}
+
 function publishToInstagram($item){
   $c = cfg();
-  if(empty($c['IG_BUSINESS_ACCOUNT_ID']) || empty($c['IG_ACCESS_TOKEN'])) return ['ok'=>false, 'message'=>'تنظیمات اینستاگرام کامل نیست'];
+  if(igAccountId() === '' || igToken() === '') return ['ok'=>false, 'message'=>'تنظیمات اینستاگرام کامل نیست'];
 
   $images = ($item['images_json'] ?? null) ? json_decode($item['images_json'], true) : [];
   if(!is_array($images) || !$images){
@@ -102,19 +123,20 @@ function publishToInstagram($item){
   $imageUrls = array_map(fn($p) => $siteUrl.'/api/image.php?path='.urlencode($p), array_slice($images, 0, 10));
 
   $caption = fullCaption($item);
-  $token = $c['IG_ACCESS_TOKEN'];
-  $igId = $c['IG_BUSINESS_ACCOUNT_ID'];
+  $token = igToken();
+  $igId = igAccountId();
+  $base = igGraphBase($token);
 
   // ساخت یه media container و صبر تا فیسبوک واقعاً پردازشش کنه (status_code=FINISHED)
-  $createAndWait = function($params) use ($igId, $token){
-    $createUrl = "https://graph.facebook.com/v19.0/{$igId}/media";
+  $createAndWait = function($params) use ($igId, $token, $base){
+    $createUrl = "{$base}/{$igId}/media";
     $res1 = relayFetch($createUrl, 'POST', ['Content-Type'=>'application/x-www-form-urlencoded'], http_build_query(array_merge($params, ['access_token'=>$token])));
     $data1 = json_decode($res1['body'] ?? '', true);
     if(!$res1['ok'] || empty($data1['id'])){
       return ['ok'=>false, 'message'=>'خطا در ساخت container (کد '.($res1['status']??'?').'): '.($res1['body'] ?? 'پاسخ خالی')];
     }
     $containerId = $data1['id'];
-    $statusUrl = "https://graph.facebook.com/v19.0/{$containerId}?fields=status_code&access_token={$token}";
+    $statusUrl = "{$base}/{$containerId}?fields=status_code&access_token={$token}";
     for($i=0; $i<15; $i++){
       sleep(2);
       $resStatus = relayFetch($statusUrl, 'GET');
@@ -145,7 +167,7 @@ function publishToInstagram($item){
     $finalContainerId = $r['id'];
   }
 
-  $pubUrl = "https://graph.facebook.com/v19.0/{$igId}/media_publish";
+  $pubUrl = "{$base}/{$igId}/media_publish";
   $res2 = relayFetch($pubUrl, 'POST', ['Content-Type'=>'application/x-www-form-urlencoded'], http_build_query([
     'creation_id' => $finalContainerId, 'access_token' => $token,
   ]));

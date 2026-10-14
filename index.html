@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.46.5 -->
+<!-- APP_VERSION: 1.47.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v186</div>
+        <div class="logo-badge">v187</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1652,6 +1652,16 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
 
       <div class="card">
         <div class="card-title" style="margin-bottom:8px">📱 اینستاگرام</div>
+        <div id="igTokenBox" style="border:2px solid var(--orange);border-radius:12px;padding:12px 14px;margin-bottom:12px">
+          <div style="font-weight:800;margin-bottom:6px">🔑 توکن انتشار خودکار اینستاگرام</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.9;margin-bottom:8px">توکن را اینجا بچسبان تا روی سرور ذخیره شود (لازم نیست فایل config.php را ویرایش کنی). برنامه اول توکن را از خود اینستاگرام می‌آزماید و فقط اگر معتبر بود ذخیره می‌کند. اگر توکن از نوع «ورود با اینستاگرام» باشد (با IG شروع می‌شود)، شناسه‌ی حساب خودکار پر می‌شود و توکن هر ۲۰ روز خودکار تمدید می‌شود.</div>
+          <div class="input-label">Access Token اینستاگرام</div>
+          <input type="password" class="input" id="igTokenInput" dir="ltr" placeholder="IGAA..." style="margin-bottom:8px">
+          <div class="input-label">شناسه‌ی حساب اینستاگرام <span style="color:var(--text3);font-weight:400">(فقط برای توکن فیسبوک لازم است)</span></div>
+          <input type="text" class="input" id="igIdInput" dir="ltr" placeholder="17841..." style="margin-bottom:8px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" type="button" onclick="saveInstagramToken()">💾 آزمایش و ذخیره</button><button class="btn btn-secondary btn-sm" type="button" onclick="renderInstagramToken()">🔄 بررسی وضعیت فعلی</button></div>
+          <div id="igTokenStatus" style="font-size:12px;margin-top:8px;line-height:1.9"></div>
+        </div>
         <div class="alert alert-info" style="margin-bottom:10px">ℹ️ پست خودکار فقط برای حساب Business کار می‌کند. برای حساب شخصی، محتوا را کپی کن و خودت پست بده.</div>
         <div style="font-size:13px;color:var(--text2);line-height:2">
           ✅ بخش «سوشال مدیا» محتوای آماده برایت می‌سازد<br>
@@ -2774,6 +2784,7 @@ function nav(name, el) {
   if(name==='marketing') loadMarketing();
   if(name==='customers'){ if(typeof uiRestore === 'function') uiRestore(); renderCustomersFromCache(); }
   if(name==='settings' && typeof renderPinterestRss === 'function') renderPinterestRss();
+  if(name==='settings' && typeof renderInstagramToken === 'function') renderInstagramToken();
   if(name==='studio' && window.studioReloadForShop) window.studioReloadForShop(); // هر بار که استودیو باز می‌شه با فروشگاه فعلی همگام می‌شه
   // وقتی صفحه optimize باز می‌شود لیست را render کن
   if(name==='optimize' && Object.keys(S.analyzed).length){
@@ -7392,6 +7403,32 @@ function renderEtsyRedirectInfo(){
     '<div style="color:var(--text3);margin-top:6px;line-height:1.7">اگر Etsy نوشت «The requested redirect URL is not permitted»: در developer.etsy.com ← Your Apps ← اپ همین فروشگاه ← «Callback URLs / Redirect URIs»، همین آدرس را <b>دقیقاً همین‌طور</b> (با https و بدون فاصله و با همین «/» آخر) اضافه کن و ذخیره بزن. برای اطمینان، آدرس دوم را هم اضافه کن: <span dir="ltr" style="user-select:all">' + escHtml(alt) + '</span>. صفحه را همیشه از همین آدرس باز کن (مثلاً با www یا بدون www فرق می‌کند).</div>';
 }
 function copyEtsyRedirect(){ const u = etsyRedirectUri(); (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(() => showEtsyStatus('✅ آدرس کپی شد', true)).catch(() => { prompt('این آدرس را کپی کن:', u); }); }
+// ══ توکن اینستاگرام: آزمایش و ذخیره روی سرور ══
+async function renderInstagramToken(){
+  const st = document.getElementById('igTokenStatus'); if(!st) return;
+  if(!S.contentBackendUrl){ st.innerHTML = '<span style="color:var(--red)">اول آدرس و رمز بک‌اند سوشال مدیا را در همین صفحه وارد کن.</span>'; return; }
+  st.textContent = '⏳ در حال بررسی...';
+  try{
+    const r = await fetch(crApiUrl('instagram_token.php'), { headers: crHeaders() }); const d = await r.json(); if(!r.ok) throw new Error(d.error || ('خطای ' + r.status));
+    if(!d.configured){ st.innerHTML = '<span style="color:var(--red)">هنوز توکن اینستاگرام ثبت نشده است.</span>'; return; }
+    const kind = d.kind === 'instagram_login' ? 'ورود با اینستاگرام (تمدید خودکار)' : 'فیسبوک (تمدید دستی)';
+    if(d.valid) st.innerHTML = '<span style="color:var(--green)">✓ توکن معتبر است — حساب @' + escHtml(d.username || d.ig_id) + ' · نوع: ' + kind + (d.days_since_saved != null ? ' · ' + d.days_since_saved + ' روز از ثبت/تمدید گذشته' : '') + '</span>';
+    else st.innerHTML = '<span style="color:var(--red)">✗ توکن فعلی کار نمی‌کند: ' + escHtml(d.message || 'نامشخص') + '<br>توکن جدید را بچسبان و «آزمایش و ذخیره» را بزن.</span>';
+  }catch(e){ st.innerHTML = '<span style="color:var(--red)">خطا: ' + escHtml(e.message) + ' — فایل‌های جدید سرور (api/instagram_token.php و ...) باید آپلود شده باشند.</span>'; }
+}
+async function saveInstagramToken(){
+  const st = document.getElementById('igTokenStatus'), token = (document.getElementById('igTokenInput').value || '').trim(), igId = (document.getElementById('igIdInput').value || '').trim();
+  if(!S.contentBackendUrl){ st.innerHTML = '<span style="color:var(--red)">آدرس بک‌اند وارد نشده.</span>'; return; }
+  if(!token){ st.innerHTML = '<span style="color:var(--red)">توکن را بچسبان.</span>'; return; }
+  st.textContent = '⏳ در حال آزمایش توکن با اینستاگرام...';
+  try{
+    const r = await fetch(crApiUrl('instagram_token.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify({ token, ig_id: igId }) });
+    const d = await r.json(); if(!r.ok) throw new Error(d.error || ('خطای ' + r.status));
+    document.getElementById('igTokenInput').value = '';
+    log('📱 توکن اینستاگرام ذخیره شد' + (d.username ? ' (@' + d.username + ')' : ''), 'ok'); toast('✅ توکن اینستاگرام معتبر بود و ذخیره شد.');
+    await renderInstagramToken();
+  }catch(e){ st.innerHTML = '<span style="color:var(--red)">✗ ' + escHtml(e.message) + '</span>'; }
+}
 // ══ انتشار خودکار پینترست با فید RSS ══
 function pinFeedUrlGuess(){ return S.contentBackendUrl ? S.contentBackendUrl.replace(/\/$/,'') + '/api/pinterest_feed.php?shop=' + encodeURIComponent(S.shopName||'') : ''; }
 async function renderPinterestRss(){
