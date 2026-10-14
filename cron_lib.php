@@ -2,6 +2,7 @@
 // cron_lib.php — منطق واقعی انتشار خودکار (هم از cron_publish.php هم از api/run_cron_now.php صدا زده می‌شه)
 
 require_once __DIR__.'/db.php';
+require_once __DIR__.'/lib_banned.php';
 
 function runCronOnce(){
   @set_time_limit(300); // کاروسل چندعکسی ممکنه هر عکس تا ۳۰ ثانیه طول بکشه، پس سقف رو بازتر می‌ذاریم
@@ -49,10 +50,13 @@ function logPublish($contentId, $platform, $success, $message){
 }
 
 function fullCaption($item){
-  $tags = $item['hashtags']
-    ? implode(' ', array_map(fn($h) => '#'.preg_replace('/[^a-zA-Z0-9_]/','',trim($h)), explode(',', $item['hashtags'])))
+  // واژه‌های ممنوعه‌ی همان فروشگاه (مثل Iran) قبل از انتشار جایگزین می‌شوند، حتی اگر در کپشن قدیمی مانده باشند
+  $shop = $item['shop'] ?? '';
+  $hashtags = bannedApplyTags($item['hashtags'] ?? '', $shop);
+  $tags = $hashtags
+    ? implode(' ', array_map(fn($h) => '#'.preg_replace('/[^a-zA-Z0-9_]/','',trim($h)), explode(',', $hashtags)))
     : '';
-  return trim(($item['caption'] ?? '')."\n\n".$tags);
+  return trim(bannedApply($item['caption'] ?? '', $shop)."\n\n".$tags);
 }
 
 function imageUrl($item){
@@ -190,7 +194,7 @@ function publishToPinterestPlatform($item){
   $url = 'https://api.pinterest.com/v5/pins';
   $body = json_encode([
     'board_id' => $c['PINTEREST_BOARD_ID'],
-    'title' => mb_substr($item['title'], 0, 100),
+    'title' => mb_substr(bannedApply($item['title'], $item['shop'] ?? ''), 0, 100),
     'description' => mb_substr(fullCaption($item), 0, 500),
     'media_source' => ['source_type'=>'image_url', 'url'=>$img],
   ]);

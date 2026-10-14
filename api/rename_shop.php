@@ -22,4 +22,11 @@ if(is_array($map) && isset($map[strtolower($old)])){
   unset($map[strtolower($old)]);
   setSetting('PIN_ETSY_SHOP_MAP', json_encode($map, JSON_UNESCAPED_UNICODE));
 }
+// فهرست واژه‌های ممنوعه هم با نام جدید بماند
+$bm = json_decode((string)getSetting('BANNED_WORDS_MAP', '{}'), true);
+if(is_array($bm) && array_key_exists(strtolower($old), $bm)){
+  if(!array_key_exists(strtolower($new), $bm)) $bm[strtolower($new)] = $bm[strtolower($old)];
+  unset($bm[strtolower($old)]);
+  setSetting('BANNED_WORDS_MAP', json_encode($bm, JSON_UNESCAPED_UNICODE));
+}
 jsonResponse(['ok'=>true, 'moved'=>$moved]);

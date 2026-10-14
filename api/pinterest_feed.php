@@ -3,6 +3,7 @@
 // عمومی است (بدون ورود)، چون خودِ Pinterest آن را می‌خواند. فقط آیتم‌هایی را می‌آورد که برای پینترست «منتشر» شده‌اند
 // (حالت RSS در cron_lib.php: انتشار = اضافه شدن به همین فید). پارامتر اختیاری ?shop=نام‌فروشگاه برای یک فید جدا به‌ازای هر برد.
 require __DIR__.'/../db.php';
+require __DIR__.'/../lib_banned.php';
 
 $pdo = db();
 $siteUrl = rtrim(cfg()['SITE_URL'] ?? '', '/');
@@ -24,7 +25,7 @@ $tagsLine = function($item){
   return implode(' ', array_filter(array_map(function($h){
     $t = preg_replace('/[^a-zA-Z0-9_]/', '', trim($h));
     return $t === '' ? '' : '#'.$t;
-  }, explode(',', $item['hashtags']))));
+  }, explode(',', bannedApplyTags($item['hashtags'], $item['shop'] ?? '')))));
 };
 
 header('Content-Type: application/rss+xml; charset=utf-8');
@@ -39,8 +40,8 @@ echo '<?xml version="1.0" encoding="UTF-8"?>'."\n";
   <language>en</language>
   <atom:link href="<?= $esc($siteUrl) ?>/api/pinterest_feed.php<?= $shop !== '' ? '?shop='.$esc(rawurlencode($shop)) : '' ?>" rel="self" type="application/rss+xml" />
 <?php foreach($rows as $r):
-  $title = mb_substr(trim((string)$r['title']), 0, 100);
-  $desc = trim(trim((string)($r['caption'] ?: $r['source_content'])).' '.$tagsLine($r));
+  $title = mb_substr(trim(bannedApply((string)$r['title'], $r['shop'] ?? '')), 0, 100);
+  $desc = trim(bannedApply(trim((string)($r['caption'] ?: $r['source_content'])), $r['shop'] ?? '').' '.$tagsLine($r));
   $desc = mb_substr($desc, 0, 480);
   $link = $siteUrl.'/go.php?id='.(int)$r['id'];
   $img = $siteUrl.'/api/image.php?path='.urlencode($r['hero_image_path']);

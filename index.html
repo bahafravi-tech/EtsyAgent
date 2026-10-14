@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.47.0 -->
+<!-- APP_VERSION: 1.48.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v187</div>
+        <div class="logo-badge">v188</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1192,6 +1192,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
       <button class="btn btn-primary btn-sm" onclick="saveBannedText()">💾 ذخیره</button>
       <button class="btn btn-secondary btn-sm" onclick="scanBanned()">🔎 بررسی همه‌ی محصولات</button>
+      <button class="btn btn-secondary btn-sm" onclick="cleanBannedContent()" title="کپشن، عنوان و هشتگ‌های «محتوای معرفی» ثبت‌شده را هم اصلاح می‌کند">🧹 اصلاح محتوای معرفی ثبت‌شده</button>
     </div>
     <div id="bannedScan"></div>
     <div style="font-size:11.5px;color:var(--text3);margin-top:8px;line-height:1.8">هشدارهای ثابت (بدون جایگزینی خودکار): نام برند و شخصیت‌های ثبت‌شده مثل Disney، Marvel، Nike، Pokemon و …؛ نام دستگاه‌هایی مثل Cricut و Silhouette فقط به‌صورت «سازگار با …» مجاز است، نه به‌عنوان نام محصول.</div>
@@ -4092,7 +4093,9 @@ async function runCronNow(btn){
   btn.disabled = false; btn.textContent = t;
 }
 
+let crBannedSyncedFor = '';
 async function loadContentReview(){
+  if(S.contentBackendUrl && S.shopName && crBannedSyncedFor !== S.shopName){ crBannedSyncedFor = S.shopName; pushBannedToServer(false); }
   const noBackendEl = document.getElementById('crNoBackend');
   const listEl = document.getElementById('crList');
   if(!S.contentBackendUrl){
@@ -5722,9 +5725,24 @@ function renderBannedCard(){
   const ta = document.getElementById("bannedText"); if(!ta) return;
   ta.value = (S.bannedText == null ? BANNED_DEFAULT : S.bannedText);
 }
+// فهرست واژه‌های ممنوعه‌ی این فروشگاه را به سرور می‌فرستد تا کپشن/هشتگ/عنوان محتوای معرفی هم همان‌ها را رعایت کند؛ clean=true محتوای قبلی را هم اصلاح می‌کند
+async function pushBannedToServer(clean){
+  if(!S.contentBackendUrl || !S.shopName) return null;
+  try{
+    const r = await fetch(crApiUrl('banned_words.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify({ shop: S.shopName, text: (S.bannedText == null ? BANNED_DEFAULT : S.bannedText), clean: !!clean }) });
+    const d = await r.json(); if(!r.ok) throw new Error(d.error || ('خطای ' + r.status));
+    return d;
+  }catch(e){ log('⚠ همگام‌سازی واژه‌های ممنوعه با سرور ممکن نشد: ' + e.message + ' (فایل api/banned_words.php باید روی سرور باشد)', 'warn'); return null; }
+}
+async function cleanBannedContent(){
+  const d = await pushBannedToServer(true);
+  if(!d){ toast('ارتباط با سرور ممکن نشد — لاگ فعالیت را ببین.'); return; }
+  toast(d.fixed ? '✅ واژه‌های ممنوعه در ' + d.fixed + ' محتوای معرفی جایگزین شد.' : 'محتوای معرفی‌ای نبود که واژه‌ی ممنوعه داشته باشد.');
+  if(typeof loadContentReview === 'function') loadContentReview();
+}
 function saveBannedText(){
   const ta = document.getElementById("bannedText"); if(!ta) return;
-  S.bannedText = ta.value; saveCurrentShop(); toast("✅ فهرست واژه‌های ممنوعه ذخیره شد (" + bannedList().length + " واژه)");
+  S.bannedText = ta.value; saveCurrentShop(); pushBannedToServer(false); toast("✅ فهرست واژه‌های ممنوعه ذخیره شد (" + bannedList().length + " واژه) و برای محتوای معرفی به سرور هم فرستاده شد");
 }
 function scanBanned(){
   saveBannedText();

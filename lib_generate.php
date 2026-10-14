@@ -1,5 +1,6 @@
 <?php
 // lib_generate.php — تولید کپشن (Claude) و عکس پس‌زمینه (Gemini) برای یک آیتم محتوا
+require_once __DIR__.'/lib_banned.php';
 
 function callClaudeAPI($prompt, $maxTokens=800){
   $apiKey = anthropicApiKey();
@@ -30,7 +31,10 @@ function generateCaptionForItem($id){
   $lang = $item['language'] ?: 'English';
   $langInstruction = "Write the caption and hashtags in natural, native {$lang} — not a literal word-for-word translation.";
 
-  $prompt = "You are a social media copywriter for Beguchee, an Etsy shop for packaging templates and digital craft files.\n"
+  $shopLabel = trim((string)($item['shop'] ?? '')) !== '' ? $item['shop'] : 'an Etsy shop';
+  $prompt = "You are a social media copywriter for the Etsy shop \"{$shopLabel}\".\n"
+    ."Write about ONLY what the product idea below really is; do not mention cutting machines (Cricut, Silhouette, laser), SVG/DXF files or packaging unless the idea itself is about them.\n"
+    .bannedPromptLine($item['shop'] ?? '')
     ."Write an engaging Instagram/Pinterest caption INTRODUCING this upcoming product idea as something exciting that's coming soon — do not claim it is already for sale.\n"
     ."{$langInstruction}\n\n"
     ."Product idea: {$item['title']}\n"
@@ -45,14 +49,21 @@ function generateCaptionForItem($id){
   if(!is_array($json) || !isset($json['caption'])) return ['ok'=>false, 'error'=>'پاسخ JSON نامعتبر بود از Claude'];
 
   $hashtags = implode(',', array_map(fn($h) => '#'.ltrim(trim($h), '# '), $json['hashtags'] ?? []));
+  // اگر مدل با وجود اخطار باز هم واژه‌ی ممنوعه نوشت، همین‌جا جایگزین می‌شود
+  $shopName = $item['shop'] ?? '';
+  $captionText = bannedApply($json['caption'], $shopName);
+  $hashtags = bannedApplyTags($hashtags, $shopName);
   $pdo->prepare('UPDATE content_items SET caption=?, hashtags=?, status=IF(status="draft","generated",status), updated_at=NOW() WHERE id=?')
-      ->execute([$json['caption'], $hashtags, $id]);
+      ->execute([$captionText, $hashtags, $id]);
   return ['ok'=>true];
 }
 
 // ثبت یه موضوع جدید و تولید خودکار کپشن+عکس براش (هم از Etsy Agent هم از فرم دستی پنل استفاده می‌شه)
 function insertAndGenerateTopic($title, $sourceContent, $tag='', $keyword='', $research=null, $shop='', $language='en'){
   $pdo = db();
+  // واژه‌های ممنوعه (مثل Iran) از همان ابتدا در عنوان و توضیح هم جایگزین می‌شوند
+  $title = bannedApply($title, $shop);
+  $sourceContent = bannedApply($sourceContent, $shop);
   $stmt = $pdo->prepare('INSERT INTO content_items (shop, language, title, tag, keyword, source_content, research_json, status) VALUES (?,?,?,?,?,?,?,"draft")');
   $stmt->execute([$shop, $language ?: 'en', $title, $tag, $keyword, $sourceContent, $research ? json_encode($research, JSON_UNESCAPED_UNICODE) : null]);
   $id = (int)$pdo->lastInsertId();
