@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.49.0 -->
+<!-- APP_VERSION: 1.50.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v189</div>
+        <div class="logo-badge">v190</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1163,6 +1163,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <button class="btn btn-sm btn-primary" style="margin-right:auto" onclick="runSEOAnalysis()">▶ آنالیز انتخاب‌شده‌ها</button>
   </div>
   <div id="seoProgWrap" class="card hidden"><div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" id="seoProg"></div></div><div class="prog-text" id="seoProgText">در حال آنالیز...</div></div></div>
+  <div class="syncBar card" style="margin-bottom:10px;padding:10px 14px;font-size:12.5px"></div>
   <div class="product-list" id="seoList"><div style="text-align:center;padding:40px;color:var(--text2)"><div style="font-size:40px;margin-bottom:12px">🔍</div><div style="font-weight:600;color:var(--text);margin-bottom:6px">ابتدا CSV را آپلود کنید</div><div>سپس آنالیز را شروع کنید</div></div></div>
 </div>
 
@@ -1215,6 +1216,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <button class="btn btn-sm btn-secondary" onclick="optSelectNone()">لغو همه</button>
     <button class="btn btn-sm btn-primary" style="margin-right:auto" onclick="runOptimizeSelected()">⚡ بهینه‌سازی انتخاب‌شده‌ها</button>
   </div>
+  <div class="syncBar card" style="margin-bottom:10px;padding:10px 14px;font-size:12.5px"></div>
   <div class="product-list" id="optimizeList"><div style="text-align:center;padding:40px;color:var(--text2)"><div style="font-size:40px;margin-bottom:12px">⚡</div><div style="font-weight:600;color:var(--text);margin-bottom:6px">ابتدا آنالیز SEO را اجرا کنید</div></div></div>
 </div>
 
@@ -2785,6 +2787,7 @@ function nav(name, el) {
   if(name==='marketing') loadMarketing();
   if(name==='customers'){ if(typeof uiRestore === 'function') uiRestore(); renderCustomersFromCache(); }
   if(name==='settings' && typeof renderPinterestRss === 'function') renderPinterestRss();
+  if((name==='seo' || name==='optimize') && typeof etsySyncCheck === 'function'){ renderSyncBar(); etsySyncCheck(true); }
   if(name==='settings' && typeof renderInstagramToken === 'function') renderInstagramToken();
   if(name==='studio' && window.studioReloadForShop) window.studioReloadForShop(); // هر بار که استودیو باز می‌شه با فروشگاه فعلی همگام می‌شه
   // وقتی صفحه optimize باز می‌شود لیست را render کن
@@ -5011,18 +5014,22 @@ async function runSEOAnalysis() {
   if(!S.products.length){alert('ابتدا CSV را آپلود کنید');nav('dashboard');return;}
   nav('seo');
   renderSEOList();
-  // cache check — اگر محصولات تغییر نکرده و آنالیز وجود دارد، از cache استفاده کن
-  const currentHash=computeProductsHash(S.products);
-  if(currentHash===S.analyzedHash && Object.keys(S.analyzed).length>0){
-    const pct=Object.keys(S.analyzed).length;
-    if(!seoSelected.size || confirm(`آنالیز قبلی موجود است (${pct} محصول). آیا مجدد آنالیز شود؟ (اعتبار API مصرف می‌شود)`)){
-      if(seoSelected.size===0){ log('✓ آنالیز از cache بارگذاری شد — اعتبار API مصرف نشد','ok'); renderSEOList(); updateSEOStats(); return; }
-    } else { renderSEOList(); updateSEOStats(); return; }
+  // فقط محصول‌هایی که هنوز آنالیز نشده‌اند آنالیز می‌شوند؛ آنالیز قبلی معتبر می‌ماند
+  // (اگر متن یک محصول عوض شده باشد، هنگام بارگذاری از Etsy آنالیز قدیمی‌اش پاک شده است)
+  const explicitSel = seoSelectMode && seoSelected.size > 0;
+  const pendingList = S.products.map((p,i)=>({p,i})).filter(x=>!S.analyzed[x.i]);
+  const toAnalyze = explicitSel ? [...seoSelected].map(i=>({p:S.products[i],i})) : pendingList;
+  if(!explicitSel && !toAnalyze.length){
+    log('✓ همه‌ی '+S.products.length+' محصول قبلاً آنالیز شده‌اند — چیزی برای آنالیز نیست و اعتبار API مصرف نشد','ok');
+    toast('همه‌ی محصول‌ها قبلاً آنالیز شده‌اند. برای آنالیز دوباره‌ی چند محصول، «☑ انتخاب» را بزن و همان‌ها را تیک بزن.');
+    renderSEOList(); updateSEOStats(); return;
   }
-  // Use selected subset or all
-  const toAnalyze = seoSelectMode && seoSelected.size > 0
-    ? [...seoSelected].map(i=>({p:S.products[i],i}))
-    : S.products.map((p,i)=>({p,i}));
+  if(explicitSel){
+    const already = toAnalyze.filter(x=>S.analyzed[x.i]).length;
+    if(already && !confirm(already+' محصول از محصول‌های انتخاب‌شده قبلاً آنالیز شده‌اند. دوباره آنالیز شوند؟ (اعتبار API مصرف می‌شود)')){ renderSEOList(); updateSEOStats(); return; }
+  }
+  const analyzedBefore = S.products.length - pendingList.length;
+  if(!explicitSel && analyzedBefore) log('ℹ️ آنالیز فقط برای '+toAnalyze.length+' محصول جدید یا بدون آنالیز انجام می‌شود ('+analyzedBefore+' محصول قبلاً آنالیز شده بود)','info');
   document.getElementById('seoProgWrap').classList.remove('hidden');
   const batchSize=5;
   for(let b=0;b<toAnalyze.length;b+=batchSize){
@@ -5166,10 +5173,11 @@ function renderSEOList(){
                </div>`
             : `<div style="color:var(--text3);font-size:12px">—</div>`
         }
+        ${syncBadge(i)}
         <button class="btn btn-secondary btn-sm" onclick="startOptimize(${i})">✨</button>
-        ${S.optimized[i]&&p._listing_id?(S.sendingToEtsy&&S.sendingToEtsy[i]
+        ${(S.optimized[i]||etsyNeedsPush(i))&&p._listing_id?(S.sendingToEtsy&&S.sendingToEtsy[i]
           ?`<button class="btn btn-secondary btn-sm" disabled><span class="spinner" style="width:12px;height:12px;border-width:2px"></span></button>`
-          :(S.pushedToEtsy&&S.pushedToEtsy[i]
+          :((S.pushedToEtsy&&S.pushedToEtsy[i])&&!etsyNeedsPush(i)
             ?`<button class="btn btn-secondary btn-sm" disabled title="قبلاً روی Etsy جایگزین شد">✅</button>`
             :`<button class="btn btn-green btn-sm" onclick="sendOptimizedToEtsy(${i})" title="جایگزینی این لیستینگ روی Etsy">🔁</button>`)
         ):(S.etsyApiKey&&!p._listing_id?`<button class="btn btn-green btn-sm" onclick="etsyUploadListing(S.products[${i}])" title="آپلود به اتسی (لیستینگ جدید)">📤</button>`:'')}
@@ -5425,10 +5433,11 @@ function renderOptimizeList(){
                </div>`
             : ''
         }
+        ${syncBadge(idx)}
         <button class="btn btn-primary btn-sm" onclick="startOptimize(${idx})" style="white-space:nowrap">✨ بهینه</button>
-        ${S.optimized[idx]&&p._listing_id?(S.sendingToEtsy&&S.sendingToEtsy[idx]
+        ${(S.optimized[idx]||etsyNeedsPush(idx))&&p._listing_id?(S.sendingToEtsy&&S.sendingToEtsy[idx]
           ?`<button class="btn btn-secondary btn-sm" disabled><span class="spinner" style="width:12px;height:12px;border-width:2px"></span></button>`
-          :(S.pushedToEtsy&&S.pushedToEtsy[idx]
+          :((S.pushedToEtsy&&S.pushedToEtsy[idx])&&!etsyNeedsPush(idx)
             ?`<button class="btn btn-secondary btn-sm" disabled title="قبلاً روی Etsy جایگزین شد">✅</button>`
             :`<button class="btn btn-green btn-sm" onclick="sendOptimizedToEtsy(${idx})" title="جایگزینی این لیستینگ روی Etsy">🔁</button>`)
         ):''}
@@ -5922,7 +5931,16 @@ async function etsyUpdateListing(product, _isRetry){
       const res=await fetch(url,{method:'PATCH', headers, body:JSON.stringify(body)});
       d=await res.json();
     }
-    if(d.listing_id) return true;
+    if(d.listing_id){
+      try{
+        if(d.title) product.TITLE = d.title;
+        if(typeof d.description === 'string') product.DESCRIPTION = d.description;
+        if(Array.isArray(d.tags)) product.TAGS = d.tags.join(',');
+        if(Array.isArray(d.materials)) product.MATERIALS = d.materials.join(',');
+        product._etsy_hash = etsyListingHash(d); product._etsy_remote = product._etsy_hash; product._etsy_gone = false;
+      }catch(e){}
+      return true;
+    }
     // توکن منقضی شده — یه‌بار با توکن تازه (از refresh_token) دوباره امتحان کن
     if(!_isRetry && (d.error==='invalid_token'||d.error_description==='invalid_token')){
       log('🔄 توکن منقضی شده — در حال تمدید خودکار...','warn');
@@ -6187,13 +6205,99 @@ async function sendOptimizedToEtsy(idx){
     S.pushedToEtsy[idx]=true;
     saveCurrentShop();
     renderSEOList();renderOptimizeList();
-    log(`✅ روی Etsy جایگزین شد`,'ok');
+    log(`✅ روی Etsy جایگزین شد`,'ok'); renderSyncBar();
   } else {
     renderSEOList();renderOptimizeList();
     log(`✗ ارسال به Etsy ناموفق بود`,'err');
   }
 }
 
+// ══ همگامی نسخه‌ی برنامه با Etsy (سئو و متن): وضعیت هر محصول، بررسی خودکار، ارسال تغییرات برنامه و دریافت تغییرات Etsy ══
+// هر محصول سه «اثر انگشت» دارد: اکنونِ برنامه (etsyProductHash)، آخرین نسخه‌ای که با Etsy یکی بود (_etsy_hash) و آخرین نسخه‌ای که از Etsy دیده شد (_etsy_remote)
+let etsySyncInfo = null, etsySyncLast = 0;
+function etsySyncState(i){
+  const p = S.products[i]; if(!p || !p._listing_id) return 'none';
+  if(p._etsy_gone) return 'gone';
+  if(!p._etsy_hash) return 'unknown';
+  const localDiff = etsyProductHash(p) !== p._etsy_hash, remoteDiff = p._etsy_remote != null && p._etsy_remote !== p._etsy_hash;
+  return localDiff && remoteDiff ? 'both' : localDiff ? 'local' : remoteDiff ? 'remote' : 'ok';
+}
+function etsyNeedsPush(i){ const s = etsySyncState(i); return s === 'local' || s === 'both'; }
+function syncBadge(i){
+  const s = etsySyncState(i), m = {ok: ['✓', 'var(--green)', 'با Etsy یکی است'], local: ['⬆', 'var(--orange)', 'ویرایش برنامه هنوز روی Etsy نرفته'], remote: ['⬇', '#2563eb', 'در Etsy تغییر کرده — «دریافت تغییرات Etsy» را بزن'], both: ['⚠', 'var(--red)', 'هم در برنامه و هم در Etsy تغییر کرده'], gone: ['🗑', 'var(--text3)', 'این لیستینگ دیگر روی Etsy فعال نیست']}[s];
+  return m ? '<span title="' + m[2] + '" style="font-size:12px;font-weight:800;color:' + m[1] + ';cursor:help">' + m[0] + '</span>' : '';
+}
+function etsySyncCounts(){
+  const c = {ok: 0, local: 0, remote: 0, both: 0, unknown: 0, gone: 0};
+  S.products.forEach((p, i) => { const s = etsySyncState(i); if(c[s] != null) c[s]++; });
+  return c;
+}
+function renderSyncBar(){
+  const bars = document.querySelectorAll('.syncBar'); if(!bars.length) return;
+  const c = etsySyncCounts(), inf = etsySyncInfo || {}, when = etsySyncLast ? new Date(etsySyncLast).toLocaleTimeString('fa-IR') : '';
+  const chip = (txt, col) => '<span style="display:inline-block;padding:2px 9px;border-radius:12px;background:var(--surface3);color:' + col + ';font-weight:700;font-size:12px;margin:2px 3px">' + txt + '</span>';
+  let h = '<b style="font-size:13px">🔄 همگامی با Etsy</b> ' + (when ? '<span style="color:var(--text3);font-size:11px">(آخرین بررسی ' + when + ')</span> ' : '') +
+    chip('✓ ' + c.ok + ' همگام', 'var(--green)') + (c.local ? chip('⬆ ' + c.local + ' ویرایش ارسال‌نشده', 'var(--orange)') : '') + (c.remote ? chip('⬇ ' + c.remote + ' تغییر در Etsy', '#2563eb') : '') + (c.both ? chip('⚠ ' + c.both + ' تعارض', 'var(--red)') : '') +
+    (inf.fresh ? chip('🆕 ' + inf.fresh + ' جدید در Etsy', '#2563eb') : '') + (c.gone ? chip('🗑 ' + c.gone + ' حذف‌شده', 'var(--text2)') : '') + (c.unknown ? chip('؟ ' + c.unknown + ' نامشخص', 'var(--text2)') : '');
+  h += '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="etsySyncCheck(false)">🔄 بررسی دوباره</button>';
+  if(c.local + c.both) h += '<button class="btn btn-green btn-sm" onclick="sendLocalChangesToEtsy()">⬆ ارسال ' + (c.local + c.both) + ' تغییر برنامه به Etsy</button>';
+  if(c.remote + c.both + (inf.fresh || 0) + c.gone) h += '<button class="btn btn-primary btn-sm" onclick="pullEtsyChanges()">⬇ دریافت تغییرات Etsy</button>';
+  bars.forEach(b => { b.innerHTML = h + '</div>'; });
+}
+async function etsyListAll(shopId, bt){
+  let all = [], total = null;
+  for(let off = 0; off < 2000; off += 100){
+    if(bt) Busy.set(bt, 'بررسی فهرست محصولات Etsy' + (total ? ' — ' + all.length + ' از ' + total : '...'), total ? all.length / total * 100 : null);
+    const d = await etsyApiGetWithAuth(`https://openapi.etsy.com/v3/application/shops/${shopId}/listings?state=active&limit=100&offset=${off}`);
+    const part = d.results || []; all = all.concat(part); total = d.count != null ? d.count : all.length;
+    if(!part.length || all.length >= total) break;
+  }
+  return all;
+}
+// بررسی سبک (بدون عکس): آنچه الان روی Etsy است را با نسخه‌ی برنامه مقایسه می‌کند. silent=true: خودکار و حداکثر هر ۱۰ دقیقه یک‌بار
+async function etsySyncCheck(silent){
+  if(!S.etsyApiKey || !S.etsyShopId || !S.etsyOAuthToken || !S.products.length){ if(!silent) alert('برای بررسی همگامی، اتصال Etsy (OAuth) و محصولات لازم است.'); return null; }
+  if(silent && etsySyncInfo && Date.now() - etsySyncLast < 10*60*1000){ renderSyncBar(); return etsySyncInfo; }
+  const bt = Busy.start('بررسی همگامی با Etsy...');
+  try{
+    const shopId = await resolveEtsyShopId(), listings = await etsyListAll(shopId, bt), rem = new Map(listings.map(l => [String(l.listing_id), etsyListingHash(l)]));
+    S.products.forEach((p, i) => {
+      if(!p._listing_id) return;
+      const h = rem.get(String(p._listing_id));
+      if(h === undefined){ p._etsy_gone = true; p._etsy_remote = null; return; }
+      p._etsy_gone = false; p._etsy_remote = h;
+      if(!p._etsy_hash){ // محصول قدیمی (قبل از این قابلیت): اگر با Etsy یکی است همگام؛ اگر در برنامه بهینه شده، ویرایش محلی؛ وگرنه فرض می‌کنیم Etsy جلوتر است
+        const cur = etsyProductHash(p);
+        p._etsy_hash = (cur === h) ? h : (S.optimized[i] ? h : cur);
+      }
+    });
+    const localIds = new Set(S.products.filter(p => p._listing_id).map(p => String(p._listing_id)));
+    etsySyncInfo = {fresh: listings.filter(l => !localIds.has(String(l.listing_id))).length}; etsySyncLast = Date.now();
+    saveCurrentShop(); renderSyncBar(); try{ renderSEOList(); renderOptimizeList(); }catch(e){}
+    return etsySyncInfo;
+  }catch(e){ if(!silent) alert('بررسی همگامی ناموفق بود: ' + e.message); else log('⚠ بررسی خودکار همگامی با Etsy ممکن نشد: ' + e.message, 'warn'); return null; }
+  finally { Busy.end(bt); }
+}
+// ارسال همه‌ی ویرایش‌های برنامه (بهینه‌شده یا دستی) که هنوز روی Etsy نرفته‌اند
+async function sendLocalChangesToEtsy(){
+  if(!S.etsyOAuthToken){ alert('اول توی تنظیمات «اتصال به Etsy» (OAuth) رو انجام بده'); nav('settings'); return; }
+  const list = S.products.map((p, i) => ({p, i})).filter(x => etsyNeedsPush(x.i));
+  if(!list.length){ alert('تغییر ارسال‌نشده‌ای نیست.'); return; }
+  const both = list.filter(x => etsySyncState(x.i) === 'both');
+  if(!confirm(list.length + ' محصول که در برنامه تغییر کرده روی Etsy جایگزین شود؟' + riskWarningFor(list.map(x => x.p)) + (both.length ? '\n\n⚠ ' + both.length + ' تا از این‌ها در Etsy هم تغییر کرده‌اند؛ تغییر Etsy برایشان از بین می‌رود.' : ''))) return;
+  const bt = Busy.start('ارسال تغییرات برنامه به Etsy', {pct: 0}); let ok = 0, err = 0;
+  try{
+    for(const [n, x] of list.entries()){
+      Busy.set(bt, 'ارسال ' + (n + 1) + ' از ' + list.length + ': ' + String(x.p.TITLE || '').slice(0, 40), n / list.length * 100);
+      if(await etsyUpdateListing(x.p)){ ok++; S.pushedToEtsy = S.pushedToEtsy || {}; S.pushedToEtsy[x.i] = true; } else err++;
+      await new Promise(r => setTimeout(r, 1500));
+    }
+  } finally { Busy.end(bt); }
+  saveCurrentShop(); renderSyncBar(); try{ renderSEOList(); renderOptimizeList(); }catch(e){}
+  toast('✅ ' + ok + ' محصول روی Etsy همگام شد' + (err ? ' — ' + err + ' خطا (لاگ فعالیت را ببین)' : '') + '.');
+}
+// دریافت تغییرات Etsy (محصول‌های تغییرکرده و جدید) با همان بارگذاری هوشمند
+async function pullEtsyChanges(){ await loadFromEtsy(false); etsySyncInfo = {fresh: 0}; etsySyncLast = Date.now(); renderSyncBar(); }
 // ارسال خودکار بعد از بهینه‌سازی: تیک در حافظه‌ی مرورگر (برای هر فروشگاه جدا)
 function autoPushKey(){ return 'eap_autopush_'+(S.shopId||'x'); }
 function isAutoPush(){ try{ return localStorage.getItem(autoPushKey())==='1'; }catch(e){ return false; } }
@@ -6217,7 +6321,7 @@ async function sendAllOptimizedToEtsy(again){
     await new Promise(r=>setTimeout(r,1500));
   }
   saveCurrentShop();renderSEOList();renderOptimizeList();
-  log(`✅ ارسال گروهی تمام شد — ${done-errors} موفق، ${errors} خطا`,'ok');
+  log(`✅ ارسال گروهی تمام شد — ${done-errors} موفق، ${errors} خطا`,'ok'); renderSyncBar();
 }
 
 // ══ Competitor ══
@@ -7258,6 +7362,7 @@ async function loadFromEtsyCore(bt, full){
         if(x.kind === 'new' || x.kind === 'changed'){ newProducts.push(etsyBuildProduct(full1 || x.l)); if(x.kind === 'new') stat.fresh++; else stat.changed++; }
         else {
           if(full1 && !x.lp.IMAGE1){ const tmp = etsyBuildProduct(full1); for(let i = 1; i <= 10; i++) x.lp['IMAGE' + i] = tmp['IMAGE' + i]; }
+          x.lp._etsy_remote = etsyListingHash(x.l); x.lp._etsy_gone = false;
           newProducts.push(x.lp); if(x.kind === 'kept') stat.kept++; else stat.same++;
         }
       });
