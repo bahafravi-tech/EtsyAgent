@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.50.0 -->
+<!-- APP_VERSION: 1.50.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v190</div>
+        <div class="logo-badge">v191</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -6214,6 +6214,20 @@ async function sendOptimizedToEtsy(idx){
 
 // ══ همگامی نسخه‌ی برنامه با Etsy (سئو و متن): وضعیت هر محصول، بررسی خودکار، ارسال تغییرات برنامه و دریافت تغییرات Etsy ══
 // هر محصول سه «اثر انگشت» دارد: اکنونِ برنامه (etsyProductHash)، آخرین نسخه‌ای که با Etsy یکی بود (_etsy_hash) و آخرین نسخه‌ای که از Etsy دیده شد (_etsy_remote)
+function etsyLooseHashOf(title, desc, tags, mats){
+  const lc = t => etsyNormTxt(t).toLowerCase(), cv = a => etsyNormCsv(a).toLowerCase();
+  const s = [lc(title), lc(desc), cv(tags), cv(mats)].join('\u0001'); let h = 5381; for(let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return String(h) + ':' + s.length;
+}
+function etsyLooseListing(l){ return etsyLooseHashOf(l.title, l.description, l.tags, l.materials); }
+function etsyLooseLocal(p){
+  const tags = String(p.TAGS || '').split(',').map(t => t.trim().replace(/_/g, ' ')).filter(t => t && t.length <= 20).slice(0, 13);
+  return etsyLooseHashOf(sanitizeEtsyTitle(p.TITLE || ''), p.DESCRIPTION, tags, sanitizeMaterials(p.MATERIALS, []));
+}
+// متن برنامه را با نسخه‌ی Etsy یکی می‌کند (فقط متن؛ آنالیز و وضعیت بهینه‌شده دست‌نخورده می‌ماند)
+function etsyAdoptText(p, l){
+  p.TITLE = l.title || ''; p.DESCRIPTION = l.description || ''; p.TAGS = (l.tags || []).join(','); p.MATERIALS = (l.materials || []).join(',');
+  p._etsy_hash = etsyListingHash(l); p._etsy_remote = p._etsy_hash; p._etsy_gone = false;
+}
 let etsySyncInfo = null, etsySyncLast = 0;
 function etsySyncState(i){
   const p = S.products[i]; if(!p || !p._listing_id) return 'none';
@@ -6260,12 +6274,14 @@ async function etsySyncCheck(silent){
   if(silent && etsySyncInfo && Date.now() - etsySyncLast < 10*60*1000){ renderSyncBar(); return etsySyncInfo; }
   const bt = Busy.start('بررسی همگامی با Etsy...');
   try{
-    const shopId = await resolveEtsyShopId(), listings = await etsyListAll(shopId, bt), rem = new Map(listings.map(l => [String(l.listing_id), etsyListingHash(l)]));
+    const shopId = await resolveEtsyShopId(), listings = await etsyListAll(shopId, bt), rem = new Map(listings.map(l => [String(l.listing_id), etsyListingHash(l)])), lmap = new Map(listings.map(l => [String(l.listing_id), l]));
     S.products.forEach((p, i) => {
       if(!p._listing_id) return;
       const h = rem.get(String(p._listing_id));
       if(h === undefined){ p._etsy_gone = true; p._etsy_remote = null; return; }
       p._etsy_gone = false; p._etsy_remote = h;
+      if(etsyProductHash(p) !== h && etsyLooseLocal(p) === etsyLooseListing(lmap.get(String(p._listing_id)))){ etsyAdoptText(p, lmap.get(String(p._listing_id))); return; }
+      if(etsyProductHash(p) === h){ p._etsy_hash = h; return; }
       if(!p._etsy_hash){ // محصول قدیمی (قبل از این قابلیت): اگر با Etsy یکی است همگام؛ اگر در برنامه بهینه شده، ویرایش محلی؛ وگرنه فرض می‌کنیم Etsy جلوتر است
         const cur = etsyProductHash(p);
         p._etsy_hash = (cur === h) ? h : (S.optimized[i] ? h : cur);
@@ -7332,6 +7348,7 @@ async function loadFromEtsyCore(bt, full){
         if(!lp){ plan.push({l, kind: 'new'}); return; }
         if(lp._etsy_hash === hE){ plan.push({l, lp, kind: 'same'}); return; }
         if(etsyProductHash(lp) === hE){ lp._etsy_hash = hE; plan.push({l, lp, kind: 'same'}); return; }
+        if(etsyLooseLocal(lp) === etsyLooseListing(l)){ etsyAdoptText(lp, l); plan.push({l, lp, kind: 'same'}); return; }
         const idx = oldProducts.indexOf(lp);
         const localEdited = lp._etsy_hash ? etsyProductHash(lp) !== lp._etsy_hash : (S.optimized[idx] && !(S.pushedToEtsy && S.pushedToEtsy[idx]));
         const item = {l, lp, kind: localEdited ? 'conflict' : 'changed'}; plan.push(item); if(localEdited) conflicts.push(item);
