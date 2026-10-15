@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.48.0 -->
+<!-- APP_VERSION: 1.49.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v188</div>
+        <div class="logo-badge">v189</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -791,7 +791,7 @@ margin:0;background:var(--paper);color:var(--ink);
           <div onclick="exportCSV('selected');toggleDlMenu2()" style="padding:9px 14px;font-size:12px;cursor:pointer;border-top:1px solid var(--border)">☑ محصولات انتخاب‌شده</div>
         </div>
       </div>
-      <button class="btn btn-secondary btn-sm" onclick="loadFromEtsy()" title="بارگذاری مستقیم از اتسی">🛍️ بارگذاری از Etsy</button>
+      <button class="btn btn-secondary btn-sm" onclick="loadFromEtsy(event.shiftKey)" title="فقط محصول‌های جدید یا تغییرکرده دانلود می‌شوند. برای بارگذاری کامل از نو، Shift را نگه دار و کلیک کن.">🛍️ بارگذاری از Etsy</button>
       <button class="btn btn-primary" onclick="runDailyAgent(this)">▶ اجرای Agent امروز</button>
     </div>
   </div>
@@ -830,7 +830,7 @@ margin:0;background:var(--paper);color:var(--ink);
         <span style="font-size:12px;color:var(--text3)">یا</span>
         <div style="flex:1;height:1px;background:var(--border)"></div>
       </div>
-      <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:10px;justify-content:center" onclick="loadFromEtsy()">🛍️ بارگذاری از Etsy API</button>
+      <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:10px;justify-content:center" onclick="loadFromEtsy(event.shiftKey)">🛍️ بارگذاری از Etsy API</button>
       <div id="uploadedInfo" class="hidden" style="margin-top:12px">
         <div class="alert alert-ok" style="display:flex;align-items:center;justify-content:space-between">
           <span>✅ <strong id="uploadedCount">0</strong> محصول بارگذاری شد</span>
@@ -7170,13 +7170,33 @@ async function autoDetectNicheFromProducts(force=false){
 }
 
 // ══ Etsy Load Products ══
-async function loadFromEtsy(){
-  if(!S.etsyApiKey||!S.etsyShopId){alert('Etsy API Key و Shop ID لازم است');nav('settings');return;}
-  const bt = Busy.start("دریافت محصولات از Etsy...");
-  try{ return await loadFromEtsyCore(bt); } finally { Busy.end(bt); }
+// ── بارگذاری هوشمند از Etsy: فقط محصول‌های جدید یا تغییرکرده دانلود می‌شوند (full=true یا Shift+کلیک: همه از نو) ──
+function etsyNormTxt(t){ return String(t == null ? '' : t).replace(/\s+/g, ' ').trim(); }
+function etsyNormCsv(t){ return (Array.isArray(t) ? t : String(t || '').split(',')).map(x => String(x).trim()).filter(Boolean).join(','); }
+function etsyHashOf(title, desc, tags, mats, price, qty){
+  const s = [etsyNormTxt(title), etsyNormTxt(desc), etsyNormCsv(tags), etsyNormCsv(mats), (Number(price) || 0).toFixed(2), String(Number(qty) || 0)].join('\u0001');
+  let h = 5381; for(let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return String(h) + ':' + s.length;
 }
-async function loadFromEtsyCore(bt){
-  log('📦 بارگذاری محصولات از اتسی...','info');
+function etsyListingHash(l){ return etsyHashOf(l.title, l.description, l.tags, l.materials, l.price ? (l.price.amount || 0) / (l.price.divisor || 100) : 0, l.quantity); }
+function etsyProductHash(p){ return etsyHashOf(p.TITLE, p.DESCRIPTION, p.TAGS, p.MATERIALS, p.PRICE, p.QUANTITY); }
+function etsyBuildProduct(l){
+  const imgs = l.images || [], imgObj = {};
+  imgs.slice(0, 10).forEach((img, idx) => { imgObj['IMAGE' + (idx + 1)] = img.url_570xN || img.url_fullxfull || img.url_75x75 || ''; });
+  for(let i = imgs.length + 1; i <= 10; i++) imgObj['IMAGE' + i] = '';
+  return {
+    TITLE: l.title || '', DESCRIPTION: l.description || '', PRICE: (l.price?.amount || 0) / (l.price?.divisor || 100) + '', CURRENCY_CODE: l.price?.currency_code || 'USD',
+    QUANTITY: l.quantity + '', TAGS: (l.tags || []).join(','), MATERIALS: (l.materials || []).join(','), ...imgObj,
+    'VARIATION 1 TYPE': '', 'VARIATION 1 NAME': '', 'VARIATION 1 VALUES': '', 'VARIATION 2 TYPE': '', 'VARIATION 2 NAME': '', 'VARIATION 2 VALUES': '',
+    SKU: l.sku || '', _listing_id: l.listing_id, _etsy_hash: etsyListingHash(l)
+  };
+}
+async function loadFromEtsy(full){
+  if(!S.etsyApiKey || !S.etsyShopId){ alert('Etsy API Key و Shop ID لازم است'); nav('settings'); return; }
+  const bt = Busy.start("دریافت محصولات از Etsy...");
+  try{ return await loadFromEtsyCore(bt, full === true); } finally { Busy.end(bt); }
+}
+async function loadFromEtsyCore(bt, full){
+  log('📦 بارگذاری محصولات از اتسی' + (full ? ' (کامل)' : ' (فقط جدید و تغییرکرده)') + '...', 'info');
   try{
     const shopId = await resolveEtsyShopId();
     if(!S.etsyOAuthToken){
@@ -7184,52 +7204,85 @@ async function loadFromEtsyCore(bt){
       nav('settings');
       return;
     }
-    // نکته: endpoint /listings/active اصلاً includes رو پشتیبانی نمی‌کنه (بی‌صدا نادیده می‌گیره).
-    // برای گرفتن تصاویر باید از /listings (با state=active) استفاده کرد — که به OAuth (scope: listings_r) نیاز داره.
-    let listings=[], total=null;
-    for(let off=0; off<2000; off+=100){
-      Busy.set(bt, 'دریافت محصولات از Etsy' + (total ? ' — ' + listings.length + ' از ' + total : '...'), total ? listings.length/total*100 : null);
-      const d = await etsyApiGetWithAuth(`https://openapi.etsy.com/v3/application/shops/${shopId}/listings?state=active&limit=100&offset=${off}&includes=Images`);
-      const part = d.results||[]; listings = listings.concat(part); total = d.count!=null ? d.count : listings.length;
-      if(!part.length || listings.length >= total) break;
+    // ۱) فهرست همه‌ی لیستینگ‌های فعال، بدون تصویر (سبک): فقط برای تشخیص جدید/تغییرکرده. نیاز به OAuth (scope: listings_r)
+    const fetchPages = async (withImages) => {
+      let all = [], total = null;
+      for(let off = 0; off < 2000; off += 100){
+        Busy.set(bt, (withImages ? 'دریافت کامل محصولات از Etsy' : 'بررسی فهرست محصولات Etsy') + (total ? ' — ' + all.length + ' از ' + total : '...'), total ? all.length / total * 100 : null);
+        const d = await etsyApiGetWithAuth(`https://openapi.etsy.com/v3/application/shops/${shopId}/listings?state=active&limit=100&offset=${off}` + (withImages ? '&includes=Images' : ''));
+        const part = d.results || []; all = all.concat(part); total = d.count != null ? d.count : all.length;
+        if(!part.length || all.length >= total) break;
+      }
+      return all;
+    };
+    const oldProducts = S.products.slice(), prevOpt = Object.keys(S.optimized || {}).length;
+    let listings, newProducts, stat = {fresh: 0, changed: 0, same: 0, removed: 0, kept: 0};
+    if(full){
+      listings = await fetchPages(true); newProducts = listings.map(etsyBuildProduct); stat.fresh = newProducts.length;
+    }else{
+      listings = await fetchPages(false);
+      const localById = new Map(oldProducts.filter(p => p._listing_id).map(p => [String(p._listing_id), p]));
+      const plan = [], conflicts = [];
+      listings.forEach(l => {
+        const id = String(l.listing_id), hE = etsyListingHash(l), lp = localById.get(id);
+        if(!lp){ plan.push({l, kind: 'new'}); return; }
+        if(lp._etsy_hash === hE){ plan.push({l, lp, kind: 'same'}); return; }
+        if(etsyProductHash(lp) === hE){ lp._etsy_hash = hE; plan.push({l, lp, kind: 'same'}); return; }
+        const idx = oldProducts.indexOf(lp);
+        const localEdited = lp._etsy_hash ? etsyProductHash(lp) !== lp._etsy_hash : (S.optimized[idx] && !(S.pushedToEtsy && S.pushedToEtsy[idx]));
+        const item = {l, lp, kind: localEdited ? 'conflict' : 'changed'}; plan.push(item); if(localEdited) conflicts.push(item);
+      });
+      if(conflicts.length){
+        const names = conflicts.slice(0, 3).map(c => '«' + String(c.lp.TITLE || '').slice(0, 40) + '»').join('\n');
+        const etsyWins = confirm(conflicts.length + ' محصول هم در Etsy تغییر کرده و هم در برنامه ویرایش‌نشده‌ی ارسال‌نشده دارد:\n' + names + (conflicts.length > 3 ? '\n…' : '') + '\n\nOK = نسخه‌ی Etsy جایگزین شود (ویرایش‌های برنامه برای این‌ها از بین می‌رود)\nلغو = نسخه‌ی برنامه بماند (بعداً با «ارسال به Etsy» روی Etsy جایگزین می‌کنی)');
+        conflicts.forEach(c => { c.kind = etsyWins ? 'changed' : 'kept'; });
+      }
+      // ۲) فقط برای جدید/تغییرکرده (و محصول‌های بدون عکس) عکس‌ها دانلود می‌شود
+      const need = plan.filter(x => x.kind === 'new' || x.kind === 'changed' || (x.kind === 'same' && !x.lp.IMAGE1)).map(x => x.l.listing_id);
+      const byId = new Map();
+      if(need.length){
+        try{
+          for(let i = 0; i < need.length; i += 100){
+            Busy.set(bt, 'دریافت جزئیات و عکس‌ها — ' + Math.min(i + 100, need.length) + ' از ' + need.length, Math.min(i + 100, need.length) / need.length * 100);
+            const d = await etsyApiGet('https://openapi.etsy.com/v3/application/listings/batch?listing_ids=' + need.slice(i, i + 100).join(',') + '&includes=Images');
+            (d.results || []).forEach(r => byId.set(String(r.listing_id), r));
+          }
+        }catch(e){
+          log('⚠ دریافت دسته‌ای ممکن نشد (' + e.message + ') — روش کامل استفاده می‌شود', 'warn');
+          (await fetchPages(true)).forEach(r => byId.set(String(r.listing_id), r));
+        }
+      }
+      newProducts = [];
+      plan.forEach(x => {
+        const full1 = byId.get(String(x.l.listing_id));
+        if(x.kind === 'new' || x.kind === 'changed'){ newProducts.push(etsyBuildProduct(full1 || x.l)); if(x.kind === 'new') stat.fresh++; else stat.changed++; }
+        else {
+          if(full1 && !x.lp.IMAGE1){ const tmp = etsyBuildProduct(full1); for(let i = 1; i <= 10; i++) x.lp['IMAGE' + i] = tmp['IMAGE' + i]; }
+          newProducts.push(x.lp); if(x.kind === 'kept') stat.kept++; else stat.same++;
+        }
+      });
+      const etsyIds = new Set(listings.map(l => String(l.listing_id)));
+      stat.removed = oldProducts.filter(p => p._listing_id && !etsyIds.has(String(p._listing_id))).length;
+      // محصول‌های بدون شناسه‌ی Etsy (مثلاً از CSV) حذف نمی‌شوند
+      oldProducts.filter(p => !p._listing_id).forEach(p => newProducts.push(p));
     }
-    // Convert Etsy format to our CSV format
-    const newProducts=listings.map(l=>{
-      const imgs=l.images||[];
-      const imgObj={};
-      imgs.slice(0,10).forEach((img,idx)=>{imgObj[`IMAGE${idx+1}`]=img.url_570xN||img.url_fullxfull||img.url_75x75||'';});
-      for(let i=imgs.length+1;i<=10;i++) imgObj[`IMAGE${i}`]='';
-      return {
-        TITLE:l.title||'',
-        DESCRIPTION:l.description||'',
-        PRICE:(l.price?.amount||0)/(l.price?.divisor||100)+'',
-        CURRENCY_CODE:l.price?.currency_code||'USD',
-        QUANTITY:l.quantity+'',
-        TAGS:(l.tags||[]).join(','),
-        MATERIALS:(l.materials||[]).join(','),
-        ...imgObj,
-        'VARIATION 1 TYPE':'','VARIATION 1 NAME':'','VARIATION 1 VALUES':'',
-        'VARIATION 2 TYPE':'','VARIATION 2 NAME':'','VARIATION 2 VALUES':'',
-        SKU:l.sku||'',
-        _listing_id:l.listing_id
-      };
-    });
-    const prevOpt = Object.keys(S.optimized||{}).length;
-    remapAnalyzedState(S.products, newProducts);
-    const lostOpt = prevOpt - Object.keys(S.optimized||{}).length;
+    remapAnalyzedState(oldProducts, newProducts);
+    const lostOpt = prevOpt - Object.keys(S.optimized || {}).length;
     S.products = newProducts;
-    document.getElementById('statProducts').textContent=S.products.length;
-    document.getElementById('sidebarProducts').textContent=S.products.length;
-    document.getElementById('uploadedCount').textContent=S.products.length;
+    document.getElementById('statProducts').textContent = S.products.length;
+    document.getElementById('sidebarProducts').textContent = S.products.length;
+    document.getElementById('uploadedCount').textContent = S.products.length;
     document.getElementById('uploadedInfo').classList.remove('hidden');
-    document.getElementById('uploadZone').style.display='none';
+    document.getElementById('uploadZone').style.display = 'none';
     populateSocialProductSelect();
     renderSEOList();
-    log(`✓ ${S.products.length} محصول از اتسی بارگذاری شد`,'ok');
-    toast('✅ ' + S.products.length + ' محصول از Etsy بارگذاری شد' + (lostOpt>0 ? ' — برای ' + lostOpt + ' محصول متن Etsy با نسخه‌ی قبلی فرق داشت؛ آنالیز و بهینه‌سازی قبلی‌شان پاک شد و باید دوباره انجام شود.' : '.'));
+    saveCurrentShop();
+    const sum = full ? S.products.length + ' محصول کامل از Etsy بارگذاری شد' : (stat.fresh + stat.changed === 0 && stat.removed === 0 ? 'همه‌چیز به‌روز است — ' + stat.same + ' محصول بدون تغییر ماند' : stat.fresh + ' جدید، ' + stat.changed + ' تغییرکرده، ' + stat.same + ' بدون تغییر (نگه داشته شد)' + (stat.kept ? '، ' + stat.kept + ' با نسخه‌ی برنامه' : '') + (stat.removed ? '، ' + stat.removed + ' حذف‌شده از Etsy' : ''));
+    log('✓ ' + sum, 'ok');
+    toast('✅ ' + sum + (lostOpt > 0 ? ' — برای ' + lostOpt + ' محصول متن Etsy با نسخه‌ی قبلی فرق داشت؛ آنالیز و بهینه‌سازی قبلی‌شان پاک شد و باید دوباره انجام شود.' : '.'));
     etsyFetchStats();
     autoDetectNicheFromProducts();
-  }catch(e){log('✗ خطا: '+e.message,'err');alert('خطا: '+e.message);}
+  }catch(e){ log('✗ خطا: ' + e.message, 'err'); alert('خطا: ' + e.message); }
 }
 
 // ══ Settings ══
