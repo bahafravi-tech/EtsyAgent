@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.50.1 -->
+<!-- APP_VERSION: 1.50.2 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v191</div>
+        <div class="logo-badge">v192</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -5106,8 +5106,20 @@ ${batch.map((p,bi)=>`[idx:${idxList[bi]}] Title(${p.TITLE.length}ch): ${p.TITLE}
   }
 }
 
+// محصول بهینه‌شده همیشه امتیازِ بهینه‌شده‌اش را نشان می‌دهد، حتی اگر از قبل آنالیزی نداشته باشد (امتیاز محلی با همان قوانین بهینه‌سازی)
+function ensureOptimizedScores(){
+  S.products.forEach((p,i)=>{
+    if(!S.optimized[i]) return;
+    const a=S.analyzed[i];
+    if(a && a.scoreAfter!=null) return;
+    const ns=Math.max(10,Math.min(100,calcLocalScore(p)));
+    if(!a) S.analyzed[i]={score:ns,scoreAfter:ns,issues:[],localScore:true};
+    else a.scoreAfter=Math.max(ns,a.score||0);
+  });
+}
 function renderSEOList(){
   const el=document.getElementById('seoList'); if(!S.products.length)return;
+  ensureOptimizedScores();
   el.innerHTML='';
   const hasAnalysis=Object.keys(S.analyzed).length>0;
   // ساخت لیست با index واقعی
@@ -5386,6 +5398,7 @@ function renderOptimizeList(){
     el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text2)"><div style="font-size:40px;margin-bottom:12px">⚡</div><div style="font-weight:600;color:var(--text);margin-bottom:6px">ابتدا محصولات را بارگذاری کنید</div></div>';
     return;
   }
+  ensureOptimizedScores();
   // ساخت لیست بر اساس فیلتر
   let items=S.products.map((p,i)=>({i,p,a:S.analyzed[i]}));
   if(optCurrentFilter==='weak') items=items.filter(({i,a})=>a&&a.score<70&&!S.optimized[i]);
