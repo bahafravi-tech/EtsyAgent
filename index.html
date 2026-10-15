@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.50.2 -->
+<!-- APP_VERSION: 1.51.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v192</div>
+        <div class="logo-badge">v193</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -2787,7 +2787,7 @@ function nav(name, el) {
   if(name==='marketing') loadMarketing();
   if(name==='customers'){ if(typeof uiRestore === 'function') uiRestore(); renderCustomersFromCache(); }
   if(name==='settings' && typeof renderPinterestRss === 'function') renderPinterestRss();
-  if((name==='seo' || name==='optimize') && typeof etsySyncCheck === 'function'){ renderSyncBar(); etsySyncCheck(true); }
+  if((name==='seo' || name==='optimize') && typeof etsySyncCheck === 'function'){ autoDetectOptimizedOnce(); renderSyncBar(); etsySyncCheck(true); }
   if(name==='settings' && typeof renderInstagramToken === 'function') renderInstagramToken();
   if(name==='studio' && window.studioReloadForShop) window.studioReloadForShop(); // هر بار که استودیو باز می‌شه با فروشگاه فعلی همگام می‌شه
   // وقتی صفحه optimize باز می‌شود لیست را render کن
@@ -6241,6 +6241,33 @@ function etsyAdoptText(p, l){
   p.TITLE = l.title || ''; p.DESCRIPTION = l.description || ''; p.TAGS = (l.tags || []).join(','); p.MATERIALS = (l.materials || []).join(',');
   p._etsy_hash = etsyListingHash(l); p._etsy_remote = p._etsy_hash; p._etsy_gone = false;
 }
+// محصولی که متنش مثل خروجی بهینه‌سازی برنامه است: عنوان بلند، ۱۳ تگ درست، و توضیحات بخش‌بندی‌شده با تیترِ ایموجی‌دار و بولت
+function looksOptimized(p){
+  const d = String(p.DESCRIPTION || ''), t = String(p.TITLE || '');
+  const heads = (d.match(/^[ \t]*[\p{Extended_Pictographic}][^\n]{2,70}$/gmu) || []).length, bullets = (d.match(/^[ \t]*(•|✔|✅)/gm) || []).length;
+  return calcLocalScore(p) >= 85 && t.length >= 90 && heads >= 2 && bullets >= 3;
+}
+function detectOptimized(){
+  let n = 0;
+  S.products.forEach((p, i) => {
+    if(S.optimized[i] || !looksOptimized(p)) return;
+    S.optimized[i] = true; n++;
+    if(p._listing_id && !etsyNeedsPush(i)){ S.pushedToEtsy = S.pushedToEtsy || {}; S.pushedToEtsy[i] = true; }
+  });
+  if(n){ ensureOptimizedScores(); saveCurrentShop(); try{ updateOptimizedCount(); renderSEOList(); renderOptimizeList(); renderSyncBar(); }catch(e){} }
+  return n;
+}
+function detectOptimizedManual(){
+  const n = detectOptimized();
+  toast(n ? '✅ ' + n + ' محصول از روی متنشان «بهینه‌شده» تشخیص داده شد و نمره‌شان نشان داده می‌شود.' : 'محصول تازه‌ای با ظاهر «بهینه‌شده» پیدا نشد (یا همه‌شان از قبل علامت دارند).');
+}
+// یک‌بار برای هر فروشگاه: اگر هیچ محصولی علامت «بهینه‌شده» ندارد، از روی متن تشخیص بده
+function autoDetectOptimizedOnce(){
+  const key = 'eap_optdetect_' + (S.shopId || 'x'); let done = false; try{ done = localStorage.getItem(key) === '1'; }catch(e){}
+  if(done || !S.products.length || Object.values(S.optimized || {}).some(Boolean)) return;
+  try{ localStorage.setItem(key, '1'); }catch(e){}
+  const n = detectOptimized(); if(n) log('🔎 ' + n + ' محصول از روی متنشان «بهینه‌شده» تشخیص داده شد', 'ok');
+}
 let etsySyncInfo = null, etsySyncLast = 0;
 function etsySyncState(i){
   const p = S.products[i]; if(!p || !p._listing_id) return 'none';
@@ -6266,7 +6293,7 @@ function renderSyncBar(){
   let h = '<b style="font-size:13px">🔄 همگامی با Etsy</b> ' + (when ? '<span style="color:var(--text3);font-size:11px">(آخرین بررسی ' + when + ')</span> ' : '') +
     chip('✓ ' + c.ok + ' همگام', 'var(--green)') + (c.local ? chip('⬆ ' + c.local + ' ویرایش ارسال‌نشده', 'var(--orange)') : '') + (c.remote ? chip('⬇ ' + c.remote + ' تغییر در Etsy', '#2563eb') : '') + (c.both ? chip('⚠ ' + c.both + ' تعارض', 'var(--red)') : '') +
     (inf.fresh ? chip('🆕 ' + inf.fresh + ' جدید در Etsy', '#2563eb') : '') + (c.gone ? chip('🗑 ' + c.gone + ' حذف‌شده', 'var(--text2)') : '') + (c.unknown ? chip('؟ ' + c.unknown + ' نامشخص', 'var(--text2)') : '');
-  h += '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="etsySyncCheck(false)">🔄 بررسی دوباره</button>';
+  h += '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="etsySyncCheck(false)">🔄 بررسی دوباره</button><button class="btn btn-secondary btn-sm" onclick="detectOptimizedManual()" title="محصول‌هایی که متنشان مثل خروجی بهینه‌سازی است را «بهینه‌شده» علامت می‌زند">🔎 تشخیص بهینه‌شده‌ها</button>';
   if(c.local + c.both) h += '<button class="btn btn-green btn-sm" onclick="sendLocalChangesToEtsy()">⬆ ارسال ' + (c.local + c.both) + ' تغییر برنامه به Etsy</button>';
   if(c.remote + c.both + (inf.fresh || 0) + c.gone) h += '<button class="btn btn-primary btn-sm" onclick="pullEtsyChanges()">⬇ دریافت تغییرات Etsy</button>';
   bars.forEach(b => { b.innerHTML = h + '</div>'; });
