@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.51.0 -->
+<!-- APP_VERSION: 1.52.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v193</div>
+        <div class="logo-badge">v194</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1806,6 +1806,7 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
       </div>
     </div>
   </div>
+  <div id="ideaPickCard" class="card hidden" style="margin-bottom:16px"></div>
   <div class="daily-grid" id="dailyGrid"><div style="grid-column:1/-1;text-align:center;padding:50px;color:var(--text2)"><div style="font-size:48px;margin-bottom:12px">🔎</div><div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px">هنوز پیشنهادی ساخته نشده</div><div>روی «تحقیق و پیشنهاد جدید» کلیک کنید — نیاز به App API Key اتسی توی تنظیمات داره</div></div></div>
 
     </section>
@@ -2228,6 +2229,7 @@ let S = {
   analyzedHash: '',   // hash محصولات — اگر تغییر نکرده، آنالیز مجدد نشود
   competitors: [],
   dailyProducts: [],
+  ideaPicks: null, // مرحله‌ی اول «تحقیق و پیشنهاد»: ایده‌های شورت‌لیست‌شده با ۳ لینک نمونه، تا قبل از ساخت جزئیات انتخاب شوند
   dailyArchive: [], // آرشیو سبک همه‌ی پیشنهادهای قبلی (فقط مشخصات، نه فایل‌های سنگین) — برای جلوگیری از تکرار و مرور بعدی
   currentOpt: null, currentDaily: null, pendingOpt: null,
   socialPlatform: 'instagram', msgType: 'question',
@@ -2270,7 +2272,7 @@ function loadShopToState(shopId){
   S.pushedToEtsy=shop.pushedToEtsy||{};
   S.analyzedHash=shop.analyzedHash||'';
   S.competitors=shop.competitors||[];
-  S.dailyArchive=shop.dailyArchive||[];
+  S.dailyArchive=shop.dailyArchive||[]; S.ideaPicks=shop.ideaPicks||null; try{ renderIdeaPicks(); }catch(e){}
   S.shopStyle=shop.shopStyle||'';
   S.shopTarget=shop.shopTarget||'';
   S.bannedText=(shop.bannedText==null?BANNED_DEFAULT:shop.bannedText);
@@ -2313,7 +2315,7 @@ function saveCurrentShop(){
   shop.pushedToEtsy=S.pushedToEtsy||{};
   shop.analyzedHash=S.analyzedHash;
   shop.competitors=S.competitors;
-  shop.dailyArchive=S.dailyArchive;
+  shop.dailyArchive=S.dailyArchive; shop.ideaPicks=S.ideaPicks||null;
   shop.shopStyle=S.shopStyle||'';
   shop.shopTarget=S.shopTarget||'';
   shop.bannedText=(S.bannedText==null?BANNED_DEFAULT:S.bannedText);
@@ -3168,9 +3170,9 @@ const DESC_FORMAT_HINT = 'برای description: یه توضیحات جذاب و 
 
 // ══ Product Suggestion Agent — تحقیق واقعی رقبا روی اتسی قبل از هر پیشنهاد ══
 
-async function etsySearchActiveListings(keyword, limit=15){
+async function etsySearchActiveListings(keyword, limit=15, withImages=false){
   if(!S.etsyApiKey) throw new Error('برای تحقیق رقبا باید App API Key اتسی رو توی تنظیمات وارد کنی');
-  const url = `https://openapi.etsy.com/v3/application/listings/active?keywords=${encodeURIComponent(keyword)}&limit=${limit}&sort_on=score`;
+  const url = `https://openapi.etsy.com/v3/application/listings/active?keywords=${encodeURIComponent(keyword)}&limit=${limit}&sort_on=score` + (withImages ? '&includes=Images' : '');
   let d, resOk, resStatus;
   if(S.apiRelayUrl){
     // اتسی هم مثل Gemini اجازه‌ی تماس مستقیم از مرورگر (CORS) نمی‌ده — از همون رله رد می‌شیم
@@ -3225,7 +3227,7 @@ function summarizeResearch(searchResult){
   const tagCount = {}; listings.forEach(l => (l.tags || []).forEach(t => { const k = String(t).toLowerCase(); tagCount[k] = (tagCount[k] || 0) + 1; }));
   const sampleTags = Object.entries(tagCount).sort((a,b) => b[1]-a[1]).slice(0,12).map(e => e[0]);
   const topListings = [...listings].sort((a,b) => (b.num_favorers||0)-(a.num_favorers||0)).slice(0,3).filter(l => l.listing_id)
-    .map(l => ({ title: (l.title||'').slice(0,80), url: `https://www.etsy.com/listing/${l.listing_id}`, price: l.price ? r2(price(l)) : null, favorers: l.num_favorers||0 }));
+    .map(l => ({ title: (l.title||'').slice(0,80), url: `https://www.etsy.com/listing/${l.listing_id}`, price: l.price ? r2(price(l)) : null, favorers: l.num_favorers||0, img: (l.images && l.images[0] && (l.images[0].url_170x135 || l.images[0].url_75x75)) || '' }));
   const total = searchResult.count ?? listings.length, mv = medianOf(viewsPerDay);
   return {
     listingCount: total,
@@ -3275,7 +3277,8 @@ ${shopCtx()}\nExisting or previously suggested products (never repeat or paraphr
     fill.style.width = (8 + ((i+1)/candidates.length)*57) + '%';
     txt.textContent = `بررسی رقبای اتسی برای «${candidates[i]}» (${i+1}/${candidates.length})...`;
     try{
-      const summary = summarizeResearch(await etsySearchActiveListings(candidates[i], 40));
+      let sr; try{ sr = await etsySearchActiveListings(candidates[i], 40, !silent); }catch(e1){ if(silent) throw e1; sr = await etsySearchActiveListings(candidates[i], 40); }
+      const summary = summarizeResearch(sr);
       researched.push({ keyword: candidates[i], research: summary });
       log(`✓ «${candidates[i]}»: ${ideaDataLine(summary)}`, 'info');
     }catch(e){ log(`⚠ تحقیق برای «${candidates[i]}» ناموفق بود: ${e.message}`, 'warn'); }
@@ -3286,10 +3289,24 @@ ${shopCtx()}\nExisting or previously suggested products (never repeat or paraphr
   fill.style.width = '72%'; txt.textContent = 'رتبه‌بندی فرصت‌ها بر پایه‌ی داده‌ی واقعی...';
   const scored = researched.map(r => ({...r, score: (r.research.opportunity || 0) * ((o.digital && (r.research.digitalShare || 0) < 30) ? 0.3 : 1)})).sort((a,b) => b.score - a.score);
   const shortlist = scored.slice(0, Math.max(o.count*2, 4));
-  const block = shortlist.map(r => `- "${r.keyword}": ${r.research.listingCount} active listings; price median $${r.research.medianPrice} (p25 $${r.research.p25} – p75 $${r.research.p75}); median views/day ${r.research.viewsPerDay}; median favorites/day ${r.research.favPerDay}; top listing favorites ${r.research.topFavorers}; digital share ${r.research.digitalShare}%; OPPORTUNITY SCORE ${r.research.opportunity}; common tags: ${r.research.sampleTags.join(', ') || '—'}`).join('\n');
+  // نسخه‌ی دستی: اول ایده‌ها را با ۳ لینک نمونه نشان بده تا کاربر انتخاب کند؛ نسخه‌ی خودکار روزانه (silent) مثل قبل مستقیم می‌سازد
+  if(!silent){
+    S.ideaPicks = { at: Date.now(), count: o.count, nResearched: researched.length,
+      items: shortlist.map((r, i) => ({ keyword: r.keyword, score: Math.round((r.score || 0) * 100) / 100, research: r.research, sel: i < o.count })) };
+    saveCurrentShop();
+    fill.style.width = '100%'; txt.textContent = '✅ تحقیق تمام شد — از بین پیشنهادها انتخاب کن';
+    log(`✓ ${shortlist.length} پیشنهاد با ۳ لینک نمونه آماده است؛ انتخاب کن تا جزئیات کامل ساخته شود`, 'ok');
+    renderIdeaPicks(); setTimeout(done, 1500);
+    const pk = document.getElementById('ideaPickCard'); if(pk) pk.scrollIntoView({behavior:'smooth', block:'start'});
+    return;
+  }
+  await ideaFinalize(shortlist, o, niche, existing, o.count, fill, txt, researched.length, done);
+}
+async function ideaFinalize(shortlist, o, niche, existing, nPick, fill, txt, nResearched, done){
+  const block = shortlist.map(r => `- "${r.keyword}": ${r.research.listingCount} active listings; price median $${r.research.medianPrice} (p25 $${r.research.p25} – p75 $${r.research.p75}); median views/day ${r.research.viewsPerDay}; median favorites/day ${r.research.favPerDay}; top listing favorites ${r.research.topFavorers}; digital share ${r.research.digitalShare}%; OPPORTUNITY SCORE ${r.research.opportunity}; common tags: ${r.research.sampleTags.join(', ') || '—'}; sample competitor listings (for format and style only, never copy): ${(r.research.topListings || []).map(t => '"' + t.title + '"').join(' | ') || '—'}`).join('\n');
   txt.textContent = 'انتخاب نهایی و نوشتن محتوا با Claude...';
   const finalPrompt = `You are an expert Etsy SEO copywriter and market analyst. Shop niche: ${niche}.\nREAL data from a live Etsy search (not guesses), already ranked by opportunity:\n${block}\n\n` +
-    `Choose exactly ${o.count} product(s) from this list with the best balance of real demand (views/favorites per day) and manageable competition. Prefer higher OPPORTUNITY SCORE unless there is a clear reason not to, and avoid near-duplicates of each other.\n` +
+    `Choose exactly ${nPick} product(s) from this list with the best balance of real demand (views/favorites per day) and manageable competition. Prefer higher OPPORTUNITY SCORE unless there is a clear reason not to, and avoid near-duplicates of each other.\n` +
     `RULES: the "keyword" field must be copied EXACTLY from the list. Price must be a USD number between that keyword's p25 and p75 (typical for the niche). ` +
     (o.digital ? (shopIsCutNiche() ? 'The product is a DIGITAL download (cut files / templates): write for that. ' : 'The product is a DIGITAL download that fits this shop\'s niche: write for that; mention cutting machines only if this specific product is a cut-file version, and then only as a minor point.') : '') +
     (o.sizeN > 1 ? `The product will be sold in ${o.sizeN} SIZE OPTIONS in one listing: mention "${o.sizeN} Sizes" naturally in the title, add a "SIZES INCLUDED" bullet in the description and a relevant tag; do NOT invent exact dimensions (the seller adds them later). ` : '') +
@@ -3298,7 +3315,7 @@ ${shopCtx()}\nExisting or previously suggested products (never repeat or paraphr
     `Return ONLY a JSON array: [{"keyword":"","title":"","tags":["..."],"description":"","price":0,"category":"","reason_fa":""}]`;
   try{
     const text = await ideaAI(finalPrompt, 6000, 'best');
-    const picks = (() => { const j = parseJSON(text); return Array.isArray(j) ? j : (j.products || j.items || []); })().slice(0, o.count);
+    const picks = (() => { const j = parseJSON(text); return Array.isArray(j) ? j : (j.products || j.items || []); })().slice(0, nPick);
     const lc = s => String(s || '').toLowerCase().trim(), seen = new Set(existing.split('\n').map(lc));
     const built = []; let bi = 0;
     for(const p of picks){
@@ -3315,7 +3332,7 @@ ${shopCtx()}\nExisting or previously suggested products (never repeat or paraphr
     if(!built.length) throw new Error('خروجی Claude قابل‌استفاده نبود (عنوان تکراری یا خالی)');
     fill.style.width = '100%'; txt.textContent = '✅ آماده!';
     S.dailyProducts = built; built.forEach(item => archiveDailyProduct(item));
-    log(`✓ ${built.length} پیشنهاد نهایی، بر پایه‌ی تحقیق واقعی روی ${researched.length} کلیدواژه (امتیاز فرصت و بازه‌ی قیمت واقعی بازار)`, 'ok');
+    log(`✓ ${built.length} پیشنهاد نهایی، بر پایه‌ی تحقیق واقعی روی ${nResearched} کلیدواژه (امتیاز فرصت و بازه‌ی قیمت واقعی بازار)`, 'ok');
   }catch(e){ log('✗ خطا در انتخاب نهایی: ' + e.message, 'err'); }
   renderDailyProducts();
   const pend = S.dailyProducts.filter(p => p.status === 'pending').length;
@@ -3323,6 +3340,60 @@ ${shopCtx()}\nExisting or previously suggested products (never repeat or paraphr
   const dbEl2 = document.getElementById('dailyBadge'); if(dbEl2) dbEl2.textContent = pend;
   document.getElementById('sidebarPending').textContent = pend;
   setTimeout(done, 1500);
+}
+// ── مرحله‌ی اول «تحقیق و پیشنهاد»: ایده‌ها با ۳ لینک نمونه نشان داده می‌شوند؛ کاربر انتخاب می‌کند؛ بعد فقط برای انتخاب‌شده‌ها جزئیات کامل ساخته می‌شود ──
+function renderIdeaPicks(){
+  const box = document.getElementById('ideaPickCard'); if(!box) return;
+  const P = S.ideaPicks, items = (P && P.items) || [];
+  if(!items.length){ box.classList.add('hidden'); box.innerHTML = ''; return; }
+  box.classList.remove('hidden');
+  const nSel = items.filter(x => x.sel).length;
+  const sample = l => '<a href="' + escHtml(l.url) + '" target="_blank" rel="noopener" style="display:flex;gap:8px;align-items:center;text-decoration:none;color:inherit;background:var(--surface3);border-radius:8px;padding:6px;min-width:0">'
+    + (l.img ? '<img src="' + escHtml(l.img) + '" alt="" loading="lazy" style="width:56px;height:56px;object-fit:cover;border-radius:6px;flex:none" onerror="this.style.display=\'none\'">' : '')
+    + '<span style="min-width:0;font-size:11.5px;line-height:1.6;direction:ltr;text-align:left"><span style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(l.title || '') + '</span>'
+    + '<span style="color:var(--text2)">' + (l.price != null ? '$' + l.price + ' · ' : '') + '♥ ' + (l.favorers || 0) + ' · Etsy ↗</span></span></a>';
+  const card = (it, i) => {
+    const r = it.research || {}, ls = r.topListings || [];
+    return '<div style="border:1px solid ' + (it.sel ? 'var(--orange)' : 'var(--border)') + ';border-radius:12px;padding:12px;margin-bottom:10px;background:var(--surface2)">'
+      + '<label style="display:flex;gap:8px;align-items:center;cursor:pointer;font-weight:700;font-size:14px"><input type="checkbox" ' + (it.sel ? 'checked' : '') + ' onchange="toggleIdeaPick(' + i + ',this.checked)"> <span dir="ltr">' + escHtml(it.keyword) + '</span></label>'
+      + '<div style="font-size:11.5px;color:var(--text2);margin:6px 0 8px">📊 ' + escHtml(ideaDataLine(r)) + '</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px">' + (ls.length ? ls.map(sample).join('') : '<div style="font-size:12px;color:var(--text2)">نمونه‌ی لینک‌دار از Etsy برنگشت.</div>') + '</div></div>';
+  };
+  box.innerHTML = '<div class="card-title" style="margin-bottom:4px">🧭 مرحله‌ی ۱ از ۲ — از بین این پیشنهادها انتخاب کن</div>'
+    + '<div style="font-size:12px;color:var(--text2);margin-bottom:12px">برای هر پیشنهاد، ۳ نمونه‌ی واقعی از Etsy هست. لینک‌ها را باز کن و آنهایی را که به نظرت بهتر است تیک بزن؛ فقط برای همان‌ها عنوان، تگ و توضیحات کامل ساخته می‌شود. بعد از ساخت، «✅ تأیید» نهایی را روی هر کارت می‌زنی.</div>'
+    + items.map(card).join('')
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px"><button class="btn btn-primary" id="ideaBuildBtn" onclick="buildSelectedIdeas()">✨ ساخت جزئیات کامل برای انتخاب‌شده‌ها (<span id="ideaSelN">' + nSel + '</span>)</button>'
+    + '<button class="btn btn-secondary btn-sm" onclick="clearIdeaPicks()">🗑 پاک کردن فهرست</button></div>';
+}
+function toggleIdeaPick(i, on){
+  const it = S.ideaPicks && S.ideaPicks.items && S.ideaPicks.items[i]; if(!it) return;
+  it.sel = !!on; saveCurrentShop(); renderIdeaPicks();
+}
+function clearIdeaPicks(){
+  if(S.ideaPicks && S.ideaPicks.items && S.ideaPicks.items.length && !confirm('فهرست پیشنهادهای تحقیق پاک شود؟')) return;
+  S.ideaPicks = null; saveCurrentShop(); renderIdeaPicks();
+}
+async function buildSelectedIdeas(){
+  const P = S.ideaPicks; if(!P || !P.items) return;
+  const chosen = P.items.filter(x => x.sel);
+  if(!chosen.length){ toast('حداقل یک پیشنهاد را تیک بزن'); return; }
+  const btn = document.getElementById('ideaBuildBtn'); if(btn) btn.disabled = true;
+  const prog = document.getElementById('dailyProg'); prog.classList.remove('hidden');
+  const fill = document.getElementById('dpFill'), txt = document.getElementById('dpText'), done = () => prog.classList.add('hidden');
+  fill.style.width = '60%';
+  const o = ideaOpts(), niche = getNiche(), t0 = Date.now();
+  const existing = [...new Set([...S.products.slice(0,15).map(p => p.TITLE), ...S.dailyArchive.slice(0,40).map(a => a.title)].filter(Boolean))].join('\n');
+  const shortlist = chosen.map(x => ({ keyword: x.keyword, research: x.research, score: x.score || 0 }));
+  try{ await ideaFinalize(shortlist, o, niche, existing, shortlist.length, fill, txt, P.nResearched || shortlist.length, done); }
+  finally{ if(btn) btn.disabled = false; }
+  // فقط پیشنهادهایی که واقعاً ساخته شدند از فهرست برمی‌دارند؛ بقیه برای بعد می‌مانند
+  const built = new Set((S.dailyProducts || []).filter(p => p.id >= t0).map(p => String(p.keyword || '').toLowerCase().trim()));
+  if(built.size){
+    S.ideaPicks.items = P.items.filter(x => !(x.sel && built.has(String(x.keyword).toLowerCase().trim())));
+    if(!S.ideaPicks.items.length) S.ideaPicks = null;
+    saveCurrentShop(); renderIdeaPicks();
+    const g = document.getElementById('dailyGrid'); if(g) g.scrollIntoView({behavior:'smooth', block:'start'});
+  }
 }
 function setDailySizeN(i, v){
   const it = S.dailyProducts[i]; if(!it) return; it.sizeN = Number(v) || 1;
@@ -3490,6 +3561,7 @@ function viewArchiveItem(id){
 }
 
 function renderDailyProducts() {
+  try{ renderIdeaPicks(); }catch(e){}
   const g=document.getElementById('dailyGrid'); if(!S.dailyProducts.length) return;
   g.innerHTML='';
   S.dailyProducts.forEach((p,i)=>{
