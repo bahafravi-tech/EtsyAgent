@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.52.0 -->
+<!-- APP_VERSION: 1.52.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v194</div>
+        <div class="logo-badge">v195</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1786,6 +1786,7 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
           <label class="fld" style="max-width:230px"><span>📐 تعداد اندازه برای هر محصول</span><select id="ideaSizeN"><option value="1" selected>۱ (تک‌اندازه)</option><option value="2">۲</option><option value="3">۳</option><option value="4">۴</option><option value="5">۵</option><option value="6">۶</option><option value="desc">📝 از توضیحات خودم (فقط «ایده‌ی خودم»)</option></select></label>
           <label class="fld" style="flex:1;min-width:200px"><span>موضوع/فصل دلخواه (اختیاری)</span><input id="ideaTopic" placeholder="مثلاً Valentine، Wedding favor، heart box..."></label>
           <label class="fld" style="max-width:230px"><span>مدل تحقیق</span><select id="ideaModel"><option value="opus">Claude Opus (سرور) — دقیق‌ترین ⭐</option><option value="sonnet">Claude Sonnet (سرور)</option><option value="app">همان مدل تنظیمات برنامه</option></select></label>
+          <label class="fld" style="max-width:230px"><span>حداقل فروش فروشگاه نمونه</span><select id="ideaMinSales"><option value="0">بدون محدودیت</option><option value="1000">۱٬۰۰۰ فروش</option><option value="5000" selected>۵٬۰۰۰ فروش</option><option value="20000">۲۰٬۰۰۰ فروش</option></select></label>
           <label style="font-size:12.5px"><input type="checkbox" id="ideaDigital" checked> فقط محصول دیجیتال</label>
         </div>
         <p class="help" style="margin:6px 0 0">تعداد اندازه را قبل از تحقیق اینجا بگذار، یا بعد از ساخت هر پیشنهاد روی کارتش عوض کن. اگر محصول را خودت در «💡 ایده‌ی خودم» معرفی می‌کنی و اندازه‌ها را در توضیحاتت نوشته‌ای، «از توضیحات خودم» را بزن تا همان اندازه‌ها (بدون اختراع اندازه‌ی جدید) در عنوان، توضیحات و تصویرها بیاید. انتخاب نهایی بر اساس «امتیاز فرصت» (تقاضای واقعی ÷ رقابت) از ۸ تا ۱۲ کلیدواژه‌ی بررسی‌شده انجام می‌شود.</p>
@@ -3208,11 +3209,56 @@ async function ideaAI(prompt, maxTokens, tier){
   }
   return callClaude(prompt, maxTokens);
 }
+// ── قدرت فروشگاهِ نمونه‌ها: لیستینگ‌های نمونه فقط وقتی «الگو» حساب می‌شوند که فروشگاهشان واقعاً فروش داشته باشد ──
+// (Etsy برای هر لیستینگ تعداد فروش نمی‌دهد؛ فروش فقط در سطح فروشگاه هست و از getShop خوانده می‌شود)
+let shopInfoWarned = false;
+const etsyShopCache = new Map();
+async function etsyPublicGet(url){
+  let d, ok, status;
+  if(S.apiRelayUrl){
+    const res = await fetch(S.apiRelayUrl.replace(/\/$/,''), { method:'POST', headers:{'Content-Type':'application/json','X-Relay-Secret':S.apiRelaySecret||''}, body: JSON.stringify({ url, method:'GET', headers:{ 'x-api-key': etsyApiKeyHeader() } }) });
+    const t = await res.text(); try{ d = JSON.parse(t); }catch(e){ throw new Error('پاسخ رله قابل‌خوندن نبود'); }
+    ok = res.ok; status = res.status;
+  }else{
+    const res = await fetch(url, { headers:{ 'x-api-key': etsyApiKeyHeader() } }); d = await res.json(); ok = res.ok; status = res.status;
+  }
+  if(!ok) throw new Error(d.error || ('خطای اتسی: ' + status));
+  return d;
+}
+async function etsyShopInfo(id){
+  const k = String(id); if(etsyShopCache.has(k)) return etsyShopCache.get(k);
+  let info = null;
+  try{
+    const d = await etsyPublicGet('https://openapi.etsy.com/v3/application/shops/' + encodeURIComponent(k));
+    if(d && d.transaction_sold_count != null) info = { name: d.shop_name || '', sold: Number(d.transaction_sold_count) || 0, created: Number(d.create_date) || 0, rating: d.review_average != null ? Number(d.review_average) : null, reviews: Number(d.review_count) || 0 };
+  }catch(e){}
+  etsyShopCache.set(k, info); return info;
+}
+// نمونه‌ها را از بین لیستینگ‌های پرطرفدارِ فروشگاه‌های قوی انتخاب می‌کند و سهم فروشگاه‌های قوی را برای رتبه‌بندی ایده‌ها می‌گذارد
+async function enrichSamples(searchResult, summary, minSales){
+  const listings = searchResult.results || [], now = Date.now() / 1000, r2 = n => Math.round(n * 100) / 100;
+  const age = l => Math.max(7, (now - (l.original_creation_timestamp || l.creation_timestamp || l.created_timestamp || now)) / 86400);
+  const cand = listings.filter(l => l.listing_id && l.shop_id && age(l) >= 30).sort((a, b) => (b.num_favorers || 0) / age(b) - (a.num_favorers || 0) / age(a)).slice(0, 8);
+  if(!cand.length) return;
+  const infos = await Promise.all(cand.map(l => etsyShopInfo(l.shop_id)));
+  const rows = cand.map((l, i) => ({ l, info: infos[i] })).filter(x => x.info);
+  if(!rows.length){
+    if(!shopInfoWarned){ shopInfoWarned = true; log('ℹ️ اطلاعات فروش فروشگاه‌های نمونه از Etsy گرفته نشد؛ نمونه‌ها بدون فیلتر قدرت فروشگاه نشان داده می‌شوند', 'warn'); }
+    return;
+  }
+  const strong = x => minSales <= 0 || x.info.sold >= minSales;
+  summary.strongShare = r2(rows.filter(strong).length / rows.length); summary.minSales = minSales;
+  const seen = new Set(), pick = [];
+  [...rows.filter(strong), ...rows.filter(x => !strong(x))].forEach(x => { if(pick.length < 3 && !seen.has(x.l.shop_id)){ seen.add(x.l.shop_id); pick.push(x); } });
+  const price = l => l.price ? (l.price.amount || 0) / (l.price.divisor || 100) : 0;
+  summary.topListings = pick.map(x => ({ title: (x.l.title || '').slice(0, 80), url: 'https://www.etsy.com/listing/' + x.l.listing_id, price: x.l.price ? r2(price(x.l)) : null, favorers: x.l.num_favorers || 0,
+    img: (x.l.images && x.l.images[0] && (x.l.images[0].url_170x135 || x.l.images[0].url_75x75)) || '', weak: !strong(x), shop: x.info }));
+}
 function ideaOpts(){
   const g = id => document.getElementById(id);
   // «desc»: اندازه‌ها در توضیحاتِ «ایده‌ی خودم» نوشته شده؛ همان‌ها خوانده می‌شود (تعداد از روی متن می‌آید)
   return { count: Math.max(1, Math.min(5, Number((g('ideaCount') || {}).value) || 2)), sizeFromDesc: (g('ideaSizeN') || {}).value === 'desc', sizeN: Math.max(1, Math.min(6, Number((g('ideaSizeN') || {}).value) || 1)),
-           topic: ((g('ideaTopic') || {}).value || '').trim(), digital: !g('ideaDigital') || g('ideaDigital').checked };
+           topic: ((g('ideaTopic') || {}).value || '').trim(), digital: !g('ideaDigital') || g('ideaDigital').checked, minSales: (() => { const e = g('ideaMinSales'); return e ? (Number(e.value) || 0) : 5000; })() };
 }
 const medianOf = a => { const s = a.filter(v => isFinite(v)).sort((x,y) => x-y); if(!s.length) return null; const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m-1] + s[m]) / 2; };
 const quantileOf = (a, q) => { const s = a.filter(v => isFinite(v)).sort((x,y) => x-y); if(!s.length) return null; const i = (s.length-1)*q, lo = Math.floor(i), hi = Math.ceil(i); return s[lo] + (s[hi]-s[lo])*(i-lo); };
@@ -3272,13 +3318,14 @@ ${shopCtx()}\nExisting or previously suggested products (never repeat or paraphr
   }catch(e){ log('✗ خطا در ساخت ایده‌های اولیه: ' + e.message, 'err'); done(); return; }
   if(!candidates.length){ log('✗ هیچ ایده‌ای ساخته نشد', 'err'); done(); return; }
 
-  const researched = [];
+  const researched = []; shopInfoWarned = false;
   for(let i = 0; i < candidates.length; i++){
     fill.style.width = (8 + ((i+1)/candidates.length)*57) + '%';
     txt.textContent = `بررسی رقبای اتسی برای «${candidates[i]}» (${i+1}/${candidates.length})...`;
     try{
       let sr; try{ sr = await etsySearchActiveListings(candidates[i], 40, !silent); }catch(e1){ if(silent) throw e1; sr = await etsySearchActiveListings(candidates[i], 40); }
       const summary = summarizeResearch(sr);
+      try{ await enrichSamples(sr, summary, o.minSales); }catch(e2){}
       researched.push({ keyword: candidates[i], research: summary });
       log(`✓ «${candidates[i]}»: ${ideaDataLine(summary)}`, 'info');
     }catch(e){ log(`⚠ تحقیق برای «${candidates[i]}» ناموفق بود: ${e.message}`, 'warn'); }
@@ -3287,7 +3334,7 @@ ${shopCtx()}\nExisting or previously suggested products (never repeat or paraphr
 
   // شورت‌لیست با کد: امتیاز فرصت بالا، و در حالت «فقط دیجیتال» رقبای عمدتاً دیجیتال
   fill.style.width = '72%'; txt.textContent = 'رتبه‌بندی فرصت‌ها بر پایه‌ی داده‌ی واقعی...';
-  const scored = researched.map(r => ({...r, score: (r.research.opportunity || 0) * ((o.digital && (r.research.digitalShare || 0) < 30) ? 0.3 : 1)})).sort((a,b) => b.score - a.score);
+  const scored = researched.map(r => ({...r, score: (r.research.opportunity || 0) * ((o.digital && (r.research.digitalShare || 0) < 30) ? 0.3 : 1) * (r.research.strongShare == null ? 1 : 0.35 + 0.65 * r.research.strongShare)})).sort((a,b) => b.score - a.score);
   const shortlist = scored.slice(0, Math.max(o.count*2, 4));
   // نسخه‌ی دستی: اول ایده‌ها را با ۳ لینک نمونه نشان بده تا کاربر انتخاب کند؛ نسخه‌ی خودکار روزانه (silent) مثل قبل مستقیم می‌سازد
   if(!silent){
@@ -3348,15 +3395,17 @@ function renderIdeaPicks(){
   if(!items.length){ box.classList.add('hidden'); box.innerHTML = ''; return; }
   box.classList.remove('hidden');
   const nSel = items.filter(x => x.sel).length;
+  const shopLine = l => { const sh = l.shop; if(!sh) return ''; const yrs = sh.created ? Math.round((Date.now() / 1000 - sh.created) / (365.25 * 86400) * 10) / 10 : null;
+    return '<span style="display:block;color:' + (l.weak ? '#d9480f' : 'var(--text2)') + '">🏪 ' + escHtml(sh.name) + ' · ' + Number(sh.sold).toLocaleString('en-US') + ' sales' + (yrs != null ? ' · ' + yrs + ' yr' : '') + (sh.rating != null ? ' · ★' + Number(sh.rating).toFixed(1) : '') + (l.weak ? ' · ⚠ weak shop' : '') + '</span>'; };
   const sample = l => '<a href="' + escHtml(l.url) + '" target="_blank" rel="noopener" style="display:flex;gap:8px;align-items:center;text-decoration:none;color:inherit;background:var(--surface3);border-radius:8px;padding:6px;min-width:0">'
     + (l.img ? '<img src="' + escHtml(l.img) + '" alt="" loading="lazy" style="width:56px;height:56px;object-fit:cover;border-radius:6px;flex:none" onerror="this.style.display=\'none\'">' : '')
     + '<span style="min-width:0;font-size:11.5px;line-height:1.6;direction:ltr;text-align:left"><span style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(l.title || '') + '</span>'
-    + '<span style="color:var(--text2)">' + (l.price != null ? '$' + l.price + ' · ' : '') + '♥ ' + (l.favorers || 0) + ' · Etsy ↗</span></span></a>';
+    + '<span style="color:var(--text2)">' + (l.price != null ? '$' + l.price + ' · ' : '') + '♥ ' + (l.favorers || 0) + ' · Etsy ↗</span>' + shopLine(l) + '</span></a>';
   const card = (it, i) => {
     const r = it.research || {}, ls = r.topListings || [];
     return '<div style="border:1px solid ' + (it.sel ? 'var(--orange)' : 'var(--border)') + ';border-radius:12px;padding:12px;margin-bottom:10px;background:var(--surface2)">'
       + '<label style="display:flex;gap:8px;align-items:center;cursor:pointer;font-weight:700;font-size:14px"><input type="checkbox" ' + (it.sel ? 'checked' : '') + ' onchange="toggleIdeaPick(' + i + ',this.checked)"> <span dir="ltr">' + escHtml(it.keyword) + '</span></label>'
-      + '<div style="font-size:11.5px;color:var(--text2);margin:6px 0 8px">📊 ' + escHtml(ideaDataLine(r)) + '</div>'
+      + '<div style="font-size:11.5px;color:var(--text2);margin:6px 0 8px">📊 ' + escHtml(ideaDataLine(r)) + (r.strongShare != null ? ' · فروشگاه‌های قوی در بین نمونه‌ها: ' + Math.round(r.strongShare * 100) + '٪' : '') + '</div>'
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px">' + (ls.length ? ls.map(sample).join('') : '<div style="font-size:12px;color:var(--text2)">نمونه‌ی لینک‌دار از Etsy برنگشت.</div>') + '</div></div>';
   };
   box.innerHTML = '<div class="card-title" style="margin-bottom:4px">🧭 مرحله‌ی ۱ از ۲ — از بین این پیشنهادها انتخاب کن</div>'
