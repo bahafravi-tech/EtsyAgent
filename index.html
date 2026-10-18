@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.56.1 -->
+<!-- APP_VERSION: 1.56.2 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v203</div>
+        <div class="logo-badge">v204</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -12017,8 +12017,38 @@ async function pushCurrentToContentReview(){
         }
       }catch(e){}
     }
+    // ۴) کپشن و هشتگ: اگر آیتم هنوز کپشن/هشتگ ندارد، اول با هوش مصنوعی ساخته می‌شود؛ اگر نشد، خلاصه‌ی توضیحات و تگ‌های خودِ محصول جایگزین می‌شود
+    let capNote = '';
+    try{
+      const lr3 = await fetch(crApiUrl('list_content.php' + (S.shopName ? '?shop=' + encodeURIComponent(S.shopName) : '')), { headers: crHeaders() });
+      const it3 = ((await lr3.json()).items || []).find(x => Number(x.id) === newId) || {};
+      let cap = String(it3.caption || '').trim(), htags = String(it3.hashtags || '').trim(), capErr = '', aiOk = false;
+      if(!cap){
+        try{
+          const gr = await fetch(crApiUrl('generate_caption.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify({ id: newId }) });
+          const gd = await gr.json().catch(() => ({}));
+          if(gr.ok && gd.ok !== false){ aiOk = true; cap = 'ai'; htags = htags || 'ai'; } else capErr = String(gd.error || ('خطای سرور ' + gr.status)).slice(0, 220);
+        }catch(e){ capErr = (e && e.message) || 'نامشخص'; }
+      }
+      const upd = {};
+      if(!cap){
+        const desc = String(p.description || p.notes || '').replace(/\s+/g, ' ').trim();
+        upd.caption = (p.title || p.name) + '\n\n' + desc.slice(0, 380) + (desc.length > 380 ? '…' : '');
+      }
+      if(!htags){
+        const tg = String(p.tags || '').split(',').map(t => '#' + t.replace(/[^A-Za-z0-9]/g, '')).filter(t => t.length > 2).filter((t, i, a) => a.indexOf(t) === i).slice(0, 15);
+        if(tg.length) upd.hashtags = tg.join(',');
+      }
+      if(Object.keys(upd).length){
+        const ur = await fetch(crApiUrl('update_content.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify(Object.assign({ id: newId }, upd)) });
+        if(!ur.ok) throw new Error('ذخیره‌ی کپشن/هشتگ ناموفق بود');
+      }
+      if(!cap && upd.caption){ capNote = ' — کپشن با هوش مصنوعی ساخته نشد' + (capErr ? ' (' + capErr + ')' : '') + '، خلاصه‌ی توضیحات جایگزین شد'; L('⚠ کپشن «' + (p.title || p.name) + '» با AI ساخته نشد: ' + (capErr || 'نامشخص') + ' — خلاصه‌ی توضیحات گذاشته شد، در محتوای معرفی ویرایشش کن', 'warn'); }
+      else if(aiOk){ capNote = ' — کپشن و هشتگ ساخته شد'; }
+      if(upd.hashtags) capNote += (capNote ? '' : ' —') + ' هشتگ‌ها از تگ‌های محصول گذاشته شد';
+    }catch(e){ capNote = ' — کپشن/هشتگ ثبت نشد: ' + ((e && e.message) || 'نامشخص'); L('✗ ' + capNote, 'err'); }
     const total = slots.length;
-    toast((failed.length ? "⚠ " : "✅ ") + (created ? "به «محتوای معرفی» اضافه شد" : "آیتم قبلی «محتوای معرفی» کامل شد") + " — " + fa(added) + " تصویر جدید" + (already ? "، " + fa(already) + " از قبل بود" : "") + (removedDup ? "، " + fa(removedDup) + " تکراری حذف شد" : "") + (failed.length ? "؛ " + fa(failed.length) + " تصویر ناموفق (دوباره دکمه را بزن)" : "") + (total ? "." : " (تصویری در تب «تصویرها» ساخته یا انتخاب نشده)."));
+    toast((failed.length ? "⚠ " : "✅ ") + (created ? "به «محتوای معرفی» اضافه شد" : "آیتم قبلی «محتوای معرفی» کامل شد") + " — " + fa(added) + " تصویر جدید" + (already ? "، " + fa(already) + " از قبل بود" : "") + (removedDup ? "، " + fa(removedDup) + " تکراری حذف شد" : "") + (failed.length ? "؛ " + fa(failed.length) + " تصویر ناموفق (دوباره دکمه را بزن)" : "") + (total ? "." : " (تصویری در تب «تصویرها» ساخته یا انتخاب نشده).") + capNote);
     L('✓ «' + (p.title || p.name) + '» ' + (created ? 'به محتوای معرفی اضافه شد' : 'در محتوای معرفی کامل شد') + ' — جدید ' + added + '، از قبل ' + already + '، ناموفق ' + failed.length, failed.length ? 'warn' : 'ok');
   }catch(e){
     toast("خطا: " + (e && e.message ? e.message : "نامشخص"));

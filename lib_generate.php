@@ -41,7 +41,8 @@ function generateCaptionForItem($id){
     ."Details: {$item['source_content']}\n\n"
     ."Return ONLY valid JSON, no markdown fences: {\"caption\":\"2-4 short punchy paragraphs, emojis welcome, end with a soft call-to-action (e.g. follow for launch updates)\",\"hashtags\":[\"10 to 15 relevant hashtags, no # symbol\"]}";
 
-  $result = callClaudeAPI($prompt, 800);
+  // سقف توکن بالاتر: زبان‌های غیرانگلیسی توکن بیشتری می‌خورند و پاسخ JSON نصفه‌شده «JSON نامعتبر» می‌داد
+  $result = callClaudeAPI($prompt, 1600);
   if(!$result['ok']) return $result;
 
   $clean = trim(preg_replace('/```json|```/', '', $result['text']));
