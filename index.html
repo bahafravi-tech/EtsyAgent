@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.55.2 -->
+<!-- APP_VERSION: 1.56.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v201</div>
+        <div class="logo-badge">v202</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -5029,7 +5029,38 @@ function buildSlideshowHTML(item, imgUrls, rawPaths){
       <button onclick="deleteContentSlide(${item.id},'${rawPaths[idx]}')" title="حذف این اسلاید" style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:12px">🗑</button>
     </div>
     ${imgUrls.length>1?`<div style="display:flex;justify-content:center;gap:5px;margin-top:8px">${imgUrls.map((u,i)=>`<span onclick="crGoToSlide(${item.id},${i})" style="width:7px;height:7px;border-radius:50%;cursor:pointer;background:${i===idx?'var(--orange)':'var(--border)'}"></span>`).join('')}</div>`:''}
+    ${crOrderHtml(item, imgUrls)}
   </div>`;
+}
+// ── ترتیب تصویرهای یک آیتم: انتخاب موقعیت هر تصویر (تصویر اول = عکس اصلی پست) ──
+const crOrderOpen = {};
+function crOrderHtml(item, imgUrls){
+  const n = imgUrls.length; if(n < 2) return '';
+  const cur = crSlideIndex[item.id] || 0;
+  return '<details ' + (crOrderOpen[item.id] ? 'open' : '') + ' style="margin-top:10px"><summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--text2)">🔀 ترتیب تصویرها (' + n + ') — تصویر اول، عکس اصلی پست است</summary><div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">'
+    + imgUrls.map((u, i) => '<div style="display:flex;align-items:center;gap:8px;background:var(--surface3);border-radius:8px;padding:5px 8px' + (i === cur ? ';outline:2px solid var(--orange)' : '') + '">'
+      + '<img src="' + u + '" alt="" onclick="crGoToSlide(' + item.id + ',' + i + ')" style="width:44px;height:44px;object-fit:cover;border-radius:6px;cursor:pointer;flex:none">'
+      + '<select onchange="crMoveSlide(' + item.id + ',' + i + ',Number(this.value))" title="موقعیت این تصویر" style="width:auto;padding:3px 6px">' + imgUrls.map((_, k) => '<option value="' + k + '"' + (k === i ? ' selected' : '') + '>موقعیت ' + (k + 1) + '</option>').join('') + '</select>'
+      + '<span style="flex:1"></span>'
+      + '<button class="btn btn-secondary btn-sm" ' + (i === 0 ? 'disabled' : '') + ' onclick="crMoveSlide(' + item.id + ',' + i + ',0)" title="بردن به جای اول">⭐ اول</button>'
+      + '<button class="btn btn-secondary btn-sm" ' + (i === 0 ? 'disabled' : '') + ' onclick="crMoveSlide(' + item.id + ',' + i + ',' + (i - 1) + ')" title="یک جا جلوتر">⬆</button>'
+      + '<button class="btn btn-secondary btn-sm" ' + (i === n - 1 ? 'disabled' : '') + ' onclick="crMoveSlide(' + item.id + ',' + i + ',' + (i + 1) + ')" title="یک جا عقب‌تر">⬇</button></div>').join('')
+    + '</div></details>';
+}
+async function crMoveSlide(id, from, to){
+  const item = crCurrentItems.find(x => x.id === id); if(!item) return;
+  const imgs = (item.images && item.images.length ? item.images : (item.hero_image_path ? [item.hero_image_path] : [])).slice();
+  if(!isFinite(to) || to < 0 || to >= imgs.length || from === to) return;
+  const m = imgs.splice(from, 1)[0]; imgs.splice(to, 0, m);
+  try{
+    const res = await fetch(crApiUrl('update_content.php'), { method:'POST', headers:crHeaders(), body:JSON.stringify({id, images_order: imgs}) });
+    const d = await res.json().catch(() => ({}));
+    if(!res.ok) throw new Error(d.error || 'خطا');
+    if(!Array.isArray(d.images)) throw new Error('سرور قدیمی است؛ فایل api/update_content.php را روی هاست بروز کن');
+    item.images = d.images; item.hero_image_path = d.images[0] || item.hero_image_path;
+    crSlideIndex[id] = to; crOrderOpen[id] = true;
+    openContentDetail(id); try{ renderContentReviewList(crCurrentItems); }catch(e){}
+  }catch(e){ log('✗ تغییر ترتیب تصویر: ' + e.message, 'err'); toast('✗ ' + e.message); }
 }
 function crSlide(id, dir){
   const item = crCurrentItems.find(x=>x.id===id); if(!item) return;

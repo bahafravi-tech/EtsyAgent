@@ -29,6 +29,27 @@ if($fields){
   $pdo->prepare('UPDATE content_items SET '.implode(',', $fields).', updated_at=NOW() WHERE id=?')->execute($params);
 }
 
+// تغییر ترتیب تصویرها: فقط جابه‌جایی همان مجموعه‌ی فعلی (تصویر اول = hero_image_path = عکس اصلی پست)
+$orderedImages = null;
+if(isset($input['images_order']) && is_array($input['images_order'])){
+  try{
+    $st = $pdo->prepare('SELECT images_json, hero_image_path FROM content_items WHERE id=?');
+    $st->execute([$id]);
+    $row = $st->fetch();
+  }catch(PDOException $e){
+    jsonResponse(['error'=>'ستون images_json روی دیتابیس نیست — این خط رو توی phpMyAdmin اجرا کن: ALTER TABLE content_items ADD COLUMN images_json TEXT NULL AFTER hero_image_path;'], 500);
+  }
+  if(!$row) jsonResponse(['error'=>'آیتم پیدا نشد'], 404);
+  $cur = ($row['images_json'] ?? null) ? json_decode($row['images_json'], true) : [];
+  if(!is_array($cur) || !$cur) $cur = $row['hero_image_path'] ? [$row['hero_image_path']] : [];
+  $want = array_values(array_filter($input['images_order'], 'is_string'));
+  $a = $cur; $b = $want; sort($a); sort($b);
+  if($a !== $b) jsonResponse(['error'=>'فهرست تصویرها با چیزی که روی سرور هست نمی‌خواند؛ صفحه را رفرش کن و دوباره امتحان کن'], 409);
+  $pdo->prepare('UPDATE content_items SET images_json=?, hero_image_path=?, updated_at=NOW() WHERE id=?')
+      ->execute([json_encode($want), $want[0] ?? null, $id]);
+  $orderedImages = $want;
+}
+
 if(isset($input['status'])){
   $newStatus = $input['status'];
   $allowed = ['draft','generated','review','approved','published','rejected','failed'];
@@ -60,4 +81,4 @@ if(isset($input['platforms']) && !isset($input['status'])){
       ->execute($delParams);
 }
 
-jsonResponse(['ok'=>true]);
+jsonResponse($orderedImages !== null ? ['ok'=>true, 'images'=>$orderedImages] : ['ok'=>true]);
