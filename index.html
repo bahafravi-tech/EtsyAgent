@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.56.0 -->
+<!-- APP_VERSION: 1.56.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v202</div>
+        <div class="logo-badge">v203</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -5045,7 +5045,7 @@ function crOrderHtml(item, imgUrls){
       + '<button class="btn btn-secondary btn-sm" ' + (i === 0 ? 'disabled' : '') + ' onclick="crMoveSlide(' + item.id + ',' + i + ',0)" title="بردن به جای اول">⭐ اول</button>'
       + '<button class="btn btn-secondary btn-sm" ' + (i === 0 ? 'disabled' : '') + ' onclick="crMoveSlide(' + item.id + ',' + i + ',' + (i - 1) + ')" title="یک جا جلوتر">⬆</button>'
       + '<button class="btn btn-secondary btn-sm" ' + (i === n - 1 ? 'disabled' : '') + ' onclick="crMoveSlide(' + item.id + ',' + i + ',' + (i + 1) + ')" title="یک جا عقب‌تر">⬇</button></div>').join('')
-    + '</div></details>';
+    + '</div><div style="margin-top:8px"><button class="btn btn-secondary btn-sm" onclick="crDedupeSlides(' + item.id + ')" title="تصویرهای یکسان را حذف می‌کند و اولین نمونه را نگه می‌دارد">🧹 حذف تصویرهای تکراری</button></div></details>';
 }
 async function crMoveSlide(id, from, to){
   const item = crCurrentItems.find(x => x.id === id); if(!item) return;
@@ -5061,6 +5061,18 @@ async function crMoveSlide(id, from, to){
     crSlideIndex[id] = to; crOrderOpen[id] = true;
     openContentDetail(id); try{ renderContentReviewList(crCurrentItems); }catch(e){}
   }catch(e){ log('✗ تغییر ترتیب تصویر: ' + e.message, 'err'); toast('✗ ' + e.message); }
+}
+async function crDedupeSlides(id){
+  const item = crCurrentItems.find(x => x.id === id); if(!item) return;
+  try{
+    const res = await fetch(crApiUrl('dedupe_slides.php'), { method:'POST', headers:crHeaders(), body:JSON.stringify({id}) });
+    const d = await res.json().catch(() => ({}));
+    if(!res.ok) throw new Error(d.error || 'خطا (شاید فایل api/dedupe_slides.php هنوز روی هاست نیست)');
+    item.images = d.images || item.images; item.hero_image_path = (d.images && d.images[0]) || item.hero_image_path;
+    crSlideIndex[id] = 0; crOrderOpen[id] = true;
+    toast(d.removed ? '🧹 ' + d.removed + ' تصویر تکراری حذف شد' : 'تصویر تکراری پیدا نشد');
+    openContentDetail(id); try{ renderContentReviewList(crCurrentItems); }catch(e){}
+  }catch(e){ log('✗ حذف تکراری‌ها: ' + e.message, 'err'); toast('✗ ' + e.message); }
 }
 function crSlide(id, dir){
   const item = crCurrentItems.find(x=>x.id===id); if(!item) return;
@@ -11967,32 +11979,36 @@ async function pushCurrentToContentReview(){
     const arch = (S.dailyArchive || []).find(x => x.id != null && x.id === p.ideaId); if(arch) arch.contentId = newId;
     save(); if(typeof saveCurrentShop === "function") saveCurrentShop();
 
-    // ۲) تصویرها: تا ۲۰ تصویر (اول تصویر اصلی)، فقط آن‌هایی که هنوز برای این آیتم نرفته‌اند
-    const sent = new Set((p.contentSent && p.contentSent.id === newId) ? p.contentSent.keys : []);
+    // ۲) تصویرها: تا ۲۰ تصویر (اول تصویر اصلی). همه فرستاده می‌شوند؛ سرور تصویری را که بایت‌به‌بایت از قبل روی آیتم هست دوباره ذخیره نمی‌کند
     const slots = IMG_SLOTS.filter(s => p.images && p.images[s.k]).sort((a, b) => (a.k === "hero" ? -1 : 0) - (b.k === "hero" ? -1 : 0)).slice(0, 20);
-    const todo = slots.filter(s => !sent.has(p.images[s.k].key));
-    let okN = 0; const failed = []; const bt2 = Busy.start("ارسال تصویرها به محتوای معرفی", {pct: 0});
+    let added = 0, already = 0, dedupeKnown = null; const failed = []; const bt2 = Busy.start("ارسال تصویرها به محتوای معرفی", {pct: 0});
     try{
-      for(const [i, sl] of todo.entries()){
-        Busy.set(bt2, "ارسال تصویر " + fa(i+1) + " از " + fa(todo.length), i/Math.max(1, todo.length)*100);
-        let done = false, lastErr = '';
-        for(let attempt = 1; attempt <= 3 && !done; attempt++){
+      for(const [i, sl] of slots.entries()){
+        Busy.set(bt2, "ارسال تصویر " + fa(i+1) + " از " + fa(slots.length), i/Math.max(1, slots.length)*100);
+        let result = null, lastErr = '';
+        for(let attempt = 1; attempt <= 3 && !result; attempt++){
           try{
             const blob = await blobGet(p.images[sl.k].key); if(!blob) throw new Error('فایل تصویر در مرورگر پیدا نشد');
             const processed = await processImageForUpload(blob, S.brandFooterText);
             const form = new FormData(); form.append('file', processed, 'image.jpg'); form.append('id', newId);
             const up = await fetch(crApiUrl('upload_slide.php'), { method:'POST', headers:{'X-Agent-Secret': S.contentBackendSecret||''}, body: form });
             if(!up.ok){ let m = ''; try{ m = (await up.json()).error || ''; }catch(e){} throw new Error(m || ('خطای سرور ' + up.status)); }
-            done = true;
+            result = await up.json().catch(() => ({}));
           }catch(e){ lastErr = (e && e.message) || 'نامشخص'; if(attempt < 3) await sleep(1500 * attempt); }
         }
-        if(done){ okN++; sent.add(p.images[sl.k].key); p.contentSent = { id: newId, keys: [...sent] }; save(); await sleep(800); }
+        if(result){ if(dedupeKnown === null) dedupeKnown = (typeof result.dup === 'boolean'); if(result.dup) already++; else added++; await sleep(500); }
         else { failed.push(sl.k); L('✗ تصویر «' + (sl.t || sl.k) + '» به محتوای معرفی نرفت: ' + lastErr, 'err'); }
       }
     } finally { Busy.end(bt2); }
+    if(dedupeKnown === false) L('⚠ فایل api/upload_slide.php روی سرور قدیمی است و تصویرها ممکن است تکراری شوند؛ نسخه‌ی جدید را روی هاست بگذار.', 'warn');
 
-    // ۳) اگر تصویر واقعی رفت، تصویر پس‌زمینه‌ی خودکار (hero_...) که سرور هنگام ساخت آیتم گذاشته بود برداشته شود
-    if(okN || sent.size){
+    // ۳) پاک‌سازی: تصویرهای تکراری + تصویر پس‌زمینه‌ی خودکار (hero_...) که سرور هنگام ساخت آیتم گذاشته بود
+    let removedDup = 0;
+    if(added || already){
+      try{
+        const dr = await fetch(crApiUrl('dedupe_slides.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify({ id: newId }) });
+        if(dr.ok) removedDup = Number((await dr.json()).removed) || 0;
+      }catch(e){}
       try{
         const lr2 = await fetch(crApiUrl('list_content.php' + (S.shopName ? '?shop=' + encodeURIComponent(S.shopName) : '')), { headers: crHeaders() });
         const it2 = ((await lr2.json()).items || []).find(x => Number(x.id) === newId);
@@ -12002,8 +12018,8 @@ async function pushCurrentToContentReview(){
       }catch(e){}
     }
     const total = slots.length;
-    toast((failed.length ? "⚠ " : "✅ ") + (created ? "به «محتوای معرفی» اضافه شد" : "آیتم قبلی «محتوای معرفی» کامل شد (نسخه‌ی تکراری ساخته نشد)") + " — " + fa(sent.size) + " از " + fa(total) + " تصویر" + (failed.length ? "؛ " + fa(failed.length) + " تصویر ناقص ماند، دوباره دکمه را بزن تا فقط همان‌ها فرستاده شود." : (total ? "." : " (تصویری در تب «تصویرها» ساخته یا انتخاب نشده).")));
-    L('✓ «' + (p.title || p.name) + '» ' + (created ? 'به محتوای معرفی اضافه شد' : 'در محتوای معرفی کامل شد') + ' — ' + sent.size + '/' + total + ' تصویر', failed.length ? 'warn' : 'ok');
+    toast((failed.length ? "⚠ " : "✅ ") + (created ? "به «محتوای معرفی» اضافه شد" : "آیتم قبلی «محتوای معرفی» کامل شد") + " — " + fa(added) + " تصویر جدید" + (already ? "، " + fa(already) + " از قبل بود" : "") + (removedDup ? "، " + fa(removedDup) + " تکراری حذف شد" : "") + (failed.length ? "؛ " + fa(failed.length) + " تصویر ناموفق (دوباره دکمه را بزن)" : "") + (total ? "." : " (تصویری در تب «تصویرها» ساخته یا انتخاب نشده)."));
+    L('✓ «' + (p.title || p.name) + '» ' + (created ? 'به محتوای معرفی اضافه شد' : 'در محتوای معرفی کامل شد') + ' — جدید ' + added + '، از قبل ' + already + '، ناموفق ' + failed.length, failed.length ? 'warn' : 'ok');
   }catch(e){
     toast("خطا: " + (e && e.message ? e.message : "نامشخص"));
   } finally { if(btn) btn.disabled = false; }
