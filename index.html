@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.55.1 -->
+<!-- APP_VERSION: 1.55.2 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v200</div>
+        <div class="logo-badge">v201</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -5154,7 +5154,7 @@ async function processImageForUpload(file, footerText){
 }
 
 async function handleManualImageUpload(evt, itemId){
-  const files = Array.from(evt.target.files||[]).slice(0,10);
+  const files = Array.from(evt.target.files||[]).slice(0,20);
   if(!files.length) return;
   const presetEl = document.getElementById('cr-footer-preset-'+itemId);
   const footerText = presetEl ? presetEl.value : S.brandFooterText;
@@ -11936,9 +11936,9 @@ async function pushCurrentToContentReview(){
     const arch = (S.dailyArchive || []).find(x => x.id != null && x.id === p.ideaId); if(arch) arch.contentId = newId;
     save(); if(typeof saveCurrentShop === "function") saveCurrentShop();
 
-    // ۲) تصویرها: تا ۱۰ تصویر (اول تصویر اصلی)، فقط آن‌هایی که هنوز برای این آیتم نرفته‌اند
+    // ۲) تصویرها: تا ۲۰ تصویر (اول تصویر اصلی)، فقط آن‌هایی که هنوز برای این آیتم نرفته‌اند
     const sent = new Set((p.contentSent && p.contentSent.id === newId) ? p.contentSent.keys : []);
-    const slots = IMG_SLOTS.filter(s => p.images && p.images[s.k]).sort((a, b) => (a.k === "hero" ? -1 : 0) - (b.k === "hero" ? -1 : 0)).slice(0, 10);
+    const slots = IMG_SLOTS.filter(s => p.images && p.images[s.k]).sort((a, b) => (a.k === "hero" ? -1 : 0) - (b.k === "hero" ? -1 : 0)).slice(0, 20);
     const todo = slots.filter(s => !sent.has(p.images[s.k].key));
     let okN = 0; const failed = []; const bt2 = Busy.start("ارسال تصویرها به محتوای معرفی", {pct: 0});
     try{
