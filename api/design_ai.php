@@ -29,10 +29,19 @@ $maxTokens = max(8000, min(16000, (int)($in['max_tokens'] ?? 12000)));
 $images = [];
 foreach((array)($in['images'] ?? []) as $im){
   $mt = is_array($im) ? ($im['media_type'] ?? '') : ''; $dt = is_array($im) ? ($im['data'] ?? '') : '';
-  if(in_array($mt, ['image/jpeg','image/png','image/webp'], true) && is_string($dt) && strlen($dt) < 6000000 && count($images) < 3){
+  if(in_array($mt, ['image/jpeg','image/png','image/webp'], true) && is_string($dt) && strlen($dt) < 6000000 && count($images) < 6){
     $images[] = ['type'=>'image', 'source'=>['type'=>'base64', 'media_type'=>$mt, 'data'=>$dt]];
   }
 }
+// فایل PDF محصول (یکی، حداکثر ~۶ مگابایت) — Claude متن و تصاویر داخلش را می‌خواند
+$docs = [];
+foreach((array)($in['documents'] ?? []) as $dm){
+  $mt = is_array($dm) ? ($dm['media_type'] ?? '') : ''; $dt = is_array($dm) ? ($dm['data'] ?? '') : '';
+  if($mt === 'application/pdf' && is_string($dt) && strlen($dt) < 8000000 && count($docs) < 1){
+    $docs[] = ['type'=>'document', 'source'=>['type'=>'base64', 'media_type'=>'application/pdf', 'data'=>$dt]];
+  }
+}
+$images = array_merge($docs, $images);
 $userContent = $images ? array_merge($images, [['type'=>'text', 'text'=>$prompt]]) : $prompt;
 
 $apiKey = anthropicApiKey();

@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.52.2 -->
+<!-- APP_VERSION: 1.55.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v196</div>
+        <div class="logo-badge">v199</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1795,19 +1795,30 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
       <div id="dailyProg" class="card hidden"><div class="prog-wrap"><div class="prog-bar"><div class="prog-fill" id="dpFill"></div></div><div class="prog-text" id="dpText">در حال تحقیق...</div></div></div>
   <div class="card" style="margin-bottom:16px">
     <div class="card-title" style="margin-bottom:8px">💡 ایده‌ی خودم</div>
-    <div style="font-size:12px;color:var(--text2);margin-bottom:12px">عکس و توضیح محصولی که خودت مدنظرته رو بده — پلتفرم روش تحقیق واقعی رقبا می‌زنه و عنوان/تگ/توضیحات/قیمت کامل می‌سازه.</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:12px">محصول را جای دیگری ساخته‌ای؟ چند عکس و (اگر داری) فایل PDF محصول را بده؛ Claude فایل‌ها را می‌بیند و عنوان، تگ و توضیحات را عیناً برای همان محصول می‌نویسد، نه یک ایده‌ی تازه. توضیح متنی هم می‌توانی بنویسی (اختیاری وقتی فایل داری). پلتفرم روی کلیدواژه‌ی محصول تحقیق واقعی رقبا هم می‌زند.</div>
     <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start">
-      <div>
-        <input type="file" accept="image/*" id="ownIdeaImageFile" onchange="onOwnIdeaImageSelected(event)" style="margin-bottom:6px">
-        <div id="ownIdeaImagePreview" style="width:110px;height:110px;border-radius:10px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text3);overflow:hidden">بدون عکس</div>
+      <div style="min-width:220px;max-width:330px">
+        <label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px">🖼 عکس‌های محصول (چندتایی، تا ۱۰ تا؛ ۶ تای اول برای خواندن استفاده می‌شود)</label>
+        <input type="file" accept="image/*" id="ownIdeaImageFile" multiple onchange="onOwnIdeaImagesSelected(event)" style="margin-bottom:6px;max-width:100%">
+        <div id="ownIdeaImagePreview" style="display:flex;gap:6px;flex-wrap:wrap;min-height:40px;align-items:center;font-size:11px;color:var(--text3)">بدون عکس</div>
+        <label style="font-size:12px;font-weight:700;display:block;margin:10px 0 4px">📄 فایل PDF محصول (اختیاری، حداکثر ۴ مگابایت)</label>
+        <input type="file" accept="application/pdf,.pdf" id="ownIdeaPdfFile" onchange="onOwnIdeaPdfSelected(event)" style="max-width:100%">
+        <div id="ownIdeaPdfInfo" style="font-size:11.5px;color:var(--text2);margin-top:4px"></div>
+        <button type="button" class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="ownIdeaReset(true)">🗑 پاک کردن فایل‌ها</button>
       </div>
       <div style="flex:1;min-width:220px">
-        <textarea class="input" id="ownIdeaDesc" rows="3" placeholder="مثلاً: یه جعبه هدیه مقوایی با طرح گل، برای بسته‌بندی جواهرات دست‌ساز، رنگ کِرِم و طلایی..." style="width:100%;margin-bottom:8px"></textarea>
-        <input type="text" class="input" id="ownIdeaKeyword" placeholder="کلیدواژه‌ی جستجو (اختیاری — خالی بذاری، خودش از روی توضیحت می‌سازه)" style="width:100%;margin-bottom:8px;direction:ltr">
-        <button class="btn btn-primary btn-sm" onclick="generateFromOwnIdea()">🔍 تحقیق و ساخت از روی این ایده</button>
+        <textarea class="input" id="ownIdeaDesc" rows="4" placeholder="توضیح یا نکته‌ی اضافه (اختیاری وقتی فایل داری). مثلاً: «این بسته‌ی ۵ طرح استنسیل دیوار است، اندازه‌ها در PDF هست، مخاطب: دکوراسیون خانه»" style="width:100%;margin-bottom:8px"></textarea>
+        <input type="text" class="input" id="ownIdeaKeyword" placeholder="کلیدواژه‌ی جستجو (اختیاری — خالی بذاری، خودش از روی فایل‌ها یا توضیحت می‌سازد)" style="width:100%;margin-bottom:8px;direction:ltr">
+        <button class="btn btn-primary btn-sm" onclick="generateFromOwnIdea()">🔍 تحقیق و ساخت از روی این محصول</button>
       </div>
     </div>
   </div>
+  <details class="card" id="ebPanel" style="margin-bottom:16px"><summary style="cursor:pointer;font-weight:700">🐝 داده‌های EverBee (اختیاری) <span id="ebCount" style="font-weight:400;color:var(--text2);font-size:12px"></span></summary>
+    <div style="font-size:12px;color:var(--text2);margin:8px 0">در EverBee جدول Product Analytics یا Keywords را باز کن، ردیف‌ها را با سرستون کپی کن و اینجا بچسبان، یا فایل CSV را انتخاب کن. داده‌ها با لینک یا عنوان به نمونه‌های «مرحله‌ی ۱» وصل می‌شوند و فروش ماهانه‌ی تخمینی، درآمد، فروش کل، نظرات و (اگر در جدول باشد) تعداد در کارت را کنار هر نمونه نشان می‌دهند. اگر جدول کلیدواژه بچسبانی، جست‌وجوی ماهانه و رقابت کنار هر پیشنهاد می‌آید.</div>
+    <textarea class="input" id="ebText" rows="5" style="width:100%;direction:ltr" placeholder="Title&#9;Monthly Sales&#9;Monthly Revenue&#9;Total Sales&#9;Reviews&#9;..."></textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"><input type="file" id="ebFile" accept=".csv,.tsv,.txt" onchange="ebLoadFile(event)"><button class="btn btn-primary btn-sm" onclick="ebImport()">ثبت داده‌ها</button><button class="btn btn-secondary btn-sm" onclick="ebSortPicks()">↕ مرتب‌سازی پیشنهادها بر اساس EverBee</button><button class="btn btn-secondary btn-sm" onclick="ebClear()">🗑 پاک کردن</button></div>
+    <div id="ebMsg" style="font-size:12px;margin-top:8px;color:var(--text2)"></div>
+  </details>
   <div id="ideaPickCard" class="card hidden" style="margin-bottom:16px"></div>
   <div class="daily-grid" id="dailyGrid"><div style="grid-column:1/-1;text-align:center;padding:50px;color:var(--text2)"><div style="font-size:48px;margin-bottom:12px">🔎</div><div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px">هنوز پیشنهادی ساخته نشده</div><div>روی «تحقیق و پیشنهاد جدید» کلیک کنید — نیاز به App API Key اتسی توی تنظیمات داره</div></div></div>
 
@@ -2231,6 +2242,7 @@ let S = {
   analyzedHash: '',   // hash محصولات — اگر تغییر نکرده، آنالیز مجدد نشود
   competitors: [],
   dailyProducts: [],
+  everbee: null, // داده‌هایی که کاربر از EverBee چسبانده (ردیف لیستینگ و کلیدواژه)
   ideaPicks: null, // مرحله‌ی اول «تحقیق و پیشنهاد»: ایده‌های شورت‌لیست‌شده با ۳ لینک نمونه، تا قبل از ساخت جزئیات انتخاب شوند
   dailyArchive: [], // آرشیو سبک همه‌ی پیشنهادهای قبلی (فقط مشخصات، نه فایل‌های سنگین) — برای جلوگیری از تکرار و مرور بعدی
   currentOpt: null, currentDaily: null, pendingOpt: null,
@@ -2274,7 +2286,7 @@ function loadShopToState(shopId){
   S.pushedToEtsy=shop.pushedToEtsy||{};
   S.analyzedHash=shop.analyzedHash||'';
   S.competitors=shop.competitors||[];
-  S.dailyArchive=shop.dailyArchive||[]; S.ideaPicks=shop.ideaPicks||null; try{ renderIdeaPicks(); }catch(e){}
+  S.dailyArchive=shop.dailyArchive||[]; S.ideaPicks=shop.ideaPicks||null; S.everbee=shop.everbee||null; try{ ebRefreshCount(); }catch(e){} try{ renderIdeaPicks(); }catch(e){}
   S.shopStyle=shop.shopStyle||'';
   S.shopTarget=shop.shopTarget||'';
   S.bannedText=(shop.bannedText==null?BANNED_DEFAULT:shop.bannedText);
@@ -2317,7 +2329,7 @@ function saveCurrentShop(){
   shop.pushedToEtsy=S.pushedToEtsy||{};
   shop.analyzedHash=S.analyzedHash;
   shop.competitors=S.competitors;
-  shop.dailyArchive=S.dailyArchive; shop.ideaPicks=S.ideaPicks||null;
+  shop.dailyArchive=S.dailyArchive; shop.ideaPicks=S.ideaPicks||null; shop.everbee=S.everbee||null;
   shop.shopStyle=S.shopStyle||'';
   shop.shopTarget=S.shopTarget||'';
   shop.bannedText=(S.bannedText==null?BANNED_DEFAULT:S.bannedText);
@@ -3355,6 +3367,7 @@ ${shopCtx()}\nExisting or previously suggested products (never repeat or paraphr
   if(!silent){
     S.ideaPicks = { at: Date.now(), count: o.count, nResearched: researched.length,
       items: shortlist.map((r, i) => ({ keyword: r.keyword, score: Math.round((r.score || 0) * 100) / 100, research: r.research, sel: i < o.count })) };
+    try{ ebApplyToPicks(); }catch(e){}
     saveCurrentShop();
     fill.style.width = '100%'; txt.textContent = '✅ تحقیق تمام شد — از بین پیشنهادها انتخاب کن';
     log(`✓ ${shortlist.length} پیشنهاد با ۳ لینک نمونه آماده است؛ انتخاب کن تا جزئیات کامل ساخته شود`, 'ok');
@@ -3365,10 +3378,10 @@ ${shopCtx()}\nExisting or previously suggested products (never repeat or paraphr
   await ideaFinalize(shortlist, o, niche, existing, o.count, fill, txt, researched.length, done);
 }
 async function ideaFinalize(shortlist, o, niche, existing, nPick, fill, txt, nResearched, done){
-  const block = shortlist.map(r => `- "${r.keyword}": ${r.research.listingCount} active listings; price median $${r.research.medianPrice} (p25 $${r.research.p25} – p75 $${r.research.p75}); median views/day ${r.research.viewsPerDay}; median favorites/day ${r.research.favPerDay}; top listing favorites ${r.research.topFavorers}; digital share ${r.research.digitalShare}%; OPPORTUNITY SCORE ${r.research.opportunity}; common tags: ${r.research.sampleTags.join(', ') || '—'}; sample competitor listings (for format and style only, never copy): ${(r.research.topListings || []).map(t => '"' + t.title + '"').join(' | ') || '—'}`).join('\n');
+  const block = shortlist.map(r => `- "${r.keyword}": ${r.research.listingCount} active listings; price median $${r.research.medianPrice} (p25 $${r.research.p25} – p75 $${r.research.p75}); median views/day ${r.research.viewsPerDay}; median favorites/day ${r.research.favPerDay}; top listing favorites ${r.research.topFavorers}; digital share ${r.research.digitalShare}%; OPPORTUNITY SCORE ${r.research.opportunity}; common tags: ${r.research.sampleTags.join(', ') || '—'}; sample competitor listings (for format and style only, never copy): ${(r.research.topListings || []).map(t => '"' + t.title + '"' + (t.carts != null ? ' [in ' + t.carts + ' shoppers\' carts right now]' : '') + (t.ev ? ' [EverBee: ' + evText(t.ev) + ']' : '')).join(' | ') || '—'}${r.ev ? '; EverBee keyword data: ' + evKwText(r.ev) : ''}`).join('\n');
   txt.textContent = 'انتخاب نهایی و نوشتن محتوا با Claude...';
   const finalPrompt = `You are an expert Etsy SEO copywriter and market analyst. Shop niche: ${niche}.\nREAL data from a live Etsy search (not guesses), already ranked by opportunity:\n${block}\n\n` +
-    `Choose exactly ${nPick} product(s) from this list with the best balance of real demand (views/favorites per day) and manageable competition. Prefer higher OPPORTUNITY SCORE unless there is a clear reason not to, and avoid near-duplicates of each other.\n` +
+    `Choose exactly ${nPick} product(s) from this list with the best balance of real demand (views/favorites per day) and manageable competition. Prefer higher OPPORTUNITY SCORE unless there is a clear reason not to, and avoid near-duplicates of each other. Where a sample listing shows how many shoppers have it in their cart, treat that as strong buying-intent evidence. EverBee numbers (estimated monthly sales/revenue, searches) are third-party estimates: use them to favor proven demand, but never quote them in the listing text.\n` +
     `RULES: the "keyword" field must be copied EXACTLY from the list. Price must be a USD number between that keyword's p25 and p75 (typical for the niche). ` +
     (o.digital ? (shopIsCutNiche() ? 'The product is a DIGITAL download (cut files / templates): write for that. ' : 'The product is a DIGITAL download that fits this shop\'s niche: write for that; mention cutting machines only if this specific product is a cut-file version, and then only as a minor point.') : '') +
     (o.sizeN > 1 ? `The product will be sold in ${o.sizeN} SIZE OPTIONS in one listing: mention "${o.sizeN} Sizes" naturally in the title, add a "SIZES INCLUDED" bullet in the description and a relevant tag; do NOT invent exact dimensions (the seller adds them later). ` : '') +
@@ -3412,22 +3425,152 @@ function renderIdeaPicks(){
   const nSel = items.filter(x => x.sel).length;
   const shopLine = l => { const sh = l.shop; if(!sh) return ''; const yrs = sh.created ? Math.round((Date.now() / 1000 - sh.created) / (365.25 * 86400) * 10) / 10 : null;
     return '<span style="display:block;color:' + (l.weak ? '#d9480f' : 'var(--text2)') + '">🏪 ' + escHtml(sh.name) + ' · ' + Number(sh.sold).toLocaleString('en-US') + ' sales' + (yrs != null ? ' · ' + yrs + ' yr' : '') + (sh.rating != null ? ' · ★' + Number(sh.rating).toFixed(1) : '') + (l.weak ? ' · ⚠ weak shop' : '') + '</span>'; };
-  const sample = l => '<a href="' + escHtml(l.url) + '" target="_blank" rel="noopener" style="display:flex;gap:8px;align-items:center;text-decoration:none;color:inherit;background:var(--surface3);border-radius:8px;padding:6px;min-width:0">'
+  const sampleA = l => '<a href="' + escHtml(l.url) + '" target="_blank" rel="noopener" style="display:flex;gap:8px;align-items:center;text-decoration:none;color:inherit;background:var(--surface3);border-radius:8px;padding:6px;min-width:0">'
     + (l.img ? '<img src="' + escHtml(l.img) + '" alt="" loading="lazy" style="width:56px;height:56px;object-fit:cover;border-radius:6px;flex:none" onerror="this.style.display=\'none\'">' : '')
     + '<span style="min-width:0;font-size:11.5px;line-height:1.6;direction:ltr;text-align:left"><span style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escHtml(l.title || '') + '</span>'
-    + '<span style="color:var(--text2)">' + (l.price != null ? '$' + l.price + ' · ' : '') + '♥ ' + (l.favorers || 0) + (l.views != null ? ' · 👁 ' + Number(l.views).toLocaleString('en-US') + ' (' + l.viewsPerDay + '/day)' : '') + ' · Etsy ↗</span>' + shopLine(l) + (l.lowViews ? '<span style="display:block;color:#d9480f">⚠ low views</span>' : '') + '</span></a>';
+    + '<span style="color:var(--text2)">' + (l.price != null ? '$' + l.price + ' · ' : '') + '♥ ' + (l.favorers || 0) + (l.views != null ? ' · 👁 ' + Number(l.views).toLocaleString('en-US') + ' (' + l.viewsPerDay + '/day)' : '') + ' · Etsy ↗</span>' + shopLine(l) + evLine(l) + (l.lowViews ? '<span style="display:block;color:#d9480f">⚠ low views</span>' : '') + '</span></a>';
+  const sample = (l, i, j) => '<div style="display:flex;flex-direction:column;gap:4px;min-width:0">' + sampleA(l)
+    + '<label style="font-size:11.5px;color:var(--text2);display:flex;gap:6px;align-items:center;flex-wrap:wrap">🛒 در کارت <input type="number" min="0" value="' + (l.carts != null ? l.carts : '') + '" placeholder="؟" onchange="setIdeaCarts(' + i + ',' + j + ',this.value)" style="width:70px;padding:3px 6px"> <span style="font-size:10.5px">(روی صفحه‌ی Etsy «in X carts» را ببین)</span></label></div>';
   const card = (it, i) => {
     const r = it.research || {}, ls = r.topListings || [];
     return '<div style="border:1px solid ' + (it.sel ? 'var(--orange)' : 'var(--border)') + ';border-radius:12px;padding:12px;margin-bottom:10px;background:var(--surface2)">'
       + '<label style="display:flex;gap:8px;align-items:center;cursor:pointer;font-weight:700;font-size:14px"><input type="checkbox" ' + (it.sel ? 'checked' : '') + ' onchange="toggleIdeaPick(' + i + ',this.checked)"> <span dir="ltr">' + escHtml(it.keyword) + '</span></label>'
-      + '<div style="font-size:11.5px;color:var(--text2);margin:6px 0 8px">📊 ' + escHtml(ideaDataLine(r)) + (r.strongShare != null ? ' · فروشگاه‌های قوی در بین نمونه‌ها: ' + Math.round(r.strongShare * 100) + '٪' : '') + (r.viewOkShare != null ? ' · لیستینگ‌های با بازدید کافی: ' + Math.round(r.viewOkShare * 100) + '٪' : '') + '</div>'
-      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px">' + (ls.length ? ls.map(sample).join('') : '<div style="font-size:12px;color:var(--text2)">نمونه‌ی لینک‌دار از Etsy برنگشت.</div>') + '</div></div>';
+      + '<div style="font-size:11.5px;color:var(--text2);margin:6px 0 8px">📊 ' + escHtml(ideaDataLine(r)) + (r.strongShare != null ? ' · فروشگاه‌های قوی در بین نمونه‌ها: ' + Math.round(r.strongShare * 100) + '٪' : '') + (r.viewOkShare != null ? ' · لیستینگ‌های با بازدید کافی: ' + Math.round(r.viewOkShare * 100) + '٪' : '') + cartSumHtml(ls, i) + evKwHtml(it) + '</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px">' + (ls.length ? ls.map((l, j) => sample(l, i, j)).join('') : '<div style="font-size:12px;color:var(--text2)">نمونه‌ی لینک‌دار از Etsy برنگشت.</div>') + '</div></div>';
   };
   box.innerHTML = '<div class="card-title" style="margin-bottom:4px">🧭 مرحله‌ی ۱ از ۲ — از بین این پیشنهادها انتخاب کن</div>'
     + '<div style="font-size:12px;color:var(--text2);margin-bottom:12px">برای هر پیشنهاد، ۳ نمونه‌ی واقعی از Etsy هست. لینک‌ها را باز کن و آنهایی را که به نظرت بهتر است تیک بزن؛ فقط برای همان‌ها عنوان، تگ و توضیحات کامل ساخته می‌شود. بعد از ساخت، «✅ تأیید» نهایی را روی هر کارت می‌زنی.</div>'
     + items.map(card).join('')
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px"><button class="btn btn-primary" id="ideaBuildBtn" onclick="buildSelectedIdeas()">✨ ساخت جزئیات کامل برای انتخاب‌شده‌ها (<span id="ideaSelN">' + nSel + '</span>)</button>'
     + '<button class="btn btn-secondary btn-sm" onclick="clearIdeaPicks()">🗑 پاک کردن فهرست</button></div>';
+}
+// ── داده‌های EverBee: کاربر از جدول یا فایل CSV خودش کپی می‌کند؛ اینجا خوانده و به نمونه‌ها و کلیدواژه‌ها وصل می‌شود ──
+// (EverBee API عمومی ندارد؛ فقط چیزی که خود کاربر از حساب خودش می‌چسباند خوانده می‌شود)
+function ebSplit(text){
+  const lines = String(text || '').replace(/\r/g, '').split('\n').filter(l => l.trim());
+  if(!lines.length) return [];
+  const d = ['\t', ';', ','].map(c => [c, lines[0].split(c).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const parse = line => { const out = []; let cur = '', q = false;
+    for(let i = 0; i < line.length; i++){ const ch = line[i];
+      if(ch === '"'){ if(q && line[i + 1] === '"'){ cur += '"'; i++; } else q = !q; }
+      else if(ch === d && !q){ out.push(cur.trim()); cur = ''; } else cur += ch; }
+    out.push(cur.trim()); return out; };
+  return lines.map(parse);
+}
+function ebNum(v){
+  const s = String(v == null ? '' : v).trim().toLowerCase().replace(/[$€£,\s%]/g, ''); if(!s) return null;
+  const n = parseFloat(s); if(!isFinite(n)) return null; return /k$/.test(s) ? n * 1000 : (/m$/.test(s) ? n * 1000000 : n);
+}
+function ebField(h){
+  const x = String(h || '').toLowerCase().trim(); if(!x) return null;
+  if(/url|link/.test(x)) return 'url';
+  if(/listing\s*id|^id$/.test(x)) return 'id';
+  if(/cart/.test(x)) return 'carts';
+  if(/age|created|listing\s*date/.test(x)) return 'age';
+  if(/revenue/.test(x)) return /total|all/.test(x) ? 'totalRevenue' : 'revenue';
+  if(/sales|sold/.test(x)) return /total|all|lifetime/.test(x) ? 'totalSales' : (/month|30|est/.test(x) ? 'monthlySales' : 'totalSales');
+  if(/review/.test(x)) return 'reviews';
+  if(/view/.test(x)) return 'views';
+  if(/fav|like/.test(x)) return 'fav';
+  if(/conver/.test(x)) return 'conv';
+  if(/search|volume/.test(x)) return 'searches';
+  if(/compet/.test(x)) return 'competition';
+  if(/price/.test(x)) return 'price';
+  if(/^keyword|search\s*term|^term$/.test(x)) return 'keyword';
+  if(/title|name|product|listing/.test(x)) return 'title';
+  return null;
+}
+function ebParse(text){
+  const rows = ebSplit(text); if(rows.length < 2) return { listings: [], kws: [], map: [], headers: rows[0] || [] };
+  let hi = rows.findIndex(r => r.filter(c => ebField(c)).length >= 2); if(hi < 0) hi = 0;
+  const headers = rows[hi], map = headers.map(ebField);
+  const has = f => map.includes(f);
+  const kwMode = (has('keyword') || (has('title') && !has('url') && !has('id'))) && (has('searches') || has('competition')) && !has('monthlySales') && !has('totalSales') && !has('revenue');
+  const num = ['searches', 'price', 'monthlySales', 'totalSales', 'revenue', 'totalRevenue', 'reviews', 'views', 'fav', 'conv', 'age', 'carts'];
+  const listings = [], kws = [];
+  rows.slice(hi + 1).forEach(r => {
+    const o = {}; map.forEach((f, i) => { if(!f || r[i] == null) return; o[f] = num.includes(f) ? ebNum(r[i]) : r[i]; });
+    if(o.competition != null && /^[\d.,\s%kKmM]+$/.test(o.competition)) o.competition = ebNum(o.competition);
+    if(kwMode){ const k = String(o.keyword || o.title || '').trim(); if(k) kws.push({ keyword: k, searches: o.searches != null ? o.searches : null, competition: o.competition != null ? o.competition : null }); return; }
+    const id = o.id || (String(o.url || '').match(/listing\/(\d+)/) || [])[1];
+    if(!(id || o.title)) return;
+    listings.push({ id: id ? String(id) : '', title: String(o.title || '').slice(0, 140), price: o.price, monthlySales: o.monthlySales, revenue: o.revenue, totalSales: o.totalSales, reviews: o.reviews, views: o.views, fav: o.fav, conv: o.conv, age: o.age, carts: o.carts });
+  });
+  return { listings, kws, map: headers.map((h, i) => map[i] ? h + ' → ' + map[i] : '').filter(Boolean), headers };
+}
+const ebTok = s => new Set(String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ').filter(w => w.length > 2));
+function ebFindByTitle(rows, title){
+  const a = ebTok(title); if(a.size < 3) return null; let best = null, bs = 0;
+  rows.forEach(r => { if(!r.title) return; const b = ebTok(r.title); let n = 0; a.forEach(w => { if(b.has(w)) n++; }); const sc = n / Math.min(a.size, b.size || 1); if(sc > bs){ bs = sc; best = r; } });
+  return bs >= 0.75 ? best : null;
+}
+function ebPick(m){ const o = {}; ['monthlySales', 'revenue', 'totalSales', 'reviews', 'views', 'fav', 'conv', 'age', 'carts'].forEach(k => { if(m[k] != null) o[k] = m[k]; }); return o; }
+function evText(ev){
+  if(!ev) return ''; const f = n => Number(n).toLocaleString('en-US'), p = [];
+  if(ev.monthlySales != null) p.push('est. ' + f(ev.monthlySales) + ' sales/mo'); if(ev.revenue != null) p.push('est. $' + f(ev.revenue) + '/mo');
+  if(ev.totalSales != null) p.push(f(ev.totalSales) + ' total sales'); if(ev.reviews != null) p.push(f(ev.reviews) + ' reviews'); if(ev.conv != null) p.push('conv ' + ev.conv + '%');
+  return p.join(' · ');
+}
+function evKwText(k){ const p = []; if(k.searches != null) p.push('~' + Number(k.searches).toLocaleString('en-US') + ' searches/mo'); if(k.competition != null) p.push('competition ' + k.competition); return p.join(', '); }
+function evLine(l){ const t = evText(l.ev); return t ? '<span style="display:block;color:#b7791f">🐝 ' + escHtml(t) + '</span>' : ''; }
+function evKwHtml(it){ return it.ev ? ' · 🐝 ' + escHtml(evKwText(it.ev)) : ''; }
+function ebSalesOf(it){ return ((it.research && it.research.topListings) || []).reduce((a, l) => a + ((l.ev && l.ev.monthlySales) || 0), 0); }
+function ebApplyToPicks(){
+  const P = S.ideaPicks, E = S.everbee; if(!P || !P.items || !E) return 0;
+  const rows = E.rows || [], byId = new Map(); rows.forEach(r => { if(r.id) byId.set(String(r.id), r); });
+  const kws = E.kws || []; let n = 0;
+  P.items.forEach(it => {
+    ((it.research && it.research.topListings) || []).forEach(l => {
+      const id = (String(l.url || '').match(/listing\/(\d+)/) || [])[1]; const m = (id && byId.get(id)) || ebFindByTitle(rows, l.title);
+      if(m){ l.ev = ebPick(m); if(m.carts != null) l.carts = m.carts; n++; }
+    });
+    const kw = String(it.keyword || '').toLowerCase().trim(); const k = kws.find(x => x.keyword.toLowerCase().trim() === kw) || kws.find(x => { const y = x.keyword.toLowerCase().trim(); return y && (y.includes(kw) || kw.includes(y)); });
+    if(k) it.ev = { searches: k.searches, competition: k.competition };
+  });
+  saveCurrentShop(); return n;
+}
+function ebRefreshCount(){
+  const el = document.getElementById('ebCount'); if(!el) return; const E = S.everbee;
+  el.textContent = E && ((E.rows || []).length || (E.kws || []).length) ? '— ' + (E.rows || []).length + ' لیستینگ، ' + (E.kws || []).length + ' کلیدواژه ثبت شده' : '';
+}
+function ebImport(){
+  const msg = document.getElementById('ebMsg'), text = (document.getElementById('ebText') || {}).value || '';
+  if(!text.trim()){ msg.textContent = 'اول داده‌ها را بچسبان یا فایل CSV را انتخاب کن.'; return; }
+  const r = ebParse(text);
+  if(!r.listings.length && !r.kws.length){ msg.textContent = 'ستون قابل‌شناسایی پیدا نشد. سرستون‌های دیده‌شده: ' + (r.headers || []).join(' | ').slice(0, 300) + ' — ردیف اول باید سرستون‌ها (مثل Title، Monthly Sales، Revenue) باشد.'; return; }
+  const E = S.everbee = S.everbee || { rows: [], kws: [] };
+  const key = x => x.id || String(x.title || '').toLowerCase();
+  const seen = new Map(E.rows.map(x => [key(x), x])); r.listings.forEach(x => seen.set(key(x), x)); E.rows = [...seen.values()].slice(-400);
+  const kseen = new Map(E.kws.map(x => [x.keyword.toLowerCase(), x])); r.kws.forEach(x => kseen.set(x.keyword.toLowerCase(), x)); E.kws = [...kseen.values()].slice(-300);
+  E.at = Date.now(); const n = ebApplyToPicks(); saveCurrentShop(); ebRefreshCount(); renderIdeaPicks();
+  msg.textContent = '✅ ' + r.listings.length + ' ردیف لیستینگ و ' + r.kws.length + ' ردیف کلیدواژه خوانده شد' + (S.ideaPicks ? ' · ' + n + ' نمونه‌ی بالا به داده‌ها وصل شد' : ' (بعد از «تحقیق و پیشنهاد جدید» به نمونه‌ها وصل می‌شوند)') + '. ستون‌های شناسایی‌شده: ' + r.map.join('، ');
+}
+function ebLoadFile(evt){
+  const f = evt.target.files && evt.target.files[0]; if(!f) return;
+  const rd = new FileReader(); rd.onload = () => { document.getElementById('ebText').value = String(rd.result || ''); ebImport(); }; rd.readAsText(f);
+}
+function ebSortPicks(){
+  const P = S.ideaPicks, msg = document.getElementById('ebMsg');
+  if(!P || !P.items || !P.items.length){ msg.textContent = 'فهرست پیشنهادی برای مرتب‌کردن نیست.'; return; }
+  if(!P.items.some(it => ebSalesOf(it) > 0 || (it.ev && it.ev.searches))){ msg.textContent = 'هنوز داده‌ی EverBee به هیچ‌کدام وصل نشده است.'; return; }
+  P.items = P.items.map((it, i) => ({ it, i })).sort((a, b) => (ebSalesOf(b.it) - ebSalesOf(a.it)) || (((b.it.ev && b.it.ev.searches) || 0) - ((a.it.ev && a.it.ev.searches) || 0)) || (a.i - b.i)).map(x => x.it);
+  saveCurrentShop(); renderIdeaPicks(); msg.textContent = '↕ پیشنهادها بر پایه‌ی فروش ماهانه‌ی تخمینی نمونه‌ها (و جست‌وجوی ماهانه) مرتب شدند.';
+}
+function ebClear(){
+  if(!S.everbee || !confirm('داده‌های EverBee پاک شود؟')) return;
+  S.everbee = null; const P = S.ideaPicks;
+  if(P && P.items) P.items.forEach(it => { delete it.ev; ((it.research && it.research.topListings) || []).forEach(l => { delete l.ev; }); });
+  saveCurrentShop(); ebRefreshCount(); renderIdeaPicks(); document.getElementById('ebMsg').textContent = 'پاک شد.';
+}
+function cartSumHtml(ls, i){
+  const vals = (ls || []).map(l => l.carts).filter(v => v != null && isFinite(v)), tot = vals.reduce((a, b) => a + b, 0);
+  return '<span id="ideaCartSum_' + i + '">' + (vals.length ? ' · 🛒 مجموع در کارت (واردشده): ' + tot : '') + '</span>';
+}
+function setIdeaCarts(i, j, v){
+  const it = S.ideaPicks && S.ideaPicks.items && S.ideaPicks.items[i]; const l = it && it.research && it.research.topListings && it.research.topListings[j]; if(!l) return;
+  const n = String(v).trim() === '' ? null : Math.max(0, Math.round(Number(v)));
+  l.carts = (n == null || !isFinite(n)) ? null : n; saveCurrentShop();
+  const sp = document.getElementById('ideaCartSum_' + i); if(sp) sp.outerHTML = cartSumHtml(it.research.topListings, i);
 }
 function toggleIdeaPick(i, on){
   const it = S.ideaPicks && S.ideaPicks.items && S.ideaPicks.items[i]; if(!it) return;
@@ -3447,7 +3590,7 @@ async function buildSelectedIdeas(){
   fill.style.width = '60%';
   const o = ideaOpts(), niche = getNiche(), t0 = Date.now();
   const existing = [...new Set([...S.products.slice(0,15).map(p => p.TITLE), ...S.dailyArchive.slice(0,40).map(a => a.title)].filter(Boolean))].join('\n');
-  const shortlist = chosen.map(x => ({ keyword: x.keyword, research: x.research, score: x.score || 0 }));
+  const shortlist = chosen.map(x => ({ keyword: x.keyword, research: x.research, score: x.score || 0, ev: x.ev || null }));
   try{ await ideaFinalize(shortlist, o, niche, existing, shortlist.length, fill, txt, P.nResearched || shortlist.length, done); }
   finally{ if(btn) btn.disabled = false; }
   // فقط پیشنهادهایی که واقعاً ساخته شدند از فهرست برمی‌دارند؛ بقیه برای بعد می‌مانند
@@ -3474,32 +3617,67 @@ function sizeSelHtml(i, n){
   return '<label style="font-size:12px;display:inline-flex;gap:4px;align-items:center" title="تعداد اندازه‌ی این محصول در یک لیستینگ">📐 اندازه <select onchange="setDailySizeN(' + i + ',this.value)" style="width:auto;padding:3px 6px">' + [1,2,3,4,5,6].map(k => '<option value="' + k + '"' + (k === (Number(n) || 1) ? ' selected' : '') + '>' + k + '</option>').join('') + '</select></label>';
 }
 
-function onOwnIdeaImageSelected(evt){
-  const file = evt.target.files[0];
-  if(!file) return;
-  const img = new Image();
-  const url = URL.createObjectURL(file);
-  img.onload = () => {
-    // برای اینکه حافظه‌ی محلی پر نشه، قبل از ذخیره کوچیک و فشرده‌ش می‌کنیم
-    const MAXD = 500;
-    const scale = Math.min(1, MAXD/Math.max(img.width, img.height));
-    const canvas = document.createElement('canvas');
-    canvas.width = img.width*scale; canvas.height = img.height*scale;
-    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-    window.__ownIdeaImageDataUrl = dataUrl;
-    document.getElementById('ownIdeaImagePreview').innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover">`;
-    URL.revokeObjectURL(url);
-  };
-  img.src = url;
+// ── «ایده‌ی خودم» با فایل: چند عکس + PDF محصولی که جای دیگر ساخته شده؛ Claude (روی سرور) آن‌ها را می‌بیند و لیستینگ را عیناً برای همان محصول می‌نویسد ──
+window.__ownIdeaImgs = window.__ownIdeaImgs || []; window.__ownIdeaPdf = window.__ownIdeaPdf || null;
+function ownImgToData(file){
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const draw = maxD => { const sc = Math.min(1, maxD / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.width * sc)); c.height = Math.max(1, Math.round(img.height * sc)); const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', 0.8); };
+      try{ const big = draw(1100); resolve({ b64: big.split(',')[1], thumb: draw(360), name: file.name }); }catch(e){ reject(e); }
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('عکس خوانده نشد: ' + file.name)); };
+    img.src = url;
+  });
+}
+function renderOwnIdeaFiles(){
+  const box = document.getElementById('ownIdeaImagePreview'); if(!box) return;
+  const a = window.__ownIdeaImgs || [];
+  box.innerHTML = a.length ? a.map(x => '<img src="' + x.thumb + '" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">').join('') + '<span style="width:100%">' + a.length + ' عکس انتخاب شد' + (a.length > 6 ? ' (فقط ۶ تای اول خوانده می‌شود)' : '') + '</span>' : 'بدون عکس';
+  const pi = document.getElementById('ownIdeaPdfInfo'), pdf = window.__ownIdeaPdf;
+  if(pi) pi.textContent = pdf ? '📄 ' + pdf.name + ' — ' + (pdf.size / 1048576).toFixed(1) + ' مگابایت' : '';
+}
+async function onOwnIdeaImagesSelected(evt){
+  const files = [...(evt.target.files || [])].slice(0, 10); if(!files.length) return;
+  const out = [];
+  for(const f of files){ try{ out.push(await ownImgToData(f)); }catch(e){ toast(e.message); } }
+  window.__ownIdeaImgs = out; renderOwnIdeaFiles();
+}
+function onOwnIdeaPdfSelected(evt){
+  const f = evt.target.files && evt.target.files[0]; if(!f) return;
+  if(f.size > 4 * 1048576){ toast('PDF بزرگ‌تر از ۴ مگابایت است؛ نسخه‌ی کم‌حجم‌تر (مثلاً فقط چند صفحه‌ی اصلی) را بده'); evt.target.value = ''; window.__ownIdeaPdf = null; renderOwnIdeaFiles(); return; }
+  const rd = new FileReader();
+  rd.onload = () => { const u = String(rd.result || ''); window.__ownIdeaPdf = { name: f.name, size: f.size, b64: u.slice(u.indexOf(',') + 1) }; renderOwnIdeaFiles(); };
+  rd.readAsDataURL(f);
+}
+function ownIdeaReset(files){
+  window.__ownIdeaImgs = []; window.__ownIdeaPdf = null;
+  ['ownIdeaImageFile', 'ownIdeaPdfFile'].forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
+  if(!files){ ['ownIdeaDesc', 'ownIdeaKeyword'].forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; }); }
+  renderOwnIdeaFiles();
+}
+async function serverAIFiles(prompt, maxTokens, model, images, pdf){
+  const body = { prompt, max_tokens: maxTokens, model, images: (images || []).slice(0, 6).map(x => ({ media_type: 'image/jpeg', data: x.b64 })) };
+  if(pdf) body.documents = [{ media_type: 'application/pdf', data: pdf.b64 }];
+  const res = await fetch(crApiUrl('design_ai.php'), { method: 'POST', headers: crHeaders(), body: JSON.stringify(body) });
+  const d = await mktParseResponse(res); if(!d.text) throw new Error('پاسخ خالی از سرور'); return d.text;
+}
+function ownImgsHtml(p){
+  const a = (p.ownIdeaImages && p.ownIdeaImages.length) ? p.ownIdeaImages : (p.ownIdeaImage ? [p.ownIdeaImage] : []);
+  if(!a.length && !p.ownIdeaPdfName) return '';
+  return '<div style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">' + a.map(src => '<img src="' + src + '" onclick="openImageLightbox(this.src)" style="width:110px;height:110px;object-fit:cover;border-radius:10px;border:1px solid var(--border);cursor:zoom-in">').join('')
+    + (p.ownIdeaPdfName ? '<span style="font-size:12px;color:var(--text2)">📄 ' + escHtml(p.ownIdeaPdfName) + '</span>' : '') + '</div>';
 }
 
 async function generateFromOwnIdea(){
   const desc = document.getElementById('ownIdeaDesc').value.trim();
-  if(!desc){ alert('لطفاً توضیحات محصول مدنظرت رو بنویس'); return; }
+  const imgs = window.__ownIdeaImgs || [], pdf = window.__ownIdeaPdf || null, hasFiles = !!(imgs.length || pdf);
+  if(!desc && !hasFiles){ alert('توضیحات محصول را بنویس، یا عکس/PDF محصولی را که ساخته‌ای بده'); return; }
+  if(hasFiles && !S.contentBackendUrl){ alert('برای اینکه Claude عکس‌ها و PDF را ببیند، آدرس بک‌اند سوشال‌مدیا باید در تنظیمات وارد شده باشد (خواندن فایل‌ها روی سرور انجام می‌شود).'); return; }
   if(!S.etsyApiKey){ alert('برای تحقیق واقعی رقبا، اول App API Key اتسی رو توی تنظیمات وارد کن.'); nav('settings'); return; }
   let keyword = document.getElementById('ownIdeaKeyword').value.trim();
-  const imageDataUrl = window.__ownIdeaImageDataUrl || null;
+  const imageDataUrl = (imgs[0] && imgs[0].thumb) || null;
   const szOpt = ideaOpts();
 
   goToProductSuggestTab();
@@ -3511,7 +3689,10 @@ async function generateFromOwnIdea(){
     if(!keyword){
       fill.style.width='15%'; txt.textContent='ساخت کلیدواژه‌ی جستجو از روی توضیحت...';
       const kwPrompt=`فروشنده‌ی یه فروشگاه اتسی این ایده‌ی محصول رو داره: "${desc}"\nحوزه‌ی فروشگاه: ${niche}\nیه عبارت جستجوی کوتاه انگلیسی (۲ تا ۴ کلمه) بده که دقیقاً همین محصول رو روی اتسی جستجو کنه.\nفقط JSON: {"keyword":"..."}\nفقط JSON.`;
-      const kwText = await callClaude(kwPrompt, 150);
+      const ownModel = ((document.getElementById('ideaModel') || {}).value === 'sonnet') ? 'sonnet' : 'opus';
+      const kwText = hasFiles
+        ? await serverAIFiles('The seller made this product themselves (see the attached files' + (desc ? ' and notes: "' + desc + '"' : '') + '). Shop niche: ' + niche + '. Give ONE short English phrase (2-4 words) a buyer would type into Etsy search to find exactly this product. Return ONLY JSON: {"keyword":"..."}', 8000, ownModel, imgs, pdf)
+        : await callClaude(kwPrompt, 150);
       keyword = (parseJSON(kwText).keyword || niche).trim();
     }
 
@@ -3522,26 +3703,25 @@ async function generateFromOwnIdea(){
     fill.style.width='75%'; txt.textContent='ساخت عنوان/تگ/توضیحات کامل...';
     const researchLine = `${research.listingCount} لیستینگ فعال، قیمت میانگین ${research.avgPrice??'نامشخص'} (بازه ${research.minPrice??'?'} تا ${research.maxPrice??'?'})، محبوب‌ترین رقیب ${research.topFavorers??'?'} علاقه‌مندی، تگ‌های رایج: ${research.sampleTags.join(', ')||'—'}`;
     const langLine = `Write the title, tags, and description in natural, native ${S.contentLanguage||'English'} — not a literal word-for-word translation.`;
-    const finalPrompt=`فروشنده‌ی یه فروشگاه اتسی این ایده‌ی محصول خودش رو داره (این عیناً باید مبنای محصول باشه، نه یه ایده‌ی جدید):\n"${desc}"\n\nاین داده‌ی واقعی از جستجوی زنده‌ی اتسی برای همین محصوله:\n${researchLine}\n\nبر همین اساس، یه لیستینگ کامل و آماده برای همین ایده‌ی مشخص بساز. توی why_sellable مستقیماً به اعداد تحقیق اشاره کن.\n${langLine}\n\n${DESC_FORMAT_HINT}${szOpt.sizeFromDesc ? '\n\nاندازه‌ها: فروشنده اندازه‌ها را خودش در توضیحاتش نوشته. دقیقاً همان‌ها را بخوان و استفاده کن، هیچ اندازه‌ی جدیدی اختراع نکن (cm را ×10 و inch را ×25.4 به میلی‌متر تبدیل کن). اگر محصول تخت است (مثل استنسل، تابلو، طرح چاپی) height را 0 بگذار. اگر بیش از یک اندازه هست، در عنوان "N Sizes" بیاور و در description بخشی به نام "📏 SIZES INCLUDED" با همان اندازه‌ها (mm و in) بگذار. اندازه‌ها را در کلید sizes هم برگردان (به ترتیب کوچک به بزرگ).' : ''}\n\nفقط این JSON رو برگردون:\n{"title":"عنوان SEO شده حداکثر 140 کاراکتر","tags":["13 تگ بدون underscore"],"description":"توضیح کامل حداقل 150 کلمه","price":3.95,"category":"نوع","why_sellable":"دلیل، با عدد از تحقیق"${szOpt.sizeFromDesc ? ',"sizes":[{"label":"Small","length":0,"width":0,"height":0}]' : ''}}\nفقط JSON.`;
-    const text = await callClaude(finalPrompt, 3000);
+    const filesPre = hasFiles ? `IMPORTANT: the seller has ALREADY CREATED this product elsewhere. The attached ${pdf ? 'PDF' + (imgs.length ? ' and images' : '') : 'images'} show the REAL finished product. Write the Etsy listing for EXACTLY this product, as it really is.\n- Take every concrete fact from the files: product type, dimensions/sizes, file formats and what is included, number of pieces or pages, colors, materials, how it is used. The PDF text is the primary source for specs; the images show the style, colors and motifs.\n- NEVER invent a feature, size, file, material or claim that is not visible or written in the files. If a detail is unknown, leave it out of the description.\n- Reuse the product's own wording from the files where natural.\n${bannedPromptLine()}\n\n` : '';
+    const finalPrompt=filesPre+`فروشنده‌ی یه فروشگاه اتسی این ایده‌ی محصول خودش رو داره (این عیناً باید مبنای محصول باشه، نه یه ایده‌ی جدید):\n"${desc || '(read the product from the attached files)'}"\n\nاین داده‌ی واقعی از جستجوی زنده‌ی اتسی برای همین محصوله:\n${researchLine}\n\nبر همین اساس، یه لیستینگ کامل و آماده برای همین ایده‌ی مشخص بساز. توی why_sellable مستقیماً به اعداد تحقیق اشاره کن.\n${langLine}\n\n${DESC_FORMAT_HINT}${szOpt.sizeFromDesc ? '\n\nاندازه‌ها: فروشنده اندازه‌ها را خودش در توضیحاتش نوشته. دقیقاً همان‌ها را بخوان و استفاده کن، هیچ اندازه‌ی جدیدی اختراع نکن (cm را ×10 و inch را ×25.4 به میلی‌متر تبدیل کن). اگر محصول تخت است (مثل استنسل، تابلو، طرح چاپی) height را 0 بگذار. اگر بیش از یک اندازه هست، در عنوان "N Sizes" بیاور و در description بخشی به نام "📏 SIZES INCLUDED" با همان اندازه‌ها (mm و in) بگذار. اندازه‌ها را در کلید sizes هم برگردان (به ترتیب کوچک به بزرگ).' : ''}\n\nفقط این JSON رو برگردون:\n{"title":"عنوان SEO شده حداکثر 140 کاراکتر","tags":["13 تگ بدون underscore"],"description":"توضیح کامل حداقل 150 کلمه","price":3.95,"category":"نوع","why_sellable":"دلیل، با عدد از تحقیق"${szOpt.sizeFromDesc ? ',"sizes":[{"label":"Small","length":0,"width":0,"height":0}]' : ''}}\nفقط JSON.`;
+    const text = hasFiles ? await serverAIFiles(finalPrompt, 8000, ((document.getElementById('ideaModel') || {}).value === 'sonnet') ? 'sonnet' : 'opus', imgs, pdf) : await callClaude(finalPrompt, 3000);
     const p = parseJSON(text);
+    if(p.title) p.title = limitTitle(sanitizeEtsyTitle(p.title));
+    if(Array.isArray(p.tags)) p.tags = p.tags.map(t => String(t).replace(/_/g, ' ').trim()).filter(t => t && t.length <= 20).slice(0, 13);
 
     // اندازه‌های خوانده‌شده از توضیحات خودِ فروشنده (فقط وقتی «از توضیحات خودم» انتخاب شده)
     const ideaSizes = szOpt.sizeFromDesc && Array.isArray(p.sizes)
       ? p.sizes.slice(0,6).map(r => ({on:true, label:String(r.label || 'Size').slice(0,16), length:Math.round(Number(r.length) || 0), width:Math.round(Number(r.width) || 0), height:Math.round(Number(r.height) || 0), height_lid:''})).filter(r => r.length > 0 && r.width > 0)
       : [];
-    const item = { ...p, id:Date.now(), status:'pending', created:new Date().toLocaleDateString('fa-IR'), research, keyword, ownIdeaDesc:desc, ownIdeaImage:imageDataUrl, sizeN: ideaSizes.length > 1 ? ideaSizes.length : szOpt.sizeN, sizes: ideaSizes.length ? ideaSizes : null };
+    const item = { ...p, id:Date.now(), status:'pending', created:new Date().toLocaleDateString('fa-IR'), research, keyword, ownIdeaDesc:desc, ownIdeaImage:imageDataUrl, ownIdeaImages: imgs.slice(0, 6).map(x => x.thumb), ownIdeaPdfName: pdf ? pdf.name : '', sizeN: ideaSizes.length > 1 ? ideaSizes.length : szOpt.sizeN, sizes: ideaSizes.length ? ideaSizes : null };
     if(szOpt.sizeFromDesc && !ideaSizes.length) log('ℹ️ اندازه‌ای در توضیحاتت پیدا نشد؛ اندازه‌ها را بعداً در استودیو وارد کن.', 'warn');
     fill.style.width='100%'; txt.textContent='✅ آماده!';
     S.dailyProducts.unshift(item);
     archiveDailyProduct(item);
     log(`✓ محصول از روی ایده‌ی خودت ساخته شد: «${p.title}»`,'ok');
 
-    document.getElementById('ownIdeaDesc').value='';
-    document.getElementById('ownIdeaKeyword').value='';
-    document.getElementById('ownIdeaImageFile').value='';
-    document.getElementById('ownIdeaImagePreview').innerHTML='بدون عکس';
-    window.__ownIdeaImageDataUrl=null;
+    ownIdeaReset();
   }catch(e){
     log('✗ خطا در ساخت محصول از روی ایده: '+e.message,'err');
   }
@@ -3559,7 +3739,7 @@ function archiveDailyProduct(item){
     id: item.id, title: item.title||'', tags: item.tags||[], description: item.description||'',
     price: item.price||0, category: item.category||'', why_sellable: item.why_sellable||'',
     keyword: item.keyword||'', research: item.research||null,
-    ownIdeaDesc: item.ownIdeaDesc||'', ownIdeaImage: item.ownIdeaImage||null,
+    ownIdeaDesc: item.ownIdeaDesc||'', ownIdeaImage: item.ownIdeaImage||null, ownIdeaPdfName: item.ownIdeaPdfName||'',
     status: item.status||'pending', sizeN: item.sizeN||1, sizes: item.sizes||null, created: new Date().toISOString()
   };
   S.dailyArchive.unshift(entry);
@@ -5061,7 +5241,7 @@ function buildProductDetailHTML(p){
   const statusText={pending:'⏳ منتظر تأیید',approved:'✅ تأیید شده',rejected:'❌ رد شده'};
   const r = p.research;
   return `
-  ${p.ownIdeaImage?`<div style="margin-bottom:14px"><img src="${p.ownIdeaImage}" onclick="openImageLightbox('${p.ownIdeaImage}')" style="max-width:220px;max-height:220px;border-radius:10px;border:1px solid var(--border);cursor:zoom-in;display:block"></div>`:''}
+  ${ownImgsHtml(p)}
   ${p.ownIdeaDesc?`<div style="font-size:12px;color:var(--text2);background:var(--surface3);border-radius:8px;padding:10px;margin-bottom:14px">💭 ایده‌ی اصلی خودت: ${escHtml(p.ownIdeaDesc)}</div>`:''}
   ${r?`<div style="background:var(--surface3);border-radius:10px;padding:12px;margin-bottom:14px">
     <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px">📊 تحقیق واقعی رقبا (کلیدواژه: «${escHtml(p.keyword||'')}»)</div>
