@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.55.0 -->
+<!-- APP_VERSION: 1.55.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v199</div>
+        <div class="logo-badge">v200</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -3819,6 +3819,7 @@ function renderDailyProducts() {
 }
 
 async function pushApprovedToBackend(item){
+  if(item && item.contentId){ log('ℹ️ برای این محصول قبلاً آیتمی در «محتوای معرفی» ساخته شده؛ نسخه‌ی تکراری ساخته نشد','info'); return; }
   if(!S.contentBackendUrl){ log('ℹ️ آدرس بک‌اند سوشال مدیا توی تنظیمات وارد نشده — فقط محلی ذخیره شد','warn'); return; }
   try{
     const res = await fetch(S.contentBackendUrl.replace(/\/$/,'')+'/api/add_content.php', {
@@ -3832,6 +3833,7 @@ async function pushApprovedToBackend(item){
     });
     const d = await res.json();
     if(!res.ok) throw new Error(d.error||('خطای بک‌اند: '+res.status));
+    if(d.id){ item.contentId = d.id; const ar = (S.dailyArchive || []).find(x => x.id != null && x.id === item.id); if(ar) ar.contentId = d.id; saveCurrentShop(); }
     log('✓ برای تولید محتوای معرفی به بک‌اند سوشال مدیا فرستاده شد','ok');
     // اگر سرور نتوانست عکس یا کپشن بسازد، علتش را نشان بده (قبلاً بی‌صدا رد می‌شد و کارت بدون عکس می‌ماند)
     if(d.image_ok===false) log('⚠ عکس این موضوع ساخته نشد: '+String(d.image_error||'نامشخص').slice(0,260),'warn');
@@ -11903,47 +11905,77 @@ async function aiGenerateSeoForCurrent(){
 }
 if($("st-btnAiSeo")) $("st-btnAiSeo").onclick = aiGenerateSeoForCurrent;
 
-// ارسال محصول فعلی (عنوان + عکس اصلی) به «📢 محتوای معرفی» برای تولید کپشن/عکس سوشال و انتشار خودکار
+// ارسال محصول فعلی (عنوان + تصویرها) به «📢 محتوای معرفی» برای تولید کپشن و انتشار خودکار.
+// اگر برای همین محصول قبلاً آیتمی ساخته شده (مثلاً با تأیید ایده)، همان را کامل می‌کند و نسخه‌ی تکراری نمی‌سازد؛
+// هر تصویر جدا، با تلاش مجدد و مکث بین‌شان آپلود می‌شود و تصویرهایی که جا مانده‌اند با زدن دوباره‌ی دکمه فرستاده می‌شوند.
 async function pushCurrentToContentReview(){
   const p = cur();
   if(typeof S === "undefined" || !S.contentBackendUrl){ toast("اول آدرس بک‌اند سوشال مدیا رو توی تنظیمات Agent وارد کن."); return; }
   if(!p.title && !p.name){ toast("اول عنوان/اسم محصول رو بنویس."); return; }
+  const btn = $("st-btnPushContent"); if(btn) btn.disabled = true;
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const L = (m, k) => { if(typeof log === "function") log(m, k || 'info'); };
   toast("در حال ارسال به محتوای معرفی...");
   try{
-    const res = await fetch(crApiUrl('add_content.php'), {
-      method:'POST', headers: crHeaders(),
-      body: JSON.stringify({
-        title: p.title || p.name, source_content: p.description || p.notes || '',
-        tag:'', shop: S.shopName||'', language: S.contentLanguage||'English'
-      })
-    });
-    const d = await res.json();
-    if(!res.ok) throw new Error(d.error || 'خطا');
-    const newId = d.id;
-    // تا ۸ تصویر محصول (اول تصویر اصلی، بعد بقیه به ترتیب اسلات‌ها) به‌صورت کاروسل فرستاده می‌شود، نه فقط تصویر اصلی
-    const slotsToSend = IMG_SLOTS.filter(s => p.images && p.images[s.k]).sort((a, b) => (a.k === "hero" ? -1 : 0) - (b.k === "hero" ? -1 : 0)).slice(0, 8);
-    let sentImgs = 0; const bt2 = Busy.start("ارسال تصویرها به محتوای معرفی", {pct: 0});
+    // ۱) آیتمی که قبلاً برای همین محصول ساخته شده را پیدا کن
+    const srcIdea = (S.dailyProducts || []).find(x => x.id != null && x.id === p.ideaId) || (S.dailyArchive || []).find(x => x.id != null && x.id === p.ideaId) || null;
+    let newId = Number(p.contentId || (srcIdea && srcIdea.contentId) || 0), existing = null;
     try{
-      for(const [i, sl] of slotsToSend.entries()){
-        Busy.set(bt2, "ارسال تصویر " + fa(i+1) + " از " + fa(slotsToSend.length), i/slotsToSend.length*100);
-        const blob = await blobGet(p.images[sl.k].key);
-        if(blob && typeof processImageForUpload === "function"){
+      const lr = await fetch(crApiUrl('list_content.php' + (S.shopName ? '?shop=' + encodeURIComponent(S.shopName) : '')), { headers: crHeaders() });
+      const items = (await lr.json()).items || [], norm = s => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim(), want = norm(p.title || p.name);
+      existing = (newId && items.find(x => Number(x.id) === newId)) || (!newId ? items.find(x => norm(x.title) === want && x.status !== 'rejected') : null) || null;
+    }catch(e){}
+    if(existing) newId = Number(existing.id); else newId = 0;
+    let created = false;
+    if(!newId){
+      const res = await fetch(crApiUrl('add_content.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify({ title: p.title || p.name, source_content: p.description || p.notes || '', tag:'', shop: S.shopName||'', language: S.contentLanguage||'English' }) });
+      const d = await res.json(); if(!res.ok) throw new Error(d.error || 'خطا');
+      newId = Number(d.id); created = true;
+    }
+    p.contentId = newId; if(srcIdea) srcIdea.contentId = newId;
+    const arch = (S.dailyArchive || []).find(x => x.id != null && x.id === p.ideaId); if(arch) arch.contentId = newId;
+    save(); if(typeof saveCurrentShop === "function") saveCurrentShop();
+
+    // ۲) تصویرها: تا ۱۰ تصویر (اول تصویر اصلی)، فقط آن‌هایی که هنوز برای این آیتم نرفته‌اند
+    const sent = new Set((p.contentSent && p.contentSent.id === newId) ? p.contentSent.keys : []);
+    const slots = IMG_SLOTS.filter(s => p.images && p.images[s.k]).sort((a, b) => (a.k === "hero" ? -1 : 0) - (b.k === "hero" ? -1 : 0)).slice(0, 10);
+    const todo = slots.filter(s => !sent.has(p.images[s.k].key));
+    let okN = 0; const failed = []; const bt2 = Busy.start("ارسال تصویرها به محتوای معرفی", {pct: 0});
+    try{
+      for(const [i, sl] of todo.entries()){
+        Busy.set(bt2, "ارسال تصویر " + fa(i+1) + " از " + fa(todo.length), i/Math.max(1, todo.length)*100);
+        let done = false, lastErr = '';
+        for(let attempt = 1; attempt <= 3 && !done; attempt++){
           try{
-            const processed = await processImageForUpload(blob, (typeof S!=="undefined"?S.brandFooterText:null));
-            const form = new FormData();
-            form.append('file', processed, 'image.jpg');
-            form.append('id', newId);
+            const blob = await blobGet(p.images[sl.k].key); if(!blob) throw new Error('فایل تصویر در مرورگر پیدا نشد');
+            const processed = await processImageForUpload(blob, S.brandFooterText);
+            const form = new FormData(); form.append('file', processed, 'image.jpg'); form.append('id', newId);
             const up = await fetch(crApiUrl('upload_slide.php'), { method:'POST', headers:{'X-Agent-Secret': S.contentBackendSecret||''}, body: form });
-            if(up.ok) sentImgs++;
-          }catch(e){ /* اگه پردازش عکس نشد، همان تصویر رد می‌شود */ }
+            if(!up.ok){ let m = ''; try{ m = (await up.json()).error || ''; }catch(e){} throw new Error(m || ('خطای سرور ' + up.status)); }
+            done = true;
+          }catch(e){ lastErr = (e && e.message) || 'نامشخص'; if(attempt < 3) await sleep(1500 * attempt); }
         }
+        if(done){ okN++; sent.add(p.images[sl.k].key); p.contentSent = { id: newId, keys: [...sent] }; save(); await sleep(800); }
+        else { failed.push(sl.k); L('✗ تصویر «' + (sl.t || sl.k) + '» به محتوای معرفی نرفت: ' + lastErr, 'err'); }
       }
     } finally { Busy.end(bt2); }
-    toast("✅ به «محتوای معرفی» اضافه شد" + (sentImgs ? " با " + fa(sentImgs) + " تصویر." : " (بدون تصویر — تصویری در تب «تصویرها» ساخته یا انتخاب کن)."));
-    if(typeof log === "function") log('✓ «' + (p.title||p.name) + '» به محتوای معرفی اضافه شد', 'ok');
+
+    // ۳) اگر تصویر واقعی رفت، تصویر پس‌زمینه‌ی خودکار (hero_...) که سرور هنگام ساخت آیتم گذاشته بود برداشته شود
+    if(okN || sent.size){
+      try{
+        const lr2 = await fetch(crApiUrl('list_content.php' + (S.shopName ? '?shop=' + encodeURIComponent(S.shopName) : '')), { headers: crHeaders() });
+        const it2 = ((await lr2.json()).items || []).find(x => Number(x.id) === newId);
+        for(const pth of ((it2 && it2.images) || []).filter(x => /(^|\/)hero_/.test(x))){
+          await fetch(crApiUrl('delete_slide.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify({ id: newId, path: pth }) });
+        }
+      }catch(e){}
+    }
+    const total = slots.length;
+    toast((failed.length ? "⚠ " : "✅ ") + (created ? "به «محتوای معرفی» اضافه شد" : "آیتم قبلی «محتوای معرفی» کامل شد (نسخه‌ی تکراری ساخته نشد)") + " — " + fa(sent.size) + " از " + fa(total) + " تصویر" + (failed.length ? "؛ " + fa(failed.length) + " تصویر ناقص ماند، دوباره دکمه را بزن تا فقط همان‌ها فرستاده شود." : (total ? "." : " (تصویری در تب «تصویرها» ساخته یا انتخاب نشده).")));
+    L('✓ «' + (p.title || p.name) + '» ' + (created ? 'به محتوای معرفی اضافه شد' : 'در محتوای معرفی کامل شد') + ' — ' + sent.size + '/' + total + ' تصویر', failed.length ? 'warn' : 'ok');
   }catch(e){
     toast("خطا: " + (e && e.message ? e.message : "نامشخص"));
-  }
+  } finally { if(btn) btn.disabled = false; }
 }
 if($("st-btnPushContent")) $("st-btnPushContent").onclick = pushCurrentToContentReview;
 
