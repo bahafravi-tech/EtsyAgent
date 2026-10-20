@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.57.0 -->
+<!-- APP_VERSION: 1.58.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v205</div>
+        <div class="logo-badge">v206</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -5516,7 +5516,7 @@ function renderSEOList(){
       <div class="product-info">
         <div class="product-name">
           ${S.optimized[i]?'<span style="color:var(--green);font-size:11px;font-weight:700">✅ بهینه‌شده</span> ':''}
-          ${p.TITLE}
+          ${p._copy_of&&!p._listing_id?`<span style="color:var(--orange);font-size:11px;font-weight:700" title="${p._etsy_draft_id?'پیش‌نویس روی Etsy ساخته شد':'کپی است و هنوز روی Etsy نیست'}">${p._etsy_draft_id?'📄 کپی — پیش‌نویس ساخته شد':'📄 کپی'}</span> `:''}${p.TITLE}
         </div>
         <div class="product-meta">
           <span>🏷 ${(p.TAGS||'').split(',').filter(Boolean).length} تگ</span>
@@ -5549,12 +5549,13 @@ function renderSEOList(){
         }
         ${syncBadge(i)}
         <button class="btn btn-secondary btn-sm" onclick="startOptimize(${i})">✨</button>
+        <button class="btn btn-secondary btn-sm" onclick="copyProduct(${i})" title="کپی این محصول برای ساخت یک محصول تازه با تغییرهای لازم">📄</button>
         ${(S.optimized[i]||etsyNeedsPush(i))&&p._listing_id?(S.sendingToEtsy&&S.sendingToEtsy[i]
           ?`<button class="btn btn-secondary btn-sm" disabled><span class="spinner" style="width:12px;height:12px;border-width:2px"></span></button>`
           :((S.pushedToEtsy&&S.pushedToEtsy[i])&&!etsyNeedsPush(i)
             ?`<button class="btn btn-secondary btn-sm" disabled title="قبلاً روی Etsy جایگزین شد">✅</button>`
             :`<button class="btn btn-green btn-sm" onclick="sendOptimizedToEtsy(${i})" title="جایگزینی این لیستینگ روی Etsy">🔁</button>`)
-        ):(S.etsyApiKey&&!p._listing_id?`<button class="btn btn-green btn-sm" onclick="etsyUploadListing(S.products[${i}])" title="آپلود به اتسی (لیستینگ جدید)">📤</button>`:'')}
+        ):(S.etsyApiKey&&!p._listing_id?`<button class="btn btn-green btn-sm" onclick="sendLocalProductAsDraft(${i})" title="ساخت پیش‌نویس تازه روی Etsy از این محصول">📤</button>`:'')}
       </div></div>`;
     attachProductDropdown(d, i);
     el.appendChild(d);
@@ -5660,7 +5661,15 @@ function buildProductDropdown(idx){
         </div>`).join('')}
       </div>
     </div>`:''}
+    <div class="pd-section">
+      <div class="pd-section-header"><div class="pd-label">✏️ ویرایش عنوان، تگ‌ها، متریال و قیمت</div></div>
+      <input class="input" id="pdEdTitle${idx}" value="${escHtml(p.TITLE||'').replace(/"/g,'&quot;')}" placeholder="عنوان" style="width:100%;margin-bottom:6px;direction:ltr">
+      <input class="input" id="pdEdTags${idx}" value="${escHtml(p.TAGS||'').replace(/"/g,'&quot;')}" placeholder="تگ‌ها (با ویرگول، حداکثر ۱۳ تا، هرکدام تا ۲۰ نویسه)" style="width:100%;margin-bottom:6px;direction:ltr">
+      <input class="input" id="pdEdMat${idx}" value="${escHtml(p.MATERIALS||'').replace(/"/g,'&quot;')}" placeholder="متریال‌ها (با ویرگول)" style="width:100%;margin-bottom:6px;direction:ltr">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input class="input" id="pdEdPrice${idx}" type="number" min="0" step="0.01" value="${escHtml(p.PRICE||'')}" placeholder="قیمت (USD)" style="width:130px"><button class="btn btn-green btn-sm" onclick="event.stopPropagation();saveProductBasics(${idx})">💾 ذخیره</button><span style="font-size:11px;color:var(--text2)">توضیحات را از بخش «✏️ ویرایش» بالا عوض کن</span></div>
+    </div>
     <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();copyProduct(${idx})">📄 کپی این محصول</button>
       <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();startOptimize(${idx})">✨ بهینه‌سازی</button>
       <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();this.closest('.product-dropdown').classList.remove('open')">✕ بستن</button>
     </div>
@@ -5668,6 +5677,41 @@ function buildProductDropdown(idx){
   return dd;
 }
 
+// ── کپی یک محصول از «فهرست محصولات من»: یک محصول تازه‌ی محلی (بدون پیوند به لیستینگ Etsy) که عنوان، تگ، متریال، قیمت و توضیحاتش را بعداً تغییر می‌دهی ──
+function copyProduct(i){
+  const src = S.products[i]; if(!src) return;
+  const p = JSON.parse(JSON.stringify(src));
+  ['_listing_id', '_etsy_hash', '_etsy_remote', '_etsy_gone', '_etsy_draft_id'].forEach(k => { delete p[k]; });
+  p.SKU = ''; p._copy_of = src.TITLE || '';
+  S.products.push(p);
+  const sort = document.getElementById('seoSort'); if(sort) sort.value = 'default';
+  ['statProducts', 'sidebarProducts', 'uploadedCount'].forEach(id => { const e = document.getElementById(id); if(e) e.textContent = S.products.length; });
+  try{ populateSocialProductSelect(); }catch(e){}
+  saveCurrentShop(); renderSEOList(); try{ renderOptimizeList(); }catch(e){}
+  const rows = document.querySelectorAll('#seoList .product-item'), last = rows[rows.length - 1];
+  if(last){ last.scrollIntoView({behavior: 'smooth', block: 'center'}); last.style.borderColor = 'var(--orange)'; last.click(); }
+  log('📄 کپی ساخته شد: «' + (p.TITLE || '').slice(0, 60) + '» — عنوان، تگ‌ها و قیمتش را ویرایش کن', 'ok');
+  toast('📄 کپی ساخته شد و به انتهای فهرست رفت. «✏️ ویرایش» را بزن و تغییرها را بده؛ بعد با 📤 پیش‌نویس تازه روی Etsy بساز.');
+}
+function saveProductBasics(idx){
+  const p = S.products[idx]; if(!p) return;
+  const g = id => (document.getElementById(id + idx) || {}).value || '';
+  const title = limitTitle(sanitizeEtsyTitle(g('pdEdTitle').trim()));
+  if(!title){ toast('عنوان نباید خالی باشد'); return; }
+  const tags = g('pdEdTags').split(',').map(t => t.replace(/_/g, ' ').trim()).filter(t => t && t.length <= 20).filter((t, k, a) => a.findIndex(x => x.toLowerCase() === t.toLowerCase()) === k).slice(0, 13);
+  p.TITLE = title; p.TAGS = tags.join(',');
+  p.MATERIALS = sanitizeMaterials(g('pdEdMat').split(','), []).join(',');
+  const pr = parseFloat(g('pdEdPrice')); if(pr > 0) p.PRICE = String(pr);
+  if(S.pushedToEtsy) delete S.pushedToEtsy[idx];
+  saveCurrentShop(); log('✏️ عنوان، تگ‌ها، متریال و قیمت محصول ذخیره شد', 'ok'); toast('✅ ذخیره شد');
+  renderSEOList(); try{ renderOptimizeList(); }catch(e){}
+}
+async function sendLocalProductAsDraft(i){
+  const p = S.products[i]; if(!p) return;
+  const item = { title: p.TITLE, description: p.DESCRIPTION, price: p.PRICE, tags: String(p.TAGS || '').split(',').map(t => t.trim()).filter(Boolean), materials: parseMaterials(p.MATERIALS), category: '' };
+  const ok = await sendItemToEtsy(item);
+  if(ok && item.etsyListingId){ p._etsy_draft_id = item.etsyListingId; saveCurrentShop(); renderSEOList(); }
+}
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function copyField(id, label){
