@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.56.2 -->
+<!-- APP_VERSION: 1.57.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v204</div>
+        <div class="logo-badge">v205</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1733,6 +1733,7 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
       <div class="acts">
         <button class="ghost mini" id="st-btnZip">فقط ZIP فایل محصول</button>
         <button class="ghost mini" id="st-btnTxt">کپی متن لیستینگ</button>
+        <button class="ghost mini" id="st-btnCopy" title="این محصول را با همه‌ی مشخصات، فایل‌ها و تصویرهایش کپی می‌کند تا یک محصول تازه با تغییرهای لازم بسازی">📄 کپی این محصول</button>
         <button class="ghost mini" id="st-btnMaster">ثبت به‌عنوان قالب مادر</button>
         <label class="ghost mini" style="cursor:pointer" title="PDF (یا TXT) حاوی مشخصات محصول را بده تا اطلاعات خودکار پر شود">📄 پر کردن از فایل PDF<input type="file" id="st-pdfFile" accept=".pdf,.txt,application/pdf,text/plain" hidden></label>
         <label class="ghost mini" style="cursor:pointer" title="یک فایل ZIP شامل همه‌چیز (فایل‌های برش، تصویرها، ویدیوها، مشخصات) را بده؛ هر فایل خودکار در جای خودش می‌نشیند">📦 ورود از فایل ZIP<input type="file" id="st-zipFile" accept=".zip,application/zip,application/x-zip-compressed" hidden></label>
@@ -9210,6 +9211,43 @@ $("st-btnDup").onclick = () => {
   p.name = src.name + " — نسخه تازه";
   state.products.push(p); state.active = p.id; save(); renderAll();
   toast("از قالب «" + src.name + "» تکثیر شد. فایل‌ها و تصویرها کپی نمی‌شوند.");
+};
+// کپی کامل محصول فعلی (مشخصات + فایل‌ها + تصویرها + ویدیوها) برای ساخت یک محصول تازه با تغییرهای لازم
+$("st-btnCopy").onclick = async () => {
+  const src = cur(), bt = $("st-btnCopy"); if(bt.disabled) return; bt.disabled = true;
+  const bz = Busy.start("کپی محصول «" + src.name + "»", {pct: 0});
+  try{
+    const p = JSON.parse(JSON.stringify(src));
+    p.id = uid(); p.created = Date.now(); p.master = false; p.status = "wip";
+    const nums = state.products.map(x => parseInt(String(x.code || "").replace(/\D/g, ""), 10) || 0);
+    p.code = "BG-" + String(Math.max(0, ...nums) + 1).padStart(3, "0");
+    p.name = src.name + " — کپی";
+    // پیوندهای محصول قبلی (لیستینگ اتسی، آیتم محتوای معرفی، ایده‌ی اصلی) به نسخه‌ی کپی منتقل نمی‌شود
+    Object.keys(p).filter(k => /^(etsy|content)/i.test(k) || k === "ideaId").forEach(k => { delete p[k]; });
+    const pre = src.id + ":";
+    const remap = key => String(key).startsWith(pre) ? p.id + ":" + String(key).slice(pre.length) : p.id + ":copy:" + uid();
+    let done = 0, lost = 0;
+    const cpEntry = async e => {
+      if(!e || !e.key) return null;
+      const b = await blobGet(e.key); if(!b) return null;
+      const nk = remap(e.key); await blobPut(nk, b); e.key = nk; done++;
+      if(Array.isArray(e.more)){ const keep = []; for(const m of e.more){ const r = await cpEntry(m); if(r) keep.push(r); else lost++; } e.more = keep; }
+      return e;
+    };
+    const total = ["files", "images", "videos"].reduce((a, k) => a + Object.keys(p[k] || {}).length, 0) + (p.refImages || []).length + (p.dzPreview ? 1 : 0);
+    let step = 0;
+    for(const kind of ["files", "images", "videos"]){
+      for(const k of Object.keys(p[kind] || {})){
+        Busy.set(bz, "کپی فایل " + fa(++step) + " از " + fa(total), step / Math.max(1, total) * 100);
+        const r = await cpEntry(p[kind][k]); if(!r){ delete p[kind][k]; lost++; }
+      }
+    }
+    if(Array.isArray(p.refImages)){ const keep = []; for(const e of p.refImages){ const r = await cpEntry(e); if(r) keep.push(r); else lost++; } p.refImages = keep; }
+    if(p.dzPreview){ const r = await cpEntry(p.dzPreview); if(!r){ delete p.dzPreview; lost++; } }
+    state.products.push(p); state.active = p.id; save(); renderAll();
+    toast("✅ کپی ساخته شد: «" + p.name + "» با " + fa(done) + " فایل/تصویر." + (lost ? " " + fa(lost) + " مورد پیدا نشد و کپی نشد." : "") + " حالا هر تغییری لازم است بده.");
+  }catch(e){ toast("خطا در کپی: " + ((e && e.message) || "نامشخص")); }
+  finally{ Busy.end(bz); bt.disabled = false; }
 };
 $("st-btnMaster").onclick = () => {
   const p = cur();
