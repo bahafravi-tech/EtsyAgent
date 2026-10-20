@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.58.0 -->
+<!-- APP_VERSION: 1.59.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v206</div>
+        <div class="logo-badge">v207</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1698,6 +1698,7 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
   <span class="saved" id="st-saved"></span>
   <button class="ghost" id="st-btnNew">محصول تازه</button>
   <button class="ghost" id="st-btnDup">تکثیر از قالب</button>
+  <button class="ghost" id="st-btnFromEtsy" title="یکی از محصولات فهرست اتسی خودت را انتخاب و با عکس‌هایش به یک محصول تازه‌ی استودیو کپی کن">📥 کپی از محصولات اتسی من</button>
   <button id="st-btnPkg">ساخت بسته اتسی</button>
 </div>
 
@@ -5549,7 +5550,7 @@ function renderSEOList(){
         }
         ${syncBadge(i)}
         <button class="btn btn-secondary btn-sm" onclick="startOptimize(${i})">✨</button>
-        <button class="btn btn-secondary btn-sm" onclick="copyProduct(${i})" title="کپی این محصول برای ساخت یک محصول تازه با تغییرهای لازم">📄</button>
+        <button class="btn btn-secondary btn-sm" onclick="copyProductToStudio(${i})" title="کپی این محصول (با عکس‌هایش) به استودیو محصولات برای ویرایش و انتشار">📄</button>
         ${(S.optimized[i]||etsyNeedsPush(i))&&p._listing_id?(S.sendingToEtsy&&S.sendingToEtsy[i]
           ?`<button class="btn btn-secondary btn-sm" disabled><span class="spinner" style="width:12px;height:12px;border-width:2px"></span></button>`
           :((S.pushedToEtsy&&S.pushedToEtsy[i])&&!etsyNeedsPush(i)
@@ -5669,7 +5670,7 @@ function buildProductDropdown(idx){
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input class="input" id="pdEdPrice${idx}" type="number" min="0" step="0.01" value="${escHtml(p.PRICE||'')}" placeholder="قیمت (USD)" style="width:130px"><button class="btn btn-green btn-sm" onclick="event.stopPropagation();saveProductBasics(${idx})">💾 ذخیره</button><span style="font-size:11px;color:var(--text2)">توضیحات را از بخش «✏️ ویرایش» بالا عوض کن</span></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:8px">
-      <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();copyProduct(${idx})">📄 کپی این محصول</button>
+      <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();copyProductToStudio(${idx})">📄 کپی به استودیو</button>
       <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();startOptimize(${idx})">✨ بهینه‌سازی</button>
       <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();this.closest('.product-dropdown').classList.remove('open')">✕ بستن</button>
     </div>
@@ -5692,6 +5693,12 @@ function copyProduct(i){
   if(last){ last.scrollIntoView({behavior: 'smooth', block: 'center'}); last.style.borderColor = 'var(--orange)'; last.click(); }
   log('📄 کپی ساخته شد: «' + (p.TITLE || '').slice(0, 60) + '» — عنوان، تگ‌ها و قیمتش را ویرایش کن', 'ok');
   toast('📄 کپی ساخته شد و به انتهای فهرست رفت. «✏️ ویرایش» را بزن و تغییرها را بده؛ بعد با 📤 پیش‌نویس تازه روی Etsy بساز.');
+}
+async function copyProductToStudio(i){
+  const src = S.products[i]; if(!src) return;
+  if(!window.ProductStudio || !window.ProductStudio.addFromListing){ toast('استودیو محصولات آماده نیست'); return; }
+  const id = await window.ProductStudio.addFromListing(src);
+  if(id) nav('studio');
 }
 function saveProductBasics(idx){
   const p = S.products[idx]; if(!p) return;
@@ -9293,6 +9300,34 @@ $("st-btnCopy").onclick = async () => {
   }catch(e){ toast("خطا در کپی: " + ((e && e.message) || "نامشخص")); }
   finally{ Busy.end(bz); bt.disabled = false; }
 };
+// انتخاب یک محصول از «فهرست محصولات اتسی من» داخل خود استودیو و کپی آن به یک محصول تازه
+$("st-btnFromEtsy").onclick = () => {
+  if(typeof S === "undefined" || !S.products || !S.products.length){ toast("فهرست محصولات اتسی خالی است — اول محصولات را از Etsy بارگذاری کن."); return; }
+  const ov = document.createElement("div");
+  ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px";
+  ov.innerHTML = '<div style="background:var(--surface,#fff);color:var(--text,#1f2933);border-radius:14px;max-width:580px;width:100%;max-height:82vh;display:flex;flex-direction:column;padding:14px;box-shadow:0 10px 40px rgba(0,0,0,.3);font-family:inherit">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>کپی یکی از محصولات اتسی من به استودیو</b><button type="button" data-x style="border:0;background:transparent;font-size:18px;cursor:pointer;color:inherit">✕</button></div>'
+    + '<input data-q placeholder="جست‌وجو در عنوان‌ها..." style="width:100%;padding:8px 10px;border:1px solid var(--border,#ccc);border-radius:8px;margin-bottom:8px;background:transparent;color:inherit">'
+    + '<div data-list style="overflow:auto;display:flex;flex-direction:column;gap:6px"></div></div>';
+  document.body.appendChild(ov);
+  const list = ov.querySelector("[data-list]"), q = ov.querySelector("[data-q]"), close = () => ov.remove();
+  ov.addEventListener("click", e => { if(e.target === ov || e.target.closest("[data-x]")) close(); });
+  const draw = () => {
+    const f = q.value.trim().toLowerCase(); list.innerHTML = "";
+    S.products.forEach((pr, i) => {
+      if(f && !String(pr.TITLE || "").toLowerCase().includes(f)) return;
+      const img = (typeof getProductImage === "function") ? getProductImage(pr) : "";
+      const b = document.createElement("button"); b.type = "button";
+      b.style.cssText = "display:flex;gap:10px;align-items:center;text-align:right;padding:6px;border:1px solid var(--border,#ddd);border-radius:10px;background:transparent;color:inherit;cursor:pointer;font-family:inherit";
+      b.innerHTML = (img ? '<img src="' + esc(img) + '" alt="" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex:none">' : '<span style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;flex:none">📦</span>')
+        + '<span dir="ltr" style="flex:1;text-align:left;font-size:12.5px;line-height:1.5">' + esc(String(pr.TITLE || "").slice(0, 110)) + '</span>';
+      b.onclick = async () => { close(); await addFromListing(pr); };
+      list.appendChild(b);
+    });
+    if(!list.children.length) list.innerHTML = '<div style="padding:14px;text-align:center;opacity:.7">موردی پیدا نشد</div>';
+  };
+  q.oninput = draw; draw(); q.focus();
+};
 $("st-btnMaster").onclick = () => {
   const p = cur();
   state.products.forEach(x => x.master = false);
@@ -11996,6 +12031,47 @@ function addDraftFromIdea(data){
 }
 window.ProductStudio = window.ProductStudio || {};
 window.ProductStudio.addDraftFromIdea = addDraftFromIdea;
+// کپی یک محصول از «فهرست محصولات اتسی من» به استودیو: مشخصات + تا ۱۰ عکس (با بالاترین کیفیتی که اتسی بدهد)، تا اینجا ویرایش و با «ارسال کامل به Etsy» منتشر شود
+function etsyImgToBlob(url){
+  return new Promise(res => {
+    const im = new Image(); im.crossOrigin = "anonymous";
+    im.onload = () => { try{ const c = document.createElement("canvas"); c.width = im.naturalWidth; c.height = im.naturalHeight; c.getContext("2d").drawImage(im, 0, 0); c.toBlob(b => res(b), "image/jpeg", 0.92); }catch(e){ res(null); } };
+    im.onerror = () => res(null); im.src = url;
+  });
+}
+async function addFromListing(l){
+  const bz = Busy.start("کپی محصول به استودیو", {pct: 0});
+  try{
+    const p = blankProduct();
+    const nums = state.products.map(x => parseInt(String(x.code || "").replace(/\D/g, ""), 10) || 0);
+    p.code = "BG-" + String(Math.max(0, ...nums) + 1).padStart(3, "0");
+    const t = String(l.TITLE || "").trim();
+    p.name = ((t.split("|")[0] || t).trim().slice(0, 70) || "محصول کپی") + " — کپی";
+    p.title = t; p.description = String(l.DESCRIPTION || "");
+    p.tags = String(l.TAGS || "").split(",").map(x => x.trim()).filter(Boolean).join(", ");
+    p.materials = String(l.MATERIALS || "").split(",").map(x => x.trim()).filter(Boolean).join(", ");
+    const price = parseFloat(l.PRICE); if(price > 0){ p.price = price; p.notes = "قیمت لیستینگ اصلی: $" + price; }
+    p.category = ""; p.material = ""; p.machines = "";
+    p.ptype = FLAT_RX.test([p.name, p.title].join(" ")) ? "flat" : "auto"; if(p.ptype === "flat") p.d = 0;
+    p.alt = IMG_SLOTS.map(() => t.slice(0, 140)).join("\n");
+    const urls = []; for(let n = 1; n <= 10; n++){ const u = String(l["IMAGE" + n] || "").trim(); if(/^https?:/.test(u)) urls.push(u); }
+    let ok = 0, fail = 0;
+    for(const [k, u] of urls.entries()){
+      if(k >= IMG_SLOTS.length) break;
+      Busy.set(bz, "دانلود تصویر " + fa(k + 1) + " از " + fa(urls.length), k / Math.max(1, urls.length) * 100);
+      const big = u.replace(/il_\d+x(?:N|\d+)/, "il_fullxfull");
+      const blob = (await etsyImgToBlob(big)) || (big !== u ? await etsyImgToBlob(u) : null);
+      if(blob){ const slot = IMG_SLOTS[k].k, key = p.id + ":images:" + slot; await blobPut(key, blob); p.images[slot] = {name: "photo-" + (k + 1) + ".jpg", size: blob.size, type: blob.type || "image/jpeg", key}; ok++; } else fail++;
+    }
+    state.products.push(p); state.active = p.id; save(); renderAll();
+    toast("✅ به استودیو کپی شد: «" + p.name + "»" + (ok ? " با " + fa(ok) + " تصویر" : "") + (fail ? " — " + fa(fail) + " تصویر دانلود نشد (خودت اضافه کن)" : "") + ". حالا تغییرها را بده و «ارسال کامل به Etsy» را بزن.");
+    return p.id;
+  }catch(e){ toast("خطا در کپی به استودیو: " + ((e && e.message) || "نامشخص")); }
+  finally{ Busy.end(bz); }
+}
+window.ProductStudio = window.ProductStudio || {};
+window.ProductStudio.addFromListing = addFromListing;
+
 window.ProductStudio.setIdeaSizeN = function(ideaId, n){ const p = state.products.find(x => x.ideaId === ideaId); if(p){ p.ideaSizeN = Number(n) || 1; save(); } };
 
 // تولید خودکار عنوان/توضیحات/تگ برای محصول فعلی، با همون موتور AI که بقیه‌ی Agent استفاده می‌کنه
