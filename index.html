@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.59.0 -->
+<!-- APP_VERSION: 1.60.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v207</div>
+        <div class="logo-badge">v208</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -2054,6 +2054,16 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
 
     <!-- چک‌لیست -->
     <section class="panel" id="st-p-check">
+      <div class="block" id="st-aiPolicy">
+        <h3>🛡 قوانین جدید Etsy درباره‌ی AI (۲۲ اکتبر ۲۰۲۶)</h3>
+        <p class="help">Etsy اجازه می‌دهد از AI کمک بگیری، ولی: عکس‌ها باید همان چیزی را نشان بدهند که خریدار می‌گیرد؛ حداقل یک عکس واقعی و ویرایش‌نشده لازم است (برای فایل دیجیتال، چاپ سفارشی و سفارشی‌سازی‌شده استثنا دارد — متن کامل: Etsy Listing Image Requirements)؛ راهنما، الگو و دستورالعمل نباید ساخته‌ی AI باشد و باید عکس واقعی از نتیجه‌ی ساخته‌شده داشته باشد؛ لیستینگ بدون دخالت انسان (ساخته‌ی ربات) ممنوع است. پس هر لیستینگ را خودت بررسی و تأیید کن.</p>
+        <label style="display:flex;gap:8px;align-items:flex-start;margin:6px 0"><input type="checkbox" data-k="aiReal" style="margin-top:6px"> <span>حداقل یک عکس واقعی و ویرایش‌نشده از خودِ محصول (یا از نتیجه‌ی ساخته‌شده با فایل/راهنما) روی پس‌زمینه‌ی واقعی در تصویرها هست</span></label>
+        <label style="display:flex;gap:8px;align-items:flex-start;margin:6px 0"><input type="checkbox" data-k="aiAccurate" style="margin-top:6px"> <span>همه‌ی تصویرها دقیقاً همان چیزی را نشان می‌دهند که خریدار دریافت می‌کند (ایراد پنهان نشده و محصول متفاوت نشان داده نمی‌شود)</span></label>
+        <label style="display:flex;gap:8px;align-items:flex-start;margin:6px 0"><input type="checkbox" data-k="aiEdited" style="margin-top:6px"> <span>بعضی تصویرها را با ابزار ویرایش عکس (از جمله AI) ساخته یا ویرایش کرده‌ام — یادداشت شفافیت به توضیحات لیستینگ اضافه شود</span></label>
+        <label class="fld" style="margin-top:10px"><span>متن مراحل راهنمای مونتاژ — <b>خودت بنویس</b> (هر خط یک مرحله: <code>عنوان | توضیح</code>). خالی بماند، راهنما و ویدیوی مراحل از متن آماده‌ی ثابت (بدون AI) ساخته می‌شود</span><textarea data-k="guideText" rows="6" dir="ltr" style="min-height:110px" placeholder="Download | Download and unzip the files from your Etsy purchases page.&#10;Cut | Load your material and cut with the SVG file."></textarea></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0"><button type="button" class="ghost mini" id="st-btnGuideDraft">درج پیش‌نویس AI در کادر (فقط برای بازنویسی)</button><span class="help" style="margin:0">متنِ ساخته‌ی AI به‌تنهایی در راهنما نمی‌رود؛ فقط اگر آن را بازنویسی کنی و کار خودت شود.</span></div>
+        <label style="display:flex;gap:8px;align-items:flex-start;margin:6px 0"><input type="checkbox" data-k="aiGuideOwn" style="margin-top:6px"> <span>اگر محصول الگو/راهنما/دستورالعمل است: متن آن کار خودم است (تولید AI نیست) و عکس واقعی نتیجه‌ی ساخته‌شده را گذاشته‌ام. (ویدیو و تصویر ۳بعدی این برنامه شبیه‌سازی است و جای عکس واقعی را نمی‌گیرد.)</span></label>
+      </div>
       <div class="block">
         <h3>آمادگی انتشار</h3>
         <p class="help">تا وقتی موردی باز است، بسته ساخته می‌شود اما ناقص خواهد بود.</p>
@@ -8972,7 +8982,7 @@ const esc = s => String(s==null?"":s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":
 
 function renderFields(){
   const p = cur();
-  document.querySelectorAll("[data-k]").forEach(el => { el.value = p[el.dataset.k] ?? (el.dataset.k === "ptype" ? "auto" : ""); });
+  document.querySelectorAll("[data-k]").forEach(el => { if(el.type === "checkbox") el.checked = !!p[el.dataset.k]; else el.value = p[el.dataset.k] ?? (el.dataset.k === "ptype" ? "auto" : ""); });
   if(!(Number(p.d) > 0)) { const dEl = document.querySelector('[data-k="d"]'); if(dEl) dEl.value = ""; } // ارتفاعِ صفر/خالی (محصول تخت) به‌صورت خالی دیده شود
 }
 
@@ -9148,8 +9158,11 @@ function renderChecks(){
     ["توضیحات کامل", p.description.length >= 120, fa(p.description.length) + " کاراکتر"],
     ["جنس‌ها", matList(p).length > 0, fa(matList(p).length) + " مورد"],
     ["ده متن ALT", altList(p).length >= 10, fa(altList(p).length) + " خط"],
-    ["کد محصول لاتین", /^[A-Za-z0-9-]+$/.test(p.code), p.code]
+    ["کد محصول لاتین", /^[A-Za-z0-9-]+$/.test(p.code), p.code],
+    ["قانون AI اتسی: عکس واقعی ویرایش‌نشده", !!p.aiReal, "تأیید در کارت بالا"],
+    ["قانون AI اتسی: تصویرها با محصول واقعی یکی است", !!p.aiAccurate, "تأیید در کارت بالا"]
   ];
+  if(p.files && p.files.guide) items.push(["قانون AI اتسی: متن راهنما کار خودم است", !!p.aiGuideOwn && guideOwnSteps(p).length > 0, guideOwnSteps(p).length ? fa(guideOwnSteps(p).length) + " مرحله" : "متن راهنما نوشته نشده"]);
   $("st-checks").innerHTML = items.map(x =>
     '<div class="chk"><span>' + x[0] + ' <span class="why">' + esc(x[2]) + '</span></span>' +
     '<span class="s ' + (x[1] ? "y" : "n") + '">' + (x[1] ? "تمام" : "باز") + '</span></div>'
@@ -9176,7 +9189,7 @@ function renderAll(){ renderRail(); renderFields(); renderFiles(); renderImages(
 function listingText(p){
   return [
     "TITLE", tokens(p, p.title), "",
-    "DESCRIPTION", tokens(p, p.description), "",
+    "DESCRIPTION", aiNoteAppend(p, tokens(p, p.description)), "",
     "TAGS (13)", tagList(p).join(", "), "",
     "MATERIALS", matList(p).join(", "), "",
     "ALT TEXT", altResolved(p).map((x,i)=> (i+1) + ". [" + IMG_SLOTS[i].f + "] " + x).join("\n"), "",
@@ -9244,7 +9257,7 @@ document.addEventListener("input", e => {
   const k = e.target.dataset && e.target.dataset.k;
   if(!k) return;
   const p = cur();
-  p[k] = (e.target.type === "number") ? (Number(e.target.value) || 0) : e.target.value;
+  p[k] = (e.target.type === "checkbox") ? e.target.checked : (e.target.type === "number") ? (Number(e.target.value) || 0) : e.target.value;
   queueSave(); renderHero(); renderCounters(); renderChecks(); renderRail();
 });
 $("st-btnNew").onclick = () => {
@@ -9355,7 +9368,7 @@ document.addEventListener("click", async e => {
   const p = cur(), k = b.dataset.copy;
   let txt = "", label = COPY_LABELS[k] || "ALT";
   if(k === "title") txt = tokens(p, p.title);
-  else if(k === "description") txt = tokens(p, p.description);
+  else if(k === "description") txt = aiNoteAppend(p, tokens(p, p.description));
   else if(k === "tags") txt = tagList(p).join(", ");
   else if(k === "materials") txt = matList(p).join(", ");
   else if(k === "alt") txt = altResolved(p).join("\n");
@@ -10937,6 +10950,15 @@ async function dzToJpeg(blobOrCanvas, maxW){
   const b = await new Promise(r => cv.toBlob(r, "image/jpeg", 0.9));
   return {bytes: new Uint8Array(await b.arrayBuffer()), w: cw, h: ch};
 }
+// مراحل راهنما فقط از متنی که خودِ فروشنده در «قوانین جدید Etsy درباره‌ی AI» نوشته می‌آید؛ متن تولیدشده با AI (spec.guide / assembly_steps) خودکار وارد راهنما نمی‌شود
+function guideOwnSteps(p){
+  return String(p.guideText || "").split("\n").map(l => l.trim()).filter(Boolean).slice(0, 8).map(l => { const i = l.indexOf("|"); return i > 0 ? {title: l.slice(0, i).trim().slice(0, 40), text: l.slice(i + 1).trim()} : {title: "", text: l}; });
+}
+// یادداشت شفافیت درباره‌ی تصویرهای ویرایش‌شده (توصیه‌ی Etsy: اگر تصویرها با ابزار/AI ویرایش شده، در توضیحات بنویس)
+function aiNoteAppend(p, desc){
+  const note = "Image note: some images in this listing were created or edited with digital tools, including AI, to show the product clearly. The product you receive is the one described here.";
+  const d = String(desc || ""); return (p.aiEdited && !d.includes(note)) ? d.replace(/\s+$/, "") + "\n\n" + note : d;
+}
 async function dzBuildGuide(p){
   if(p.dzStyle === "rigid_shape") return dzBuildRigidGuide(p);
   const gs = giGet(); giApply(gs);
@@ -10946,15 +10968,15 @@ async function dzBuildGuide(p){
   const shop = giShopName() || "";
   const name = spec.name || p.name, dim = dimTxt(p) + " mm";
   const g = spec.guide || {};
-  let steps = (g.steps && g.steps.length) ? g.steps : (spec.assembly_steps && spec.assembly_steps.length ? spec.assembly_steps.map((t,i) => ({title: "Step " + (i+1), text: t})) : [
+  let steps = guideOwnSteps(p).length ? guideOwnSteps(p) : (false ? null : [
     {title:"Download", text:"Download and unzip the files from your Etsy purchases page."},
     {title:"Test cut", text:"Cut once on plain paper to check size and fit."},
     {title:"Cut", text:"Load your material and cut using the SVG or DXF file."},
     {title:"Score and fold", text:"Score the blue dashed lines, then fold firmly along them."},
     {title:"Assemble", text:"Glue the tab and close the flaps to finish the box."}]);
   steps = steps.slice(0,8).map(s => typeof s === "string" ? {title: "", text: s} : s);
-  const tools = (g.tools && g.tools.length ? g.tools : ["Cutting machine (Cricut, Silhouette, Glowforge) or craft knife","Cutting mat and scoring tool","Ruler and bone folder","Strong glue or double-sided tape"]).slice(0,6);
-  const tips = (g.tips && g.tips.length ? g.tips : [
+  const tools = (false ? [] : ["Cutting machine (Cricut, Silhouette, Glowforge) or craft knife","Cutting mat and scoring tool","Ruler and bone folder","Strong glue or double-sided tape"]).slice(0,6);
+  const tips = (false ? [] : [
     {title:"Cutting settings", text:"Use a fresh blade and your machine's cardstock setting. Always test-cut first."},
     {title:"Crisp folds", text:"Score first, then fold along the line. A bone folder gives sharp edges."},
     {title:"Strong glue", text:"Use a thin line of strong glue on the tab and hold for 20 seconds."},
@@ -11450,12 +11472,19 @@ async function studioSendToEtsyCore(bt){
   }
   { const tmp = {TITLE: p.title, TAGS: tagList(p).join(","), DESCRIPTION: p.description}; if(bannedFixProduct(tmp)){ p.title = tmp.TITLE; p.tags = tmp.TAGS; p.description = tmp.DESCRIPTION; } }
   p.price = price; save();
+  { // قوانین جدید Etsy درباره‌ی AI (۲۲ اکتبر ۲۰۲۶)
+    const warn = [];
+    if(!p.aiReal) warn.push("• تأیید نکرده‌ای که یک عکس واقعی و ویرایش‌نشده از محصول/نتیجه‌ی ساخته‌شده در لیستینگ هست");
+    if(!p.aiAccurate) warn.push("• تأیید نکرده‌ای که همه‌ی تصویرها دقیقاً همان چیزی را نشان می‌دهند که خریدار می‌گیرد");
+    if((p.files && p.files.guide) && !(p.aiGuideOwn && guideOwnSteps(p).length)) warn.push("• لیستینگ راهنما دارد ولی تأیید نشده که متن راهنما کار خودت است (متن ساخته‌ی AI مجاز نیست)");
+    if(warn.length && !confirm("⚠ طبق قوانین جدید Etsy درباره‌ی AI:\n" + warn.join("\n") + "\n\nبا این حال پیش‌نویس ساخته شود؟ (تأییدها در تب «آمادگی انتشار» هستند)")) return;
+  }
   const files = await fsEtsyPayload(p), imgs = IMG_SLOTS.filter(s => p.images[s.k]);
   const vidList = VID_SLOTS.filter(s => vids(p)[s.k]);
   const nameFix = etsyFixFileNames(files, slug(p.name));
   if(nameFix.length) log("✂ نام " + nameFix.length + " فایل برای Etsy کوتاه/اصلاح شد: " + nameFix.slice(0, 5).join(" | "), "warn");
   if(!confirm("«" + p.title + "»\nقیمت: $" + price + "\n" + files.length + " فایل، " + imgs.length + " تصویر و " + vidList.length + " ویدیو به‌صورت پیش‌نویس (Draft) روی Etsy ساخته بشه؟" + (riskWarningFor([{TITLE: p.title, TAGS: tagList(p).join(","), DESCRIPTION: p.description, MATERIALS: ""}])) + (nameFix.length ? "\n\n✂ نام " + nameFix.length + " فایل بلند یا نامناسب بود و کوتاه شد:\n" + nameFix.slice(0, 4).join("\n") : "") + "\n(منتشر نمی‌شود؛ خودت در Etsy بررسی و Publish می‌کنی.)")) return;
-  const item = {title: p.title, tags: tagList(p), description: p.description, price, materials: matList(p), category: p.category};
+  const item = {title: p.title, tags: tagList(p), description: aiNoteAppend(p, p.description), price, materials: matList(p), category: p.category};
   toast("⏳ در حال ساخت پیش‌نویس روی Etsy...");
   Busy.set(bt, "ساخت پیش‌نویس روی Etsy", 3);
   const ok = await etsyCreateDraftListing(item);
@@ -11493,6 +11522,13 @@ async function studioSendToEtsyCore(bt){
 }
 if($("st-dzAsk")) $("st-dzAsk").onclick = dzAsk;
 if($("st-dzGuideBtn")) $("st-dzGuideBtn").onclick = dzGuideForCurrent;
+if($("st-btnGuideDraft")) $("st-btnGuideDraft").onclick = () => {
+  const p = cur(), spec = p.dzSpec || {}, g = spec.guide || {};
+  const src = (g.steps && g.steps.length) ? g.steps : (spec.assembly_steps || []);
+  if(!src.length){ toast("پیش‌نویسی از «طراحی با Claude» برای این محصول نیست."); return; }
+  p.guideText = src.map(x => typeof x === "string" ? x : ((x.title ? x.title + " | " : "") + (x.text || ""))).join("\n"); p.aiGuideOwn = false;
+  save(); renderFields(); renderChecks(); toast("پیش‌نویس درج شد؛ آن را با زبان خودت بازنویسی کن و بعد تیک «متن راهنما کار خودم است» را بزن.");
+};
 if($("st-dzShapeFile")) $("st-dzShapeFile").onchange = async e => {
   const f = e.target.files[0]; e.target.value = ""; if(!f) return;
   try{ const d = dzParseShapeSvg(await f.text()); if(!d) throw new Error("مسیر (path) یا چندضلعی در فایل پیدا نشد");
@@ -11584,7 +11620,7 @@ async function vidBuild3d(p, seconds, onProgress, forceBox){
 // ویدیوی «مراحل ساخت»: مرحله‌ها یکی‌یکی (عکس‌های خودت یا طرح برش) و در پایان یک نمای کوتاه از جعبه‌ی ساخته‌شده
 async function vidBuildSteps(p, seconds, onProgress, forceBox){
   const k = await vid3dPrep(p, forceBox), spec = p.dzSpec || {}, g = spec.guide || {};
-  let steps = (g.steps && g.steps.length) ? g.steps : (spec.assembly_steps && spec.assembly_steps.length ? spec.assembly_steps.map((t,i) => ({title: "Step " + (i+1), text: t})) : [
+  let steps = guideOwnSteps(p).length ? guideOwnSteps(p) : (false ? null : [
     {title:"Download", text:"Download and unzip the files from your Etsy purchases page."}, {title:"Test cut", text:"Cut once on plain paper to check size and fit."},
     {title:"Cut", text:"Load your material and cut using the SVG or DXF file."}, {title:"Score and fold", text:"Score the blue dashed lines, then fold firmly along them."},
     {title:"Assemble", text:"Glue the tab and close the flaps to finish the box."}]);
