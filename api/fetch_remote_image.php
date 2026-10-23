@@ -24,9 +24,21 @@ if(!$res['ok'] || !$res['body']) jsonResponse(['error'=>'دانلود عکس ن�
 
 $dir = __DIR__.'/../uploads';
 if(!is_dir($dir)) mkdir($dir, 0755, true);
-$filename = 'remote_'.$id.'_'.time().'.jpg';
+// نام یکتا: قبلاً فقط زمان (ثانیه) بود و چند عکسِ پشت‌سرهم در یک ثانیه روی هم نوشته می‌شدند (یک عکس دوبار، یکی گم)
+$filename = 'remote_'.$id.'_'.time().'_'.bin2hex(random_bytes(3)).'.jpg';
 resizeAndSaveJpeg($res['body'], $dir.'/'.$filename);
 $newPath = 'uploads/'.$filename;
+// اگر همین عکس (بایت‌به‌بایت) قبلاً روی همین آیتم هست، دوباره اضافه نمی‌شود
+$exist = ($item['images_json'] ?? null) ? json_decode($item['images_json'], true) : [];
+if(!is_array($exist) || !$exist) $exist = $item['hero_image_path'] ? [$item['hero_image_path']] : [];
+$newMd5 = md5_file($dir.'/'.$filename);
+foreach($exist as $ep){
+  $full = __DIR__.'/../'.$ep;
+  if(is_string($ep) && is_file($full) && md5_file($full) === $newMd5){
+    @unlink($dir.'/'.$filename);
+    jsonResponse(['ok'=>true, 'path'=>$ep, 'dup'=>true]);
+  }
+}
 
 try{
   $pdo->beginTransaction();
