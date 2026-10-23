@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.62.0 -->
+<!-- APP_VERSION: 1.62.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v210</div>
+        <div class="logo-badge">v211</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -7963,41 +7963,57 @@ async function etsyAuthed(method, url, _retry){
   if(d.error) throw new Error(String(d.error).slice(0, 160));
   return d;
 }
-// ثبت ALT روی تصویرهای لیستینگ: Etsy راهی برای تغییر ALT یک تصویر موجود ندارد، پس هر تصویر با همان ترتیب دوباره آپلود (overwrite) می‌شود؛ با کنترل ایمنی (تکراری‌شدن = حذف و توقف)
+// ثبت ALT روی تصویرهای لیستینگ. Etsy راه مستقیم تغییر ALT یک تصویر موجود ندارد و حالت overwrite در آپلود گزارش شده که ALT را درست عوض نمی‌کند؛
+// پس هر تصویر «جدید و با ALT، در همان جایگاه» آپلود و بعد نسخه‌ی قدیمی حذف می‌شود. بعد از هر تصویر، نتیجه از خود Etsy خوانده و کنترل می‌شود.
 async function etsyPushAlts(idx, opts){
   opts = opts || {}; const p = S.products[idx]; if(!p) return;
   if(!p._listing_id){ alert('این محصول از Etsy بارگذاری نشده — شناسه‌ی لیستینگ ندارد'); return; }
   if(!S.etsyOAuthToken){ alert('اول توی تنظیمات «اتصال به Etsy» (OAuth) رو انجام بده'); nav('settings'); return; }
+  await ensureAllImages(p);
   const wanted = productImageUrls(p).filter(x => p['ALT' + x.n]);
   if(!wanted.length){ toast('اول ALT بساز (🤖 ساخت با AI)'); return; }
-  if(!opts.skipConfirm && !confirm('ALT ' + wanted.length + ' تصویر روی لیستینگ Etsy ثبت شود؟\n\nEtsy راه مستقیم تغییر ALT ندارد: هر تصویر (با همان کیفیت و همان جایگاه) دوباره آپلود و جایگزین می‌شود.\nاگر Etsy به‌جای جایگزینی، تصویر تکراری بسازد، برنامه همان را حذف و کار را متوقف می‌کند.\nپیشنهاد: اول روی یک لیستینگ امتحان کن.')) return;
-  const bt = Busy.start('ثبت ALT روی Etsy', {pct: 0});
+  if(!opts.skipConfirm && !confirm('ALT ' + wanted.length + ' تصویر روی لیستینگ Etsy ثبت شود؟\n\nEtsy راه مستقیم تغییر ALT ندارد: هر تصویر (با همان کیفیت و همان جایگاه) دوباره با ALT جدید آپلود و نسخه‌ی قدیمی همان تصویر حذف می‌شود.\nبعد از هر تصویر نتیجه از Etsy خوانده و کنترل می‌شود؛ اگر درست نبود، کار همان‌جا متوقف می‌شود.\nپیشنهاد: اول روی یک لیستینگ امتحان کن.')) return;
+  const bt = Busy.start('ثبت ALT روی Etsy', {pct: 0}), sleep = ms => new Promise(r => setTimeout(r, ms));
+  const rep = {ok: 0, same: 0, mism: [], skipped: []};
   try{
     const shopId = await resolveEtsyShopId(), lid = p._listing_id;
-    const getImgs = async () => ((await etsyApiGetWithAuth('https://openapi.etsy.com/v3/application/listings/' + lid + '/images')).results || []);
-    const before = await getImgs(), ids0 = new Set(before.map(x => String(x.listing_image_id)));
+    const delUrl = id => 'https://openapi.etsy.com/v3/application/shops/' + shopId + '/listings/' + lid + '/images/' + id;
+    const getImgs = async () => ((await etsyApiGetWithAuth('https://openapi.etsy.com/v3/application/listings/' + lid + '/images')).results || []).slice().sort((a, b) => (a.rank || 0) - (b.rank || 0));
+    let cur = await getImgs(); const total0 = cur.length;
     const idOf = u => (String(u).match(/il_[^.]+\.(\d+)_/) || [])[1];
-    let okN = 0; const skipped = [];
     for(const [k, x] of wanted.entries()){
       Busy.set(bt, 'ثبت ALT تصویر ' + (k + 1) + ' از ' + wanted.length, k / wanted.length * 100);
-      const im = before.find(b => String(b.listing_image_id) === String(p['IMGID' + x.n] || idOf(x.u)));
-      if(!im){ skipped.push(x.n); continue; }
+      const id = String(p['IMGID' + x.n] || idOf(x.u) || ''), im = cur.find(b => String(b.listing_image_id) === id);
+      if(!im){ rep.skipped.push(x.n); continue; }
+      const alt = String(p['ALT' + x.n]).replace(/\s+/g, ' ').trim().slice(0, 250);
+      if(String(im.alt_text || '').trim() === alt){ rep.same++; continue; }            // ALT همین حالا روی Etsy هست
       const blob = await etsyImgBlobG(im.url_fullxfull || altFullUrl(x.u));
-      if(!blob){ skipped.push(x.n); continue; }
-      await etsyMultipartPost('listings/' + lid + '/images', {rank: im.rank, overwrite: 'true', alt_text: String(p['ALT' + x.n]).slice(0, 250)}, 'image', blob, 'image-' + im.rank + '.jpg');
-      okN++;
-      if(okN === 1){ // کنترل ایمنی بعد از اولین تصویر
-        const now = await getImgs();
-        if(now.length > before.length){
-          for(const e of now.filter(y => !ids0.has(String(y.listing_image_id)))) await etsyAuthed('DELETE', 'https://openapi.etsy.com/v3/application/shops/' + shopId + '/listings/' + lid + '/images/' + e.listing_image_id);
-          throw new Error('Etsy تصویر را جایگزین نکرد و یک نسخه‌ی تکراری ساخت؛ نسخه‌ی تکراری حذف و کار متوقف شد. ALT را دستی در Etsy بگذار (دکمه‌ی «📋 کپی همه»).');
-        }
+      if(!blob){ rep.skipped.push(x.n); continue; }
+      const full = cur.length >= 20;                                                    // سقف ۲۰ تصویر: اول قدیمی حذف می‌شود
+      if(full) await etsyAuthed('DELETE', delUrl(im.listing_image_id));
+      let d = null, lastErr = '';
+      for(let at = 1; at <= (full ? 3 : 1) && !d; at++){
+        try{ d = await etsyMultipartPost('listings/' + lid + '/images', {rank: im.rank, alt_text: alt}, 'image', blob, 'image-' + im.rank + '.jpg'); }
+        catch(e){ lastErr = (e && e.message) || 'نامشخص'; if(at < 3 && full) await sleep(1500); }
       }
-      await new Promise(r => setTimeout(r, 600));
+      if(!d) throw new Error('آپلود تصویر ' + x.n + ' ناموفق بود (' + lastErr + ')' + (full ? ' — چون لیستینگ ۲۰ تصویر داشت، نسخه‌ی قدیمی همین تصویر حذف شده بود؛ دوباره «بارگذاری کامل» بزن و تصویر را دستی اضافه کن.' : ''));
+      if(!full) await etsyAuthed('DELETE', delUrl(im.listing_image_id));
+      cur = await getImgs();
+      const at = cur.find(b => b.rank === im.rank) || cur[im.rank - 1];
+      const good = cur.length === total0 && at && String(at.alt_text || '').trim() === alt;
+      if(good) rep.ok++;
+      else{
+        rep.mism.push(x.n);
+        if(rep.ok === 0 && rep.mism.length === 1)
+          throw new Error('بعد از جایگزینی تصویر ' + x.n + ' نتیجه همان نبود که انتظار می‌رفت — تعداد تصویرها ' + cur.length + ' (قبل ' + total0 + ')، ALT خوانده‌شده از Etsy: «' + String((at && at.alt_text) || '') + '». پاسخ Etsy به آپلود: ' + JSON.stringify(d).slice(0, 220));
+      }
+      await sleep(600);
     }
-    const fresh = await getImgs(); Object.assign(p, etsyImageFields(fresh)); p._img_v = 2; p._alt_dirty = false; saveCurrentShop();
-    log('✅ ALT ' + okN + ' تصویر روی Etsy ثبت شد' + (skipped.length ? ' — تصویرهای ' + skipped.join('، ') + ' رد شد (عوض‌شده یا خوانده‌نشد؛ از Etsy دوباره بارگذاری کن)' : ''), skipped.length ? 'warn' : 'ok');
-    toast('✅ ALT ' + okN + ' تصویر روی Etsy ثبت شد');
+    const f = etsyImageFields(cur);
+    Object.keys(f).forEach(key => { if(!(rep.mism.length && /^ALT/.test(key))) p[key] = f[key]; });
+    p._img_v = 2; p._alt_dirty = rep.mism.length > 0; saveCurrentShop();
+    const msg = 'ALT روی Etsy: ' + rep.ok + ' تصویر ثبت شد' + (rep.same ? '، ' + rep.same + ' از قبل درست بود' : '') + (rep.mism.length ? '، ' + rep.mism.length + ' تصویر (' + rep.mism.join('، ') + ') درست ثبت نشد' : '') + (rep.skipped.length ? '، تصویرهای ' + rep.skipped.join('، ') + ' رد شد (عوض‌شده یا دانلودنشده؛ از Etsy دوباره بارگذاری کن)' : '');
+    log((rep.mism.length || rep.skipped.length ? '⚠ ' : '✅ ') + msg, rep.mism.length || rep.skipped.length ? 'warn' : 'ok'); toast((rep.mism.length ? '⚠ ' : '✅ ') + msg);
     renderSEOList();
   }catch(e){ log('✗ ثبت ALT روی Etsy: ' + e.message, 'err'); alert('ثبت ALT ناموفق: ' + e.message); }
   finally{ Busy.end(bt); }
@@ -11746,10 +11762,16 @@ async function studioSendToEtsyCore(bt){
   for(const [i, s] of imgs.entries()){
     try{
       const v = p.images[s.k], b = await blobGet(v.key), idx = IMG_SLOTS.findIndex(x => x.k === s.k);
-      await etsyMultipartPost("listings/" + lid + "/images", {rank: idx+1, overwrite: "true", alt_text: altResolved(p)[idx].slice(0,250)}, "image", b, v.name || (s.f + ".jpg"));
+      await etsyMultipartPost("listings/" + lid + "/images", {rank: idx+1, alt_text: altResolved(p)[idx].slice(0,250)}, "image", b, v.name || (s.f + ".jpg"));
       iOk++; Busy.set(bt, "آپلود تصویر " + fa(iOk) + " از " + fa(imgs.length), 5 + (fOk+iOk)/(files.length+imgs.length+vidList.length)*95); toast("🖼 تصویر " + fa(iOk) + "/" + fa(imgs.length) + " آپلود شد");
     }catch(e){ errs.push(s.t + ": " + e.message); }
   }
+  try{ // کنترل ALT: از Etsy خوانده و با مقدار فرستاده‌شده مقایسه می‌شود
+    const now = ((await etsyApiGetWithAuth("https://openapi.etsy.com/v3/application/listings/" + lid + "/images")).results || []).slice().sort((a, b) => (a.rank || 0) - (b.rank || 0));
+    const want = imgs.map(s => altResolved(p)[IMG_SLOTS.findIndex(x => x.k === s.k)].slice(0, 250).trim());
+    const bad = want.filter((a, i) => now[i] && String(now[i].alt_text || "").trim() !== a).length;
+    if(bad) errs.push("ALT برای " + fa(bad) + " تصویر روی Etsy ثبت نشد — بعد از ساخت پیش‌نویس، در Etsy دستی بگذار یا از «فهرست محصولات» ⬆ ثبت روی Etsy را بزن");
+  }catch(e){}
   let vOk = 0;
   for(const s of vidList){
     try{
