@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.60.0 -->
+<!-- APP_VERSION: 1.61.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v208</div>
+        <div class="logo-badge">v209</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -4544,7 +4544,7 @@ async function backfillOldContentImages(btn){
       const p = matchOf.get(it.id);
       const existingCount = (it.images||[]).length;
       const allImgUrls=[];
-      for(let n=1;n<=10;n++){ const u=p['IMAGE'+n]; if(u) allImgUrls.push(u); }
+      for(let n=1;n<=20;n++){ const u=p['IMAGE'+n]; if(u) allImgUrls.push(u); }
       // فقط عکس‌های اضافه‌تر از چیزی که همین الان داره رو اضافه کن (تقریبی، برای جلوگیری از افزودن دوباره‌ی همه)
       const toAdd = allImgUrls.slice(existingCount);
       progEl.textContent = `⏳ ${++done}/${candidates.length}: «${it.title.slice(0,40)}» — افزودن ${toAdd.length} عکس...`;
@@ -4679,7 +4679,7 @@ async function submitCrBulkProducts(){
       if(!res.ok) throw new Error(d.error||'خطا');
       const newId = d.id;
       const allImgUrls = [];
-      for(let n2=1;n2<=10;n2++){ const u=p['IMAGE'+n2]; if(u) allImgUrls.push(u); }
+      for(let n2=1;n2<=20;n2++){ const u=p['IMAGE'+n2]; if(u) allImgUrls.push(u); }
       for(const imgUrl of allImgUrls){
         try{
           const blob = await processRemoteImageForUpload(imgUrl);
@@ -4714,7 +4714,7 @@ function onCrProductPicked(){
   document.getElementById('crAddTitle').value = p.TITLE||'';
   document.getElementById('crAddContent').value = p.DESCRIPTION||'';
   const imgs=[];
-  for(let n=1;n<=10;n++){ const u=p['IMAGE'+n]; if(u) imgs.push(u); }
+  for(let n=1;n<=20;n++){ const u=p['IMAGE'+n]; if(u) imgs.push(u); }
   if(!imgs.length){ imgBox.innerHTML='<div style="font-size:11px;color:var(--text3)">این محصول عکسی توی کاتالوگ نداره</div>'; return; }
   imgBox.innerHTML = `<div style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
       <div style="font-size:11px;color:var(--text2)">عکس‌هایی که می‌خوای برای این محتوا استفاده بشن رو تیک بزن:</div>
@@ -5672,6 +5672,20 @@ function buildProductDropdown(idx){
         </div>`).join('')}
       </div>
     </div>`:''}
+    ${(()=>{
+      const ims=productImageUrls(p); if(!ims.length) return '';
+      const filled=ims.filter(x=>p['ALT'+x.n]).length;
+      return `<div class="pd-section" id="pdAlt${idx}">
+        <div class="pd-section-header"><div class="pd-label">🏷 ALT تصاویر — ${filled}/${ims.length} پر شده</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="pd-copy" onclick="event.stopPropagation();generateAltTexts(${idx},{force:true})">🤖 ساخت با AI</button>
+            <button class="pd-copy" onclick="event.stopPropagation();copyAltAll(${idx})">📋 کپی همه</button>
+            <button class="pd-copy" onclick="event.stopPropagation();etsyPushAlts(${idx})" title="ALT را روی تصویرهای لیستینگ Etsy ثبت می‌کند (تصویرها با همان ترتیب دوباره آپلود می‌شوند)">⬆ ثبت روی Etsy</button>
+          </div></div>
+        <div style="display:flex;flex-direction:column;gap:6px">${ims.map(x=>`<div style="display:flex;gap:8px;align-items:center"><img src="${x.u}" style="width:40px;height:40px;border-radius:6px;object-fit:cover;flex:none"><input class="input" value="${escHtml(p['ALT'+x.n]||'').replace(/"/g,'&quot;')}" maxlength="250" placeholder="ALT تصویر ${x.n}" onchange="setProductAlt(${idx},${x.n},this.value)" style="flex:1;direction:ltr"></div>`).join('')}</div>
+        <label style="font-size:11.5px;display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" ${altAutoOn()?'checked':''} onchange="try{localStorage.setItem('eap_autoalt',this.checked?'1':'0')}catch(e){}"> ساخت خودکار ALT هنگام بهینه‌سازی (با دیدن تصویر؛ هزینه‌ی هوش مصنوعی دارد)</label>
+      </div>`;
+    })()}
     <div class="pd-section">
       <div class="pd-section-header"><div class="pd-label">✏️ ویرایش عنوان، تگ‌ها، متریال و قیمت</div></div>
       <input class="input" id="pdEdTitle${idx}" value="${escHtml(p.TITLE||'').replace(/"/g,'&quot;')}" placeholder="عنوان" style="width:100%;margin-bottom:6px;direction:ltr">
@@ -6064,6 +6078,7 @@ Return ONLY JSON (no markdown, no explanation):
     if(r.new_description) S.products[idx].DESCRIPTION=normalizeDescription(r.new_description);
     if(r.new_materials&&r.new_materials.length) S.products[idx].MATERIALS=sanitizeMaterials(r.new_materials, parseMaterials(p.MATERIALS)).join(',');
     bannedFixProduct(S.products[idx]); S.optimized[idx]=true; if(S.pushedToEtsy) delete S.pushedToEtsy[idx];
+    try{ altAfterOptimize(idx); }catch(e){}
     // آنالیز مجدد محلی با قوانین واقعی
     const newScore=calcLocalScore(S.products[idx]);
     const scoreAfter=Math.min(100, Math.max(newScore, scoreBefore+8));
@@ -6596,6 +6611,7 @@ async function applyOpt(){
   if(S.pendingOpt.new_description) S.products[idx].DESCRIPTION=S.pendingOpt.new_description;
   if(S.pendingOpt.new_materials&&S.pendingOpt.new_materials.length) S.products[idx].MATERIALS=sanitizeMaterials(S.pendingOpt.new_materials, parseMaterials(S.products[idx].MATERIALS)).join(',');
   S.optimized[idx]=true;
+  try{ altAfterOptimize(idx); }catch(e){}
   // آنالیز محلی فوری با داده جدید
   const np=S.products[idx];
   const newTags=np.TAGS.split(',').filter(Boolean);
@@ -7762,15 +7778,130 @@ function etsyHashOf(title, desc, tags, mats, price, qty){
 }
 function etsyListingHash(l){ return etsyHashOf(l.title, l.description, l.tags, l.materials, l.price ? (l.price.amount || 0) / (l.price.divisor || 100) : 0, l.quantity); }
 function etsyProductHash(p){ return etsyHashOf(p.TITLE, p.DESCRIPTION, p.TAGS, p.MATERIALS, p.PRICE, p.QUANTITY); }
+// ══ تصویرها و ALT محصولات اتسی: همه‌ی تصویرها (تا ۲۰)، ALT هر تصویر، ساخت خودکار ALT با AI، و ثبت ALT روی Etsy ══
+function etsyModOf(l){ return Number(l && (l.last_modified_timestamp || l.updated_timestamp || l.last_modified_tsz)) || 0; }
+function etsyImageFields(imgs){
+  const list = (imgs || []).slice().sort((a, b) => (a.rank || 0) - (b.rank || 0)), o = {};
+  for(let i = 0; i < 20; i++){
+    const im = list[i];
+    o['IMAGE' + (i + 1)] = im ? (im.url_570xN || im.url_fullxfull || im.url_75x75 || '') : '';
+    o['ALT' + (i + 1)] = im ? String(im.alt_text || '') : '';
+    o['IMGID' + (i + 1)] = im ? String(im.listing_image_id || '') : '';
+  }
+  return o;
+}
+function productImageUrls(p){ const a = []; for(let n = 1; n <= 20; n++){ const u = String(p['IMAGE' + n] || '').trim(); if(/^https?:/.test(u)) a.push({n, u}); } return a; }
+function altFullUrl(u){ return String(u).replace(/il_\d+x(?:N|\d+)/, 'il_fullxfull'); }
+function altAutoOn(){ try{ return localStorage.getItem('eap_autoalt') !== '0'; }catch(e){ return true; } }
+function etsyImgBlobG(url, maxD, q){
+  return new Promise(res => {
+    const im = new Image(); im.crossOrigin = 'anonymous';
+    im.onload = () => { try{ const sc = maxD ? Math.min(1, maxD / Math.max(im.naturalWidth, im.naturalHeight)) : 1, c = document.createElement('canvas'); c.width = Math.max(1, Math.round(im.naturalWidth * sc)); c.height = Math.max(1, Math.round(im.naturalHeight * sc)); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); c.toBlob(b => res(b), 'image/jpeg', q || 0.92); }catch(e){ res(null); } };
+    im.onerror = () => res(null); im.src = url;
+  });
+}
+async function altImgToJpegB64(url){
+  const b = await etsyImgBlobG(url, 800, 0.72); if(!b) return null;
+  return await new Promise(res => { const rd = new FileReader(); rd.onload = () => res(String(rd.result).split(',')[1] || null); rd.onerror = () => res(null); rd.readAsDataURL(b); });
+}
+let altQueue = Promise.resolve();
+function altAfterOptimize(idx){
+  if(!altAutoOn()) return; const p = S.products[idx]; if(!p || !productImageUrls(p).length) return;
+  altQueue = altQueue.then(() => generateAltTexts(idx, {quiet: true})).catch(() => {});
+}
+async function generateAltTexts(idx, opts){
+  opts = opts || {}; const p = S.products[idx]; if(!p) return 0;
+  const ims = productImageUrls(p); if(!ims.length){ if(!opts.quiet) toast('این محصول تصویری ندارد'); return 0; }
+  const todo = opts.force ? ims : ims.filter(x => !p['ALT' + x.n]); if(!todo.length) return 0;
+  const bt = Busy.start('ساخت ALT تصاویر «' + String(p.TITLE || '').slice(0, 40) + '»', {pct: 0});
+  const lang = S.contentLanguage || 'English'; let done = 0, vision = 0;
+  try{
+    for(let i = 0; i < todo.length; i += 6){
+      const chunk = todo.slice(i, i + 6);
+      Busy.set(bt, 'ALT تصویر ' + (i + 1) + ' تا ' + (i + chunk.length) + ' از ' + todo.length, i / todo.length * 100);
+      const b64 = []; if(S.contentBackendUrl){ for(const c of chunk) b64.push(await altImgToJpegB64(c.u)); }
+      const useVision = b64.length === chunk.length && b64.every(Boolean);
+      const head = 'You write Etsy listing image ALT text (accessibility + SEO).\nListing title: ' + p.TITLE + '\nTags: ' + p.TAGS + '\nImages in this batch (listing positions): ' + chunk.map(c => c.n).join(', ') + '.\n'
+        + 'For EACH image write ONE factual ALT text of 80-200 characters describing what the image really shows (' + (useVision ? 'look at each image' : 'you cannot see the images, so base it on the listing text and stay truthful and general') + '). Include the main product keyword naturally when it fits. '
+        + 'Never invent details, colors, sizes or claims that are not visible or written in the listing. Do not start with "Image of" or "Photo of".\n' + bannedPromptLine() + 'Write in natural ' + lang + '.\n'
+        + 'Return ONLY JSON: {"alts":[' + chunk.map(() => '"..."').join(',') + ']} with exactly ' + chunk.length + ' strings in the same order.';
+      const text = useVision ? await serverAIFiles(head, 8000, 'sonnet', b64.map(x => ({b64: x})), null) : await callClaude(head, 1500);
+      const arr = parseJSON(text).alts || [];
+      chunk.forEach((c, j) => { let a = String(arr[j] || '').replace(/\s+/g, ' ').trim().replace(/^(image|photo|picture) of /i, ''); a = bannedReplace(a).text.slice(0, 250); if(a){ p['ALT' + c.n] = a; done++; } });
+      if(useVision) vision += chunk.length;
+    }
+    if(done){ p._alt_dirty = true; saveCurrentShop(); }
+    const box = document.getElementById('pdAlt' + idx); if(box){ const inputs = box.querySelectorAll('input.input'); ims.forEach((x, k) => { if(inputs[k]) inputs[k].value = p['ALT' + x.n] || ''; }); }
+    log('🏷 ALT برای ' + done + ' تصویر ساخته شد' + (vision ? ' (با دیدن تصویر)' : ' (فقط از روی متن لیستینگ — آدرس بک‌اند وارد نیست یا تصویر خوانده نشد)'), done ? 'ok' : 'warn');
+    if(!opts.quiet) toast(done ? '✅ ALT ' + done + ' تصویر ساخته شد؛ با «⬆ ثبت روی Etsy» روی لیستینگ بگذار.' : 'ALT ساخته نشد');
+    return done;
+  }catch(e){ log('✗ ساخت ALT ناموفق: ' + e.message, 'err'); if(!opts.quiet) toast('✗ ' + e.message); return 0; }
+  finally{ Busy.end(bt); }
+}
+function setProductAlt(idx, n, v){ const p = S.products[idx]; if(!p) return; p['ALT' + n] = String(v || '').replace(/\s+/g, ' ').trim().slice(0, 250); p._alt_dirty = true; saveCurrentShop(); }
+function copyAltAll(idx){
+  const p = S.products[idx]; if(!p) return;
+  const t = productImageUrls(p).map(x => x.n + '. ' + (p['ALT' + x.n] || '')).join('\n');
+  navigator.clipboard.writeText(t).then(() => toast('✅ ALTها کپی شد'), () => toast('کپی ممکن نشد'));
+}
+async function etsyAuthed(method, url, _retry){
+  const headers = {'x-api-key': etsyApiKeyHeader(), 'Authorization': 'Bearer ' + S.etsyOAuthToken};
+  let text;
+  if(S.apiRelayUrl){
+    const res = await fetch(S.apiRelayUrl.replace(/\/$/, ''), {method: 'POST', headers: {'Content-Type': 'application/json', 'X-Relay-Secret': S.apiRelaySecret || ''}, body: JSON.stringify({url, method, headers})});
+    text = await res.text();
+  }else{ const res = await fetch(url, {method, headers}); text = await res.text(); }
+  let d = {}; try{ d = text ? JSON.parse(text) : {}; }catch(e){}
+  if(!_retry && (d.error === 'invalid_token' || d.error_description === 'invalid_token') && await refreshEtsyOAuthToken()) return etsyAuthed(method, url, true);
+  if(d.error) throw new Error(String(d.error).slice(0, 160));
+  return d;
+}
+// ثبت ALT روی تصویرهای لیستینگ: Etsy راهی برای تغییر ALT یک تصویر موجود ندارد، پس هر تصویر با همان ترتیب دوباره آپلود (overwrite) می‌شود؛ با کنترل ایمنی (تکراری‌شدن = حذف و توقف)
+async function etsyPushAlts(idx){
+  const p = S.products[idx]; if(!p) return;
+  if(!p._listing_id){ alert('این محصول از Etsy بارگذاری نشده — شناسه‌ی لیستینگ ندارد'); return; }
+  if(!S.etsyOAuthToken){ alert('اول توی تنظیمات «اتصال به Etsy» (OAuth) رو انجام بده'); nav('settings'); return; }
+  const wanted = productImageUrls(p).filter(x => p['ALT' + x.n]);
+  if(!wanted.length){ toast('اول ALT بساز (🤖 ساخت با AI)'); return; }
+  if(!confirm('ALT ' + wanted.length + ' تصویر روی لیستینگ Etsy ثبت شود؟\n\nEtsy راه مستقیم تغییر ALT ندارد: هر تصویر (با همان کیفیت و همان جایگاه) دوباره آپلود و جایگزین می‌شود.\nاگر Etsy به‌جای جایگزینی، تصویر تکراری بسازد، برنامه همان را حذف و کار را متوقف می‌کند.\nپیشنهاد: اول روی یک لیستینگ امتحان کن.')) return;
+  const bt = Busy.start('ثبت ALT روی Etsy', {pct: 0});
+  try{
+    const shopId = await resolveEtsyShopId(), lid = p._listing_id;
+    const getImgs = async () => ((await etsyApiGetWithAuth('https://openapi.etsy.com/v3/application/listings/' + lid + '/images')).results || []);
+    const before = await getImgs(), ids0 = new Set(before.map(x => String(x.listing_image_id)));
+    const idOf = u => (String(u).match(/il_[^.]+\.(\d+)_/) || [])[1];
+    let okN = 0; const skipped = [];
+    for(const [k, x] of wanted.entries()){
+      Busy.set(bt, 'ثبت ALT تصویر ' + (k + 1) + ' از ' + wanted.length, k / wanted.length * 100);
+      const im = before.find(b => String(b.listing_image_id) === String(p['IMGID' + x.n] || idOf(x.u)));
+      if(!im){ skipped.push(x.n); continue; }
+      const blob = await etsyImgBlobG(im.url_fullxfull || altFullUrl(x.u), 0, 0.95);
+      if(!blob){ skipped.push(x.n); continue; }
+      await etsyMultipartPost('listings/' + lid + '/images', {rank: im.rank, overwrite: 'true', alt_text: String(p['ALT' + x.n]).slice(0, 250)}, 'image', blob, 'image-' + im.rank + '.jpg');
+      okN++;
+      if(okN === 1){ // کنترل ایمنی بعد از اولین تصویر
+        const now = await getImgs();
+        if(now.length > before.length){
+          for(const e of now.filter(y => !ids0.has(String(y.listing_image_id)))) await etsyAuthed('DELETE', 'https://openapi.etsy.com/v3/application/shops/' + shopId + '/listings/' + lid + '/images/' + e.listing_image_id);
+          throw new Error('Etsy تصویر را جایگزین نکرد و یک نسخه‌ی تکراری ساخت؛ نسخه‌ی تکراری حذف و کار متوقف شد. ALT را دستی در Etsy بگذار (دکمه‌ی «📋 کپی همه»).');
+        }
+      }
+      await new Promise(r => setTimeout(r, 600));
+    }
+    const fresh = await getImgs(); Object.assign(p, etsyImageFields(fresh)); p._img_v = 2; p._alt_dirty = false; saveCurrentShop();
+    log('✅ ALT ' + okN + ' تصویر روی Etsy ثبت شد' + (skipped.length ? ' — تصویرهای ' + skipped.join('، ') + ' رد شد (عوض‌شده یا خوانده‌نشد؛ از Etsy دوباره بارگذاری کن)' : ''), skipped.length ? 'warn' : 'ok');
+    toast('✅ ALT ' + okN + ' تصویر روی Etsy ثبت شد');
+    renderSEOList();
+  }catch(e){ log('✗ ثبت ALT روی Etsy: ' + e.message, 'err'); alert('ثبت ALT ناموفق: ' + e.message); }
+  finally{ Busy.end(bt); }
+}
 function etsyBuildProduct(l){
-  const imgs = l.images || [], imgObj = {};
-  imgs.slice(0, 10).forEach((img, idx) => { imgObj['IMAGE' + (idx + 1)] = img.url_570xN || img.url_fullxfull || img.url_75x75 || ''; });
-  for(let i = imgs.length + 1; i <= 10; i++) imgObj['IMAGE' + i] = '';
+  const imgObj = etsyImageFields(l.images || []);
   return {
     TITLE: l.title || '', DESCRIPTION: l.description || '', PRICE: (l.price?.amount || 0) / (l.price?.divisor || 100) + '', CURRENCY_CODE: l.price?.currency_code || 'USD',
     QUANTITY: l.quantity + '', TAGS: (l.tags || []).join(','), MATERIALS: (l.materials || []).join(','), ...imgObj,
     'VARIATION 1 TYPE': '', 'VARIATION 1 NAME': '', 'VARIATION 1 VALUES': '', 'VARIATION 2 TYPE': '', 'VARIATION 2 NAME': '', 'VARIATION 2 VALUES': '',
-    SKU: l.sku || '', _listing_id: l.listing_id, _etsy_hash: etsyListingHash(l)
+    SKU: l.sku || '', _listing_id: l.listing_id, _etsy_hash: etsyListingHash(l), _img_v: 2, _etsy_mod: etsyModOf(l)
   };
 }
 async function loadFromEtsy(full){
@@ -7822,7 +7953,7 @@ async function loadFromEtsyCore(bt, full){
         conflicts.forEach(c => { c.kind = etsyWins ? 'changed' : 'kept'; });
       }
       // ۲) فقط برای جدید/تغییرکرده (و محصول‌های بدون عکس) عکس‌ها دانلود می‌شود
-      const need = plan.filter(x => x.kind === 'new' || x.kind === 'changed' || (x.kind === 'same' && !x.lp.IMAGE1)).map(x => x.l.listing_id);
+      const need = plan.filter(x => x.kind === 'new' || x.kind === 'changed' || (x.kind === 'same' && (!x.lp._img_v || (x.lp._etsy_mod && etsyModOf(x.l) && x.lp._etsy_mod !== etsyModOf(x.l))))).map(x => x.l.listing_id);
       const byId = new Map();
       if(need.length){
         try{
@@ -7841,7 +7972,11 @@ async function loadFromEtsyCore(bt, full){
         const full1 = byId.get(String(x.l.listing_id));
         if(x.kind === 'new' || x.kind === 'changed'){ newProducts.push(etsyBuildProduct(full1 || x.l)); if(x.kind === 'new') stat.fresh++; else stat.changed++; }
         else {
-          if(full1 && !x.lp.IMAGE1){ const tmp = etsyBuildProduct(full1); for(let i = 1; i <= 10; i++) x.lp['IMAGE' + i] = tmp['IMAGE' + i]; }
+          if(full1 && (!x.lp._img_v || (x.lp._etsy_mod && etsyModOf(x.l) && x.lp._etsy_mod !== etsyModOf(x.l)))){
+            const tmp = etsyBuildProduct(full1);
+            Object.keys(tmp).filter(k => /^(IMAGE|ALT|IMGID)\d+$/.test(k) && !(x.lp._alt_dirty && /^ALT/.test(k))).forEach(k => { x.lp[k] = tmp[k]; });
+            x.lp._img_v = 2; x.lp._etsy_mod = etsyModOf(full1);
+          }
           x.lp._etsy_remote = etsyListingHash(x.l); x.lp._etsy_gone = false;
           newProducts.push(x.lp); if(x.kind === 'kept') stat.kept++; else stat.same++;
         }
@@ -12089,13 +12224,14 @@ async function addFromListing(l){
     const price = parseFloat(l.PRICE); if(price > 0){ p.price = price; p.notes = "قیمت لیستینگ اصلی: $" + price; }
     p.category = ""; p.material = ""; p.machines = "";
     p.ptype = FLAT_RX.test([p.name, p.title].join(" ")) ? "flat" : "auto"; if(p.ptype === "flat") p.d = 0;
-    p.alt = IMG_SLOTS.map(() => t.slice(0, 140)).join("\n");
-    const urls = []; for(let n = 1; n <= 10; n++){ const u = String(l["IMAGE" + n] || "").trim(); if(/^https?:/.test(u)) urls.push(u); }
+    const items = []; for(let n = 1; n <= 20; n++){ const u = String(l["IMAGE" + n] || "").trim(); if(/^https?:/.test(u)) items.push({u, alt: String(l["ALT" + n] || "").trim()}); }
+    // ALT هر تصویر: ALT خودِ Etsy/ساخته‌شده در برنامه؛ اگر نبود، عنوان محصول
+    p.alt = IMG_SLOTS.map((s, i) => String((items[i] && items[i].alt) || t).replace(/\s+/g, " ").trim().slice(0, 250)).join("\n");
     let ok = 0, fail = 0;
-    for(const [k, u] of urls.entries()){
+    for(const [k, it] of items.entries()){
       if(k >= IMG_SLOTS.length) break;
-      Busy.set(bz, "دانلود تصویر " + fa(k + 1) + " از " + fa(urls.length), k / Math.max(1, urls.length) * 100);
-      const big = u.replace(/il_\d+x(?:N|\d+)/, "il_fullxfull");
+      Busy.set(bz, "دانلود تصویر " + fa(k + 1) + " از " + fa(items.length), k / Math.max(1, items.length) * 100);
+      const u = it.u, big = u.replace(/il_\d+x(?:N|\d+)/, "il_fullxfull");
       const blob = (await etsyImgToBlob(big)) || (big !== u ? await etsyImgToBlob(u) : null);
       if(blob){ const slot = IMG_SLOTS[k].k, key = p.id + ":images:" + slot; await blobPut(key, blob); p.images[slot] = {name: "photo-" + (k + 1) + ".jpg", size: blob.size, type: blob.type || "image/jpeg", key}; ok++; } else fail++;
     }
