@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.62.1 -->
+<!-- APP_VERSION: 1.63.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v211</div>
+        <div class="logo-badge">v212</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -12522,6 +12522,431 @@ save();
 })();
 </script>
 <!-- Shop modals removed — now in page-shopmanager -->
+
+<!-- ═══ Smart tooltips (v1.63.0): هر دکمه/آیتم با هاور توضیح عملکردش را نشان می‌دهد ═══ -->
+<style>
+#uiTip{position:fixed;z-index:100000;max-width:300px;padding:8px 12px;border-radius:9px;
+  background:#1e293b;color:#f8fafc;font-size:12.5px;font-weight:500;line-height:1.75;
+  direction:rtl;text-align:right;white-space:normal;pointer-events:none;
+  box-shadow:0 6px 20px rgba(0,0,0,.28);opacity:0;transform:translateY(3px);
+  transition:opacity .14s ease,transform .14s ease;font-family:inherit}
+#uiTip.show{opacity:1;transform:none}
+#uiTip .k{display:block;margin-top:4px;font-size:11px;color:#94a3b8}
+</style>
+<script>
+(function(){
+  if (window.__uiTipsLoaded) return; window.__uiTipsLoaded = true;
+  // اگر دستگاه هاور ندارد (موبایل/تاچ) کاری نکن
+  try { if (window.matchMedia && !window.matchMedia('(hover:hover)').matches) return; } catch(e){}
+
+  // ── ۱) توضیح بر اساس تابع onclick (کلید «تابع:آرگومان‌اول» یا فقط «تابع») ──
+  const FN = {
+    'toggleMobileSidebar':'باز و بسته کردن منوی کناری',
+    'goToProductSuggestTab':'رفتن به استودیو، بخش پیشنهاد محصول بر اساس تحقیق بازار',
+    'nav:settings':'رفتن به تنظیمات (کلیدهای API، اتصال Etsy، برند و سوشال)',
+    'nav:optimize':'رفتن به صفحه‌ی بهینه‌سازی عنوان، تگ و توضیحات با هوش مصنوعی',
+    'nav:help':'رفتن به راهنمای استفاده از برنامه',
+    'nav:competitor':'رفتن به آنالیز رقبا',
+    'nav:shopmanager':'رفتن به مدیریت فروشگاه‌ها (ساخت، ویرایش، تعویض)',
+    'nav:customers':'رفتن به بخش مشتریان',
+    'nav':'رفتن به این بخش از برنامه',
+    'confirmReloadProducts':'بارگذاری دوباره‌ی محصولات (از فایل CSV یا Etsy)',
+    'toggleDlMenu':'باز کردن منوی دانلود فایل CSV محصولات',
+    'toggleDlMenu2':'باز کردن منوی دانلود فایل CSV محصولات',
+    'exportCSV:all':'دانلود فایل CSV همه‌ی محصولات',
+    'exportCSV:optimized':'دانلود فایل CSV فقط محصول‌هایی که بهینه شده‌اند',
+    'exportCSV:selected':'دانلود فایل CSV فقط محصول‌هایی که تیک زده‌ای',
+    'loadFromEtsy':'دریافت لیستینگ‌ها از Etsy؛ فقط محصول‌های جدید یا تغییرکرده دانلود می‌شوند (با Shift: بارگذاری کامل)',
+    'runDailyAgent':'اجرای ایجنت روزانه: پیشنهاد و آماده‌سازی محصولات امروز',
+    'closeModal':'بستن این پنجره',
+    'clearAllArchive':'پاک کردن همه‌ی موارد آرشیو (برگشت‌ناپذیر)',
+    'loadContentReview':'به‌روزرسانی فهرست محتوای معرفی از سرور',
+    'runCronNow':'همین الان صف انتشار را اجرا کن (بدون صبر برای زمان‌بندی خودکار)',
+    'switchCrView:queue':'نمایش صف انتشار محتوای معرفی',
+    'switchCrView:tools':'نمایش ابزارهای تولید متن برای سوشال، ایمیل و فروشگاه',
+    'toggleCrAddForm':'باز کردن فرم افزودن موضوع تازه برای محتوای معرفی',
+    'toggleAddForm':'باز کردن فرم افزودن موضوع تازه برای محتوای معرفی',
+    'submitCrBulkProducts':'افزودن محصولات تیک‌خورده به فهرست محتوای معرفی',
+    'submitCrAddForm':'ثبت موضوع و ساخت خودکار کپشن، هشتگ و تصویر برایش',
+    'submitAddForm':'ثبت موضوع و ساخت خودکار کپشن، هشتگ و تصویر برایش',
+    'generateAllCrDrafts':'برای همه‌ی پیش‌نویس‌ها یک‌جا کپشن و تصویر بساز',
+    'generateAllDrafts':'برای همه‌ی پیش‌نویس‌ها یک‌جا کپشن و تصویر بساز',
+    'exportPinterestCsv':'ساخت فایل CSV برای آپلود گروهی پین‌ها در Pinterest',
+    'backfillOldContentImages':'تصویرهای جاافتاده‌ی آیتم‌های قدیمی محتوای معرفی را تکمیل کن',
+    'recompressAllImages':'فشرده‌سازی تصویرهای ذخیره‌شده برای کم کردن حجم و سریع‌تر شدن',
+    'suggestContentTopics':'پیشنهاد موضوع‌های تازه برای پست‌های معرفی با هوش مصنوعی',
+    'setContentReviewTab':'فیلتر کردن فهرست بر اساس وضعیت',
+    'toggleCrSelectMode':'روشن/خاموش کردن حالت انتخاب چندتایی',
+    'toggleSelectMode':'روشن/خاموش کردن حالت انتخاب چندتایی محصولات',
+    'toggleOptSelectMode':'روشن/خاموش کردن حالت انتخاب چندتایی محصولات',
+    'crSelectAllVisible':'انتخاب همه‌ی آیتم‌های همین صفحه',
+    'crDeselectAll':'برداشتن همه‌ی انتخاب‌ها',
+    'deleteCrSelected':'حذف آیتم‌های انتخاب‌شده',
+    'switchSecTab':'رفتن به این زبانه',
+    'setPlatform':'انتخاب شبکه‌ی اجتماعی برای تولید محتوا',
+    'generateSocialContent':'تولید پست برای شبکه‌ی انتخاب‌شده با هوش مصنوعی',
+    'generateEmail':'نوشتن این نوع ایمیل برای مشتری با هوش مصنوعی',
+    'generateShopContent:about':'نوشتن متن بخش About فروشگاه',
+    'generateShopContent:policy':'نوشتن قوانین فروشگاه (Shop Policies)',
+    'generateShopContent:announcement':'نوشتن اطلاعیه‌ی بالای صفحه‌ی فروشگاه',
+    'generateDescription':'نوشتن توضیحات لیستینگ با هوش مصنوعی',
+    'generateWeeklyCalendar':'ساخت برنامه‌ی محتوای یک هفته',
+    'loadMarketing':'به‌روزرسانی آمار و پلن بازاریابی',
+    'collectMarketingNow':'همین الان آمار صفحه‌های سوشال را جمع‌آوری کن',
+    'collectEtsyMetricsFromBrowser':'دریافت آمار فروشگاه Etsy از طریق همین مرورگر',
+    'checkClaudeKey':'بررسی سالم و فعال بودن کلید Claude روی سرور',
+    'analyzeMarketingNow':'تحلیل آمار واقعی و ساخت پلن بازاریابی تازه',
+    'toggleMktSettings':'باز و بسته کردن تنظیمات بازاریابی',
+    'saveMarketingConfig':'ذخیره‌ی تنظیمات بازاریابی',
+    'loadMarketingStats':'بارگذاری آمار بازه‌ی انتخاب‌شده',
+    'openMarketing':'باز کردن بخش بازاریابی خودکار',
+    'closeMarketing':'بستن بخش بازاریابی',
+    'toggleSEOFilter':'تغییر فیلتر نمایش محصولات (همه / ضعیف / خوب)',
+    'runSEOAnalysis':'آنالیز سئوی عنوان، تگ‌ها و توضیحات؛ محصول‌هایی که قبلاً آنالیز شده‌اند دوباره آنالیز نمی‌شوند',
+    'sendAllOptimizedToEtsy':'ارسال گروهی همه‌ی محصولات بهینه‌شده به Etsy (جایگزینی لیستینگ‌ها)',
+    'selectAll':'انتخاب همه‌ی محصولات',
+    'selectNone':'برداشتن همه‌ی انتخاب‌ها',
+    'optSelectAll':'انتخاب همه‌ی محصولات',
+    'optSelectNone':'برداشتن همه‌ی انتخاب‌ها',
+    'autoOptimizeAndUpload':'بهینه‌سازی محصولات انتخاب‌شده و ارسال خودکارشان به Etsy در یک قدم',
+    'runOptimizeSelected':'بهینه‌سازی عنوان، تگ و توضیحات محصولات انتخاب‌شده با هوش مصنوعی',
+    'saveBannedText':'ذخیره‌ی فهرست واژه‌های ممنوعه و جایگزین‌هایشان',
+    'scanBanned':'جستجوی واژه‌های ممنوعه در همه‌ی محصولات و نمایش موارد پیدا‌شده',
+    'setOptFilter:all':'نمایش همه‌ی محصولات',
+    'setOptFilter:notopt':'فقط محصول‌هایی که هنوز بهینه نشده‌اند',
+    'setOptFilter:opt':'فقط محصول‌هایی که بهینه شده‌اند',
+    'setOptFilter:weak':'فقط محصول‌هایی که امتیاز سئوی آن‌ها زیر ۷۰ است',
+    'analyzePricing':'تحلیل قیمت‌ها و پیشنهاد قیمت مناسب',
+    'openCompetitorHistory':'دیدن آنالیزهای قبلی رقبا',
+    'autoFindCompetitors':'پیدا کردن خودکار رقبای اصلی بر اساس محصولات تو',
+    'analyzeComp':'آنالیز رقیب واردشده',
+    'openKeywordsHistory':'دیدن جستجوهای قبلی کلمات کلیدی',
+    'findKeywords':'پیدا کردن کلمات کلیدی پرجستجو برای این موضوع',
+    'openTrendsHistory':'دیدن ترندهای قبلاً دریافت‌شده',
+    'analyzeTrends':'دریافت ترندهای تازه‌ی بازار Etsy',
+    'exportCustomers':'دانلود فهرست مشتریان به صورت CSV',
+    'loadCustomers':'دریافت فهرست مشتریان از سفارش‌های Etsy',
+    'setMsgType':'انتخاب نوع پیام مشتری تا پاسخ مناسب نوشته شود',
+    'generateCustomerReply':'نوشتن پاسخ مؤدبانه و مناسب برای پیام مشتری',
+    'generateMarketingMsg':'نوشتن پیام بازاریابی برای مشتریان',
+    'openReportsHistory':'دیدن گزارش‌های قبلی',
+    'generateReport':'ساخت گزارش کامل وضعیت فروشگاه',
+    'setProvider':'انتخاب سرویس هوش مصنوعی که برنامه با آن کار می‌کند',
+    'saveApiKey':'ذخیره‌ی کلید API هوش مصنوعی',
+    'testApiKey':'آزمایش کلید API؛ اگر درست باشد پیام موفقیت می‌آید',
+    'findEtsyTaxonomy':'پیدا کردن خودکار شناسه‌ی دسته‌بندی (Taxonomy) مناسب در Etsy',
+    'loadEtsySectionsUI':'دریافت گروه‌های فروشگاه (Shop Sections) از Etsy',
+    'etsyCheckConnection':'بررسی اینکه توکن فعلی به کدام فروشگاه Etsy وصل است',
+    'startEtsyOAuthFlow':'شروع اتصال برنامه به حساب Etsy (صفحه‌ی ورود Etsy باز می‌شود)',
+    'checkOAuthCallback':'تکمیل اتصال بعد از برگشتن از صفحه‌ی Etsy',
+    'saveOAuthTokenManual':'ذخیره‌ی توکنی که دستی وارد کرده‌ای',
+    'saveEtsySettings':'ذخیره‌ی تنظیمات Etsy این فروشگاه',
+    'copyRedirectUri':'کپی آدرس بازگشت (Callback URL) برای وارد کردن در تنظیمات اپ Etsy',
+    'copyEtsyRedirect':'کپی آدرس بازگشت (Callback URL) برای وارد کردن در تنظیمات اپ Etsy',
+    'saveBrandSettings':'ذخیره‌ی تنظیمات برند (نام، لوگو، رنگ‌ها)',
+    'saveApiRelaySettings':'ذخیره‌ی تنظیمات رله (Cloudflare Worker)',
+    'saveContentBackendSettings':'ذخیره‌ی آدرس و تنظیمات سرور محتوا',
+    'copyPinFeedUrl':'کپی آدرس فید RSS برای وارد کردن در Pinterest',
+    'window.open':'باز کردن در تب تازه',
+    'savePinterestMode':'ذخیره و فعال کردن روش انتخاب‌شده برای ارسال به Pinterest',
+    'savePinterestSettings':'ذخیره‌ی تنظیمات Pinterest',
+    'testPinterest':'آزمایش اتصال به Pinterest',
+    'generateVisibilityReport':'گزارش اینکه فروشگاه در جستجوها چقدر دیده می‌شود و چه چیزی کم دارد',
+    'saveInstagramToken':'آزمایش توکن اینستاگرام و ذخیره‌ی آن روی سرور',
+    'renderInstagramToken':'نمایش وضعیت فعلی توکن اینستاگرام (اعتبار و تاریخ انقضا)',
+    'openArchiveModal':'دیدن آرشیو پیشنهادهای قبلی',
+    'researchAndSuggestProducts':'تحقیق در بازار و پیشنهاد محصولات تازه با اندازه‌های پرطرفدار',
+    'ownIdeaReset':'پاک کردن فایل‌ها و عکس‌هایی که برای ایده‌ی خودت داده‌ای',
+    'generateFromOwnIdea':'تحقیق روی محصول تو و ساخت مشخصات کامل از روی آن',
+    'ebImport':'ثبت داده‌های چسبانده‌شده از EverBee',
+    'ebSortPicks':'مرتب کردن پیشنهادها بر اساس داده‌های فروش EverBee',
+    'ebClear':'پاک کردن داده‌های EverBee',
+    'showInlineNewShop':'باز کردن فرم ساخت فروشگاه تازه',
+    'createNewShop':'ساخت فروشگاه تازه با این مشخصات',
+    'autoDetectNicheFromProducts':'حدس خودکار حوزه‌ی فروشگاه از روی محصولات',
+    'saveSettings':'ذخیره‌ی تغییرات این بخش',
+    'applyOpt':'نسخه‌ی بهینه‌شده را روی محصول اعمال کن',
+    'rejectProduct':'رد کردن این پیشنهاد',
+    'approveProduct':'تأیید پیشنهاد و دانلود فایل CSV آن',
+    'switchShop':'رفتن به این فروشگاه',
+    'if':'حذف این فروشگاه (بعد از تأیید)',
+    'cleanAllTagsNow':'پاکسازی تگ‌ها: حذف تکراری‌ها، تگ‌های بلندتر از ۲۰ حرف و نویسه‌های غیرمجاز',
+    'buildSelectedIdeas':'ساخت مشخصات کامل (اندازه، متن، فایل) برای ایده‌های انتخاب‌شده',
+    'clearIdeaPicks':'پاک کردن فهرست ایده‌های انتخاب‌شده',
+    'viewArchiveItem':'باز کردن این مورد',
+    'deleteArchiveItem':'حذف از آرشیو',
+    'showDailyDetail':'نمایش همه‌ی جزئیات این پیشنهاد',
+    'sendDailyToEtsy':'ارسال این محصول به Etsy',
+    'setDailyStatus:approved':'تأیید این پیشنهاد',
+    'setDailyStatus:rejected':'رد این پیشنهاد',
+    'applyMktPlan':'افزودن همه‌ی موضوع‌های این پلن به تقویم محتوا',
+    'saveMktAdResult':'ثبت نتیجه‌ی تبلیغ',
+    'addSuggestedTopic':'افزودن این موضوع و تولید محتوایش',
+    'saveContentSchedule':'ذخیره‌ی زمان انتشار',
+    'clearContentSchedule':'برداشتن زمان‌بندی (انتشار در اولین نوبت)',
+    'toggleContentPlatform':'ذخیره‌ی شبکه‌هایی که این آیتم در آن‌ها منتشر می‌شود',
+    'retryContentPlatform':'تلاش دوباره برای انتشار در این شبکه',
+    'retryPlatform':'تلاش دوباره برای انتشار در این شبکه',
+    'copyFromField':'کپی این متن',
+    'saveContentFields':'ذخیره‌ی تغییرات کپشن و هشتگ',
+    'saveFields':'ذخیره‌ی تغییرات کپشن و هشتگ',
+    'regenContentCaption':'نوشتن کپشن تازه با هوش مصنوعی',
+    'regenCaption':'نوشتن کپشن تازه با هوش مصنوعی',
+    'regenContentImage':'ساخت و افزودن یک تصویر تازه',
+    'regenImage':'ساخت تصویر تازه',
+    'setContentStatus:approved':'تأیید و گذاشتن در صف انتشار خودکار',
+    'setContentStatus:rejected':'رد کردن؛ منتشر نمی‌شود',
+    'setStatus:approved':'تأیید و گذاشتن در صف انتشار خودکار',
+    'setStatus:rejected':'رد کردن؛ منتشر نمی‌شود',
+    'deleteContentItem':'حذف کامل این آیتم از سرور (برگشت‌ناپذیر)',
+    'crSlide':'تصویر قبلی / بعدی',
+    'crGoToSlide':'رفتن به این تصویر',
+    'copyDetailField':'کپی این متن',
+    'sendDetailToEtsy':'ارسال به Etsy',
+    'toggleSelect':'انتخاب / برداشتن این محصول',
+    'toggleOptSelect':'انتخاب / برداشتن این محصول',
+    'startOptimize':'بهینه‌سازی این محصول با هوش مصنوعی',
+    'copyFieldClean':'کپی این متن بدون نویسه‌های اضافه',
+    'copyField':'کپی این متن',
+    'editProductDescription':'ویرایش دستی توضیحات',
+    'saveProductDescription':'ذخیره‌ی توضیحات ویرایش‌شده',
+    'cancelProductDescriptionEdit':'لغو ویرایش',
+    'copyAltAll':'کپی همه‌ی متن‌های ALT تصویرها',
+    'copyProductToStudio':'کپی این محصول با عکس‌هایش به استودیو برای ویرایش و انتشار',
+    'generateAltTexts':'ساخت متن ALT برای همه‌ی تصویرها با هوش مصنوعی (تصویرها را می‌بیند)',
+    'saveProductBasics':'ذخیره‌ی تغییرات این محصول',
+    'sendProductToContent':'ارسال به محتوای معرفی با همه‌ی عکس‌ها، کپشن و هشتگ',
+    'etsyPushAlts':'ثبت متن‌های ALT روی تصویرهای لیستینگ Etsy',
+    'etsySyncCheck':'مقایسه‌ی دوباره‌ی محصولات برنامه با Etsy',
+    'sendLocalChangesToEtsy':'ارسال تغییرهای برنامه به Etsy',
+    'pullEtsyChanges':'دریافت تغییرهایی که مستقیم در Etsy داده‌ای',
+    'viewCompetitorFromHistory':'باز کردن این آنالیز',
+    'deleteCompetitorHistoryItem':'حذف از تاریخچه',
+    'adoptEtsyTokenShop':'تنظیم Shop ID روی فروشگاهی که توکن به آن تعلق دارد',
+    'viewKeywordsFromHistory':'باز کردن این جستجو',
+    'deleteKeywordsHistoryItem':'حذف از تاریخچه',
+    'viewTrendsFromHistory':'باز کردن این ترندها',
+    'deleteTrendsHistoryItem':'حذف از تاریخچه',
+    'copyText':'کپی این متن',
+    'viewReportFromHistory':'باز کردن این گزارش',
+    'deleteReportsHistoryItem':'حذف از تاریخچه',
+    'doLogin':'ورود به پنل',
+    'doLogout':'خروج از پنل',
+    'setDailySizeN':'تعداد اندازه‌ی این محصول در یک لیستینگ'
+  };
+
+  // ── ۲) توضیح بر اساس شناسه‌ی عنصر (بیشتر دکمه‌های استودیو) ──
+  const ID = {
+    'st-btnNew':'ساخت یک محصول خالی تازه در استودیو',
+    'st-btnDup':'ساخت محصول تازه از روی قالب مادر (فقط مشخصات و متن؛ فایل‌ها و تصویرها کپی نمی‌شوند)',
+    'st-btnPkg':'ساخت فایل ZIP کامل برای اتسی: فایل محصول، تصویرهای لیستینگ با ALT، ویدیوها و متن',
+    'st-btnImport':'بازگرداندن استودیو از فایل پشتیبانی که قبلاً گرفته‌ای',
+    'st-btnBackup':'دانلود پشتیبان کامل استودیوی این فروشگاه (همه‌ی محصولات، فایل‌ها و تصویرها)',
+    'st-btnReset':'خالی کردن کامل استودیوی این فروشگاه (قبلش پشتیبان بگیر)',
+    'st-btnZip':'دانلود فقط فایل ZIP محصول (همان چیزی که خریدار دریافت می‌کند)',
+    'st-btnTxt':'کپی عنوان، توضیحات و تگ‌ها برای چسباندن در Etsy',
+    'st-btnMaster':'این محصول را قالب مادر کن تا محصولات بعدی از رویش ساخته شوند',
+    'st-btnAiSeo':'ساخت عنوان، توضیحات، تگ‌ها و جنس‌ها با هوش مصنوعی',
+    'st-btnPushContent':'ارسال این محصول به محتوای معرفی برای پست در سوشال',
+    'st-btnDel':'حذف این محصول از استودیو',
+    'st-dzAsk':'Claude قبل از طراحی چند سؤال می‌پرسد تا طرح دقیق‌تر شود',
+    'st-dzSkip':'Claude بدون سؤال و با تصمیم خودش طراحی را شروع می‌کند',
+    'st-dzShapeClear':'برداشتن فایل شکلی که داده بودی',
+    'st-dzGuideBtn':'ساخت یا به‌روزرسانی راهنمای PDF بیست‌صفحه‌ای محصول فعال',
+    'st-btnGoToCompetitor':'رفتن به صفحه‌ی آنالیز رقبا',
+    'st-canvaImportBtn':'دانلود PDF آماده برای وارد کردن در Canva',
+    'st-canvaMake':'ساخت فایل حاوی لینک قالب Canva برای خریدار',
+    'st-refPalette':'رنگ‌های تم تصویرها را از روی عکس اصلی محصول بردار',
+    'st-gBgClear':'برداشتن تصویر پس‌زمینه‌ی دلخواه',
+    'st-gTplSave':'ذخیره‌ی تنظیمات فعلی تصویرها به‌عنوان قالب برای محصولات بعدی',
+    'st-gTplExport':'دانلود قالب‌ها به صورت فایل برای انتقال یا پشتیبان',
+    'st-gReset':'برگرداندن تنظیمات ظاهر تصویرها به حالت پیش‌فرض',
+    'st-gAll':'انتخاب همه‌ی تصویرها برای ساخت',
+    'st-gNone':'برداشتن انتخاب همه‌ی تصویرها',
+    'st-gEmpty':'فقط تصویرهایی را انتخاب کن که این محصول هنوز ندارد',
+    'st-btnGenImgs':'ساخت تصویرهای لیستینگ انتخاب‌شده با قالب و رنگ‌های بالا',
+    'st-btnImgZip':'دانلود همه‌ی تصویرهای این محصول در یک فایل ZIP',
+    'st-v3dClear':'برداشتن فایل شکلی که برای ویدیوی ۳بعدی داده بودی',
+    'st-btnAutoAlt':'نوشتن خودکار متن ALT برای همه‌ی تصویرها',
+    'st-btnGuideDraft':'یک پیش‌نویس از هوش مصنوعی در کادر می‌گذارد تا خودت بازنویسی کنی',
+    'st-btnSendEtsy':'ساخت پیش‌نویس روی Etsy همراه با فایل‌ها، تصویرها، ALTها و ویدیوها',
+    'st-btnFromEtsy':'یکی از لیستینگ‌های Etsy را با عکس‌هایش به یک محصول تازه‌ی استودیو کپی کن',
+    'sidebarShopLink':'باز کردن صفحه‌ی فروشگاه در Etsy (تب تازه)',
+    'settingsShopLink':'باز کردن صفحه‌ی فروشگاه در Etsy (تب تازه)',
+    'mktPlanPicker':'انتخاب یکی از پلن‌های بازاریابی ساخته‌شده',
+    'st-gProduct':'تصویرها برای کدام محصول ساخته شوند',
+    'st-gPrevSlot':'پیش‌نمایش کدام تصویر نشان داده شود',
+    'shopFilter':'فیلتر بر اساس فروشگاه',
+    'categoryFilter':'فیلتر بر اساس دسته‌بندی',
+    'crShopFilter':'نمایش محتوای کدام فروشگاه',
+    'crCategoryFilter':'فیلتر بر اساس دسته‌بندی',
+    'crProductPick':'انتخاب محصول برای ساخت پست معرفی',
+    'custSort':'مرتب‌سازی فهرست مشتریان',
+    'seoSort':'مرتب‌سازی محصولات بر اساس امتیاز یا نام',
+    'etsySectionSelect':'گروه فروشگاه (Shop Section) که محصول در آن قرار می‌گیرد',
+    'ideaCount':'چند پیشنهاد ساخته شود',
+    'ideaMinSales':'فقط از فروشگاه‌هایی که حداقل این تعداد فروش دارند نمونه بگیر',
+    'ideaMinViews':'فقط محصولاتی که حداقل این بازدید روزانه را دارند',
+    'ideaModel':'مدل هوش مصنوعی برای تحقیق (دقیق‌تر = گران‌تر)',
+    'ideaSizeN':'برای هر محصول چند اندازه پیشنهاد شود',
+    'st-dzModel':'مدل هوش مصنوعی برای طراحی (دقیق‌تر = گران‌تر)',
+    'modelSelect':'انتخاب مدل هوش مصنوعی',
+    'mktAnalysisModel':'مدل هوش مصنوعی برای تحلیل بازاریابی',
+    'mktAnalyzeWeekday':'روزی از هفته که تحلیل خودکار انجام شود',
+    'pinCsvEvery':'فاصله‌ی زمانی بین پین‌ها در فایل CSV',
+    'st-vDur':'مدت هر ویدیو',
+    'st-v3dShape':'شکل جعبه در ویدیوی چرخش ۳بعدی',
+    'marketSegment':'پیام بازاریابی برای کدام گروه از مشتریان نوشته شود',
+    'marketType':'نوع پیام بازاریابی (تخفیف، محصول جدید و …)',
+    'pinPostBtn':'انتشار همین پست در Pinterest',
+    'copyBtn':'کپی کپشن و هشتگ‌ها با هم',
+    'copyBtn2':'کپی این متن',
+    'mktSettingsToggleIcon':'باز و بسته کردن تنظیمات',
+    'mktCollectBtn':'همین الان آمار صفحه‌های سوشال را جمع‌آوری کن',
+    'mktAnalyzeBtn':'تحلیل آمار واقعی و ساخت پلن بازاریابی تازه'
+  };
+
+  // ── ۳) توضیح بر اساس data-* (دکمه‌هایی که با کد ساخته می‌شوند) ──
+  const DATA = [
+    ['data-dl','دانلود این فایل برای بررسی'],
+    ['data-rm','حذف این فایل'],
+    ['data-dlall','دانلود همه‌ی فایل‌های این بخش در یک ZIP'],
+    ['data-dlimg','دانلود این تصویر'],
+    ['data-main','این تصویر را تصویر اصلی (اول) لیستینگ کن'],
+    ['data-vmake','ساخت خودکار این ویدیو'],
+    ['data-vdl','دانلود ویدیو'],
+    ['data-tpl-use','اعمال این قالب روی تصویرها'],
+    ['data-tpl-del','حذف این قالب'],
+    ['data-x','برداشتن (حذف از این محصول)']
+  ];
+
+  // ── ۴) توضیح بر اساس متن دکمه (برای موارد خاص) ──
+  const TEXT = {
+    'مشخصات':'نام، کد، اندازه، دسته‌بندی و جنس محصول',
+    'فایلها':'فایل‌های برش (SVG، DXF، PDF، Studio3) و فایل‌های خریدار',
+    'تصویرها':'ساخت و مدیریت ۲۰ تصویر لیستینگ و ویدیوها',
+    'سئو اتسی':'عنوان، توضیحات، تگ‌ها و متن‌های ALT برای Etsy',
+    'آمادگی انتشار':'چک‌لیست نهایی و ارسال به Etsy',
+    'پیشنهاد محصول':'پیشنهاد محصول تازه بر اساس تحقیق بازار',
+    'طراحی با Claude':'طراحی خودکار طرح برش با Claude',
+    'کپی ALT':'کپی متن ALT این تصویر',
+    'کپی همهی ALTها':'کپی متن ALT همه‌ی تصویرها',
+    'کپی عنوان':'کپی عنوان لیستینگ',
+    'کپی توضیحات':'کپی توضیحات لیستینگ',
+    'کپی تگها':'کپی تگ‌ها با ویرگول',
+    'کپی جنسها':'کپی فهرست جنس‌ها',
+    'کپی پیام':'کپی پیام نوشته‌شده',
+    '›':'بعدی','‹':'قبلی','－':'کوچک‌نمایی','＋':'بزرگ‌نمایی',
+    'جاشدن':'جا شدن کامل در صفحه','۱۰۰٪':'نمایش در اندازه‌ی واقعی',
+    'بستن':'بستن','انصراف':'لغو و بستن','پاک کردن':'پاک کردن این فهرست',
+    'وارد کردن دستی token':'نمایش کادر وارد کردن دستی توکن Etsy',
+    'ثبت پاسخها و طراحی':'ثبت پاسخ‌هایت و شروع طراحی',
+    'پیشنهاد ۵ اندازهی پرطرفدار (Claude، کممصرف)':'پیشنهاد ۵ اندازه‌ی پرفروش برای این محصول',
+    'ساخت فایلها، راهنمای PDF، تصویرها و پر کردن همهچیز':'ساخت همه‌چیز از روی طرح: فایل‌های برش، راهنما، تصویرها و متن',
+    'اصلاح طرح با Claude':'ارسال توضیحاتت به Claude برای اصلاح طرح',
+    'برداشتن همه':'برداشتن همه‌ی فایل‌های این بخش',
+    'اعمال':'اعمال','حذف':'حذف'
+  };
+
+  // ── ۵) پشتیبان: معنی ایموجی اول متن ──
+  const EMO = [
+    ['💾','ذخیره'],['🗑','حذف'],['📋','کپی در حافظه'],['✕','بستن یا حذف'],['⬇','دانلود'],
+    ['⬆','ارسال یا بارگذاری'],['🔄','به‌روزرسانی'],['🔁','تکرار یا ارسال دوباره'],['✨','تولید با هوش مصنوعی'],
+    ['🤖','تولید با هوش مصنوعی'],['🪄','تولید خودکار'],['🔍','جستجو و بررسی'],['🔎','جستجو و بررسی'],
+    ['📤','ارسال'],['📥','دریافت'],['➕','افزودن'],['+','افزودن'],['✅','تأیید'],['❌','رد'],['📄','کپی یا فایل'],
+    ['📊','گزارش'],['🗂','تاریخچه'],['🎨','ساخت تصویر'],['🎬','ساخت ویدیو'],['🔌','آزمایش اتصال'],['🔗','اتصال یا لینک'],
+    ['▶','اجرا'],['⚡','بهینه‌سازی'],['🧹','پاکسازی'],['📢','ارسال به محتوای معرفی'],['☑','انتخاب'],['⚙️','تنظیمات']
+  ];
+
+  const norm = s => (s || '').replace(/[‌‍‎‏]/g, '')
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2190}-\u{27BF}\u{2900}-\u{297F}\u{2B00}-\u{2BFF}️]/gu, '')
+    .replace(/\s+/g, ' ').trim();
+  const labelOf = el => (el.innerText || el.textContent || el.value || el.getAttribute('aria-label') || '').replace(/\s+/g,' ').trim();
+
+  function fromOnclick(el){
+    let oc = el.getAttribute('onclick'); if (!oc) return '';
+    oc = oc.replace(/^\s*event\.stopPropagation\(\)\s*;?\s*/, '');
+    const m = oc.match(/^\s*([A-Za-z_$][\w$.]*)\s*\(\s*(?:['"`]([^'"`]*)['"`])?/);
+    if (!m) return '';
+    const fn = m[1], arg = m[2];
+    if (arg != null && FN[fn + ':' + arg]) return FN[fn + ':' + arg];
+    return FN[fn] || '';
+  }
+
+  function compute(el){
+    if (el.dataset.uitip) return el.dataset.uitip;
+    const t = el.getAttribute('title');
+    if (t && t.trim()) return t.trim();
+    if (el.id && ID[el.id]) return ID[el.id];
+    for (const [a, txt] of DATA) if (el.hasAttribute(a)) return txt;
+    const lab = labelOf(el), n = norm(lab);
+    if (n && TEXT[n.replace(/‌/g,'')]) return TEXT[n];
+    const oc = el.getAttribute('onclick') || '';
+    if (oc.includes('etsyTaxonomyIdInput')) return 'انتخاب این دسته‌بندی به‌عنوان Taxonomy ID';
+    const f = fromOnclick(el);
+    if (f) return f;
+    if (el.tagName === 'A' && el.href && /^https?:/.test(el.href)) {
+      try { return 'باز کردن ' + new URL(el.href).hostname + ' در تب تازه'; } catch(e){}
+    }
+    if (el.tagName === 'SUMMARY') return 'باز / بسته کردن این بخش' + (n ? ': ' + n.slice(0, 60) : '');
+    if (el.tagName === 'SELECT') {
+      const lb = el.closest('label') || (el.id && document.querySelector('label[for="' + el.id + '"]'));
+      let lt = lb ? (lb.textContent || '').replace(el.textContent || '', ' ') : '';
+      if (!lt.trim() && el.previousElementSibling && el.previousElementSibling.tagName === 'LABEL') lt = el.previousElementSibling.textContent;
+      lt = norm(lt); return lt ? 'انتخاب ' + lt.slice(0, 60) : '';
+    }
+    if (el.tagName === 'LABEL') {
+      const inp = el.querySelector('input');
+      if (inp && inp.type === 'file') return 'انتخاب فایل از کامپیوتر' + (n ? ': ' + n.slice(0, 60) : '');
+      if (inp && (inp.type === 'checkbox' || inp.type === 'radio')) return n ? 'روشن / خاموش کردن: ' + n.slice(0, 80) : '';
+      return '';
+    }
+    // پشتیبان فقط برای دکمه‌ها: ایموجی + متن دکمه
+    const isBtn = el.tagName === 'BUTTON' || el.tagName === 'A' || el.tagName === 'INPUT' || el.getAttribute('role') === 'button'
+      || /(^|\s)(btn|ghost|chip|tab)/.test(String(el.className || ''));
+    if (!isBtn || lab.length > 70) return '';
+    for (const [e, mean] of EMO) if (lab.startsWith(e)) return n ? mean + ' — ' + n : mean;
+    return n && n.length > 1 ? n : '';
+  }
+
+  window.__uiTipCompute = compute;
+  const SEL = 'button,a[href],a[onclick],summary,select,label,[onclick],[role="button"],input[type="checkbox"],input[type="radio"],input[type="button"],input[type="submit"]';
+  let tipEl = null, timer = null, curEl = null;
+  function ensure(){ if (!tipEl){ tipEl = document.createElement('div'); tipEl.id = 'uiTip'; document.body.appendChild(tipEl); } return tipEl; }
+  function hide(){ clearTimeout(timer); curEl = null; if (tipEl) tipEl.classList.remove('show'); }
+  function place(el){
+    const r = el.getBoundingClientRect(), t = ensure();
+    const tw = t.offsetWidth, th = t.offsetHeight, vw = innerWidth, vh = innerHeight;
+    let top = r.bottom + 8; if (top + th > vh - 6) top = r.top - th - 8; if (top < 6) top = 6;
+    let left = r.left + r.width / 2 - tw / 2; left = Math.max(6, Math.min(left, vw - tw - 6));
+    t.style.top = top + 'px'; t.style.left = left + 'px';
+  }
+  function target(node){
+    const el = node && node.closest ? node.closest(SEL) : null;
+    if (!el) return null;
+    if (el.closest('[data-tip]')) return null;          // منوی کناری تولتیپ قدیمی خودش را دارد
+    // برچسب‌های فیلد متنی تولتیپ نمی‌گیرند؛ فقط برچسب‌های فایل/تیک
+    if (el.tagName === 'LABEL' && !el.querySelector('input[type=file],input[type=checkbox],input[type=radio]')) return null;
+    return el;
+  }
+  document.addEventListener('mouseover', ev => {
+    const el = target(ev.target);
+    if (el === curEl) return;
+    hide(); if (!el) return;
+    try { if (window.__uiTipsOff || localStorage.getItem('uiTipsOff') === '1') return; } catch(e){}
+    const txt = compute(el); if (!txt) return;
+    // title بومی مرورگر را بردار تا دو تولتیپ با هم نیایند (متنش نگه داشته می‌شود)
+    if (el.hasAttribute('title')) { el.dataset.uitip = txt; el.removeAttribute('title'); }
+    curEl = el;
+    timer = setTimeout(() => {
+      if (curEl !== el || !el.isConnected) return;
+      const t = ensure(); t.textContent = txt; place(el); t.classList.add('show');
+    }, 380);
+  }, true);
+  document.addEventListener('mouseout', ev => { if (curEl && !curEl.contains(ev.relatedTarget)) hide(); }, true);
+  ['mousedown','scroll','keydown','blur'].forEach(e => window.addEventListener(e, hide, true));
+})();
+</script>
 
 </body>
 </html>
