@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.1.0 -->
+<!-- APP_VERSION: 1.2.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -82,7 +82,7 @@
 
 <div class="wrap hidden" id="mainBox">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-    <h1>🤖 Beguchee Content Agent <span style="font-size:11px;font-weight:400;color:var(--text3)">v1.1.0</span></h1>
+    <h1>🤖 Beguchee Content Agent <span style="font-size:11px;font-weight:400;color:var(--text3)">v1.2.0</span></h1>
     <button class="btn btn-secondary btn-sm" onclick="doLogout()">خروج</button>
   </div>
   <div class="sub">بررسی و تأیید محتوای معرفی محصول قبل از انتشار خودکار</div>
@@ -383,7 +383,7 @@ const statusColor = {
   approved:'background:#12261a;color:#22c55e', published:'background:#12261a;color:#22c55e',
   rejected:'background:#2a1518;color:#ef4444', failed:'background:#2a1518;color:#ef4444'
 };
-const platformLabel = { telegram:'تلگرام', instagram:'اینستاگرام', pinterest:'پینترست' };
+const platformLabel = { telegram:'تلگرام', instagram:'اینستاگرام', pinterest:'پینترست', facebook:'فیسبوک', youtube:'یوتیوب' };
 const platformStatusClass = { pending:'badge-pending', published:'badge-published', failed:'badge-failed' };
 const platformStatusText = { pending:'⏳ در صف', published:'✅ منتشرشد', failed:'❌ خطا' };
 
@@ -460,7 +460,7 @@ async function retryPlatform(id, platform){
 
 // ══════════ بازاریابی خودکار ══════════
 const weekdayLabel = {1:'دوشنبه',2:'سه‌شنبه',3:'چهارشنبه',4:'پنجشنبه',5:'جمعه',6:'شنبه',7:'یکشنبه'};
-const mktPlatformLabel = { telegram:'تلگرام', instagram:'اینستاگرام', pinterest:'پینترست', etsy:'اتسی' };
+const mktPlatformLabel = { telegram:'تلگرام', instagram:'اینستاگرام', pinterest:'پینترست', facebook:'فیسبوک', youtube:'یوتیوب', etsy:'اتسی' };
 let mktPlansCache = [];
 let mktLatestPlan = null;
 

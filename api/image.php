@@ -11,6 +11,8 @@ $fullPath = __DIR__.'/../'.$path;
 if(!file_exists($fullPath)){ http_response_code(404); exit('not found'); }
 
 // عمداً هیچ Range/If-Range/If-Modified-Since ای رو در نظر نمی‌گیریم — همیشه کل فایل با 200
+// اجازه‌ی خواندن از صفحه‌ی برنامه (ساخت ویدیو در مرورگر با canvas بدون خطای امنیتی)
+header('Access-Control-Allow-Origin: *');
 header('Content-Type: image/jpeg');
 header('Content-Length: '.filesize($fullPath));
 header('Accept-Ranges: none');

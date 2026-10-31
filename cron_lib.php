@@ -72,6 +72,8 @@ function publishToPlatform($item, $platform){
     case 'telegram': return publishToTelegram($item);
     case 'instagram': return publishToInstagram($item);
     case 'pinterest': return publishToPinterestPlatform($item);
+    case 'facebook': return publishToFacebook($item);
+    case 'youtube': return publishToYouTube($item);
     default: return ['ok'=>false, 'message'=>'پلتفرم ناشناخته: '.$platform];
   }
 }
@@ -202,4 +204,123 @@ function publishToPinterestPlatform($item){
   $data = json_decode($res['body'] ?? '', true);
   if($res['ok'] && !empty($data['id'])) return ['ok'=>true, 'external_id'=>$data['id']];
   return ['ok'=>false, 'message'=>$data['message'] ?? ($res['body'] ?? 'خطای نامشخص')];
+}
+
+
+// ════════════════════════ فیسبوک (صفحه‌ی بیزینسی) ════════════════════════
+// توکن صفحه (Page Access Token) و شناسه‌ی صفحه از api/facebook_token.php ذخیره می‌شوند
+function fbPageId(){ return (string)getSetting('FB_PAGE_ID', ''); }
+function fbPageToken(){ return (string)getSetting('FB_PAGE_TOKEN', ''); }
+const FB_GRAPH = 'https://graph.facebook.com/v21.0';
+
+function itemImagePaths($item, $max=10){
+  $images = ($item['images_json'] ?? null) ? json_decode($item['images_json'], true) : [];
+  if(!is_array($images) || !$images) $images = !empty($item['hero_image_path']) ? [$item['hero_image_path']] : [];
+  return array_slice(array_values(array_filter($images, 'is_string')), 0, $max);
+}
+
+function publishToFacebook($item){
+  $page = fbPageId(); $token = fbPageToken();
+  if($page === '' || $token === '') return ['ok'=>false, 'message'=>'تنظیمات فیسبوک کامل نیست (در برنامه: تنظیمات ← فیسبوک، توکن صفحه را ذخیره کن)'];
+  $images = itemImagePaths($item, 10);
+  $siteUrl = rtrim(cfg()['SITE_URL'] ?? '', '/');
+  $urls = array_map(fn($p) => $siteUrl.'/api/image.php?path='.urlencode($p), $images);
+  $message = fullCaption($item);
+  $post = function($path, $params) use ($token){
+    $res = relayFetch(FB_GRAPH.$path, 'POST', ['Content-Type'=>'application/x-www-form-urlencoded'], http_build_query(array_merge($params, ['access_token'=>$token])));
+    $d = json_decode($res['body'] ?? '', true);
+    return [$res, is_array($d) ? $d : []];
+  };
+  $err = fn($res, $d) => $d['error']['message'] ?? ($res['body'] ?? 'پاسخی از فیسبوک نیامد');
+
+  if(!$urls){
+    [$res, $d] = $post("/{$page}/feed", ['message'=>$message]);
+    return !empty($d['id']) ? ['ok'=>true, 'external_id'=>$d['id']] : ['ok'=>false, 'message'=>$err($res, $d)];
+  }
+  if(count($urls) === 1){
+    [$res, $d] = $post("/{$page}/photos", ['url'=>$urls[0], 'caption'=>$message]);
+    $id = $d['post_id'] ?? ($d['id'] ?? null);
+    return $id ? ['ok'=>true, 'external_id'=>$id] : ['ok'=>false, 'message'=>$err($res, $d)];
+  }
+  // چند عکس: هر عکس اول بدون انتشار آپلود می‌شود، بعد یک پست با همه‌ی عکس‌ها ساخته می‌شود
+  $attached = [];
+  foreach($urls as $k=>$u){
+    [$res, $d] = $post("/{$page}/photos", ['url'=>$u, 'published'=>'false']);
+    if(empty($d['id'])) return ['ok'=>false, 'message'=>'آپلود عکس '.($k+1).' به فیسبوک ناموفق بود: '.$err($res, $d)];
+    $attached['attached_media['.$k.']'] = json_encode(['media_fbid'=>$d['id']]);
+  }
+  [$res, $d] = $post("/{$page}/feed", array_merge(['message'=>$message], $attached));
+  return !empty($d['id']) ? ['ok'=>true, 'external_id'=>$d['id']] : ['ok'=>false, 'message'=>$err($res, $d)];
+}
+
+// ════════════════════════ یوتیوب (ویدیوی ساخته‌شده از تصویرها) ════════════════════════
+// اتصال با OAuth گوگل (api/youtube_auth.php). ویدیو را خود برنامه در مرورگر از تصویرهای آیتم می‌سازد
+// و در content_items.video_path ذخیره می‌کند؛ اینجا فقط آپلود و انتشار انجام می‌شود.
+function ytAccessToken(){
+  $cached = (string)getSetting('YT_ACCESS_TOKEN', '');
+  $exp = (int)getSetting('YT_ACCESS_EXPIRES', '0');
+  if($cached !== '' && $exp > time() + 120) return ['ok'=>true, 'token'=>$cached];
+  $cid = (string)getSetting('YT_CLIENT_ID', ''); $sec = (string)getSetting('YT_CLIENT_SECRET', ''); $rt = (string)getSetting('YT_REFRESH_TOKEN', '');
+  if($cid === '' || $sec === '' || $rt === '') return ['ok'=>false, 'message'=>'یوتیوب هنوز وصل نشده (در برنامه: تنظیمات ← یوتیوب ← اتصال)'];
+  $res = relayFetch('https://oauth2.googleapis.com/token', 'POST', ['Content-Type'=>'application/x-www-form-urlencoded'],
+    http_build_query(['client_id'=>$cid, 'client_secret'=>$sec, 'refresh_token'=>$rt, 'grant_type'=>'refresh_token']));
+  $d = json_decode($res['body'] ?? '', true);
+  if(!empty($d['access_token'])){
+    setSetting('YT_ACCESS_TOKEN', $d['access_token']);
+    setSetting('YT_ACCESS_EXPIRES', (string)(time() + (int)($d['expires_in'] ?? 3600)));
+    return ['ok'=>true, 'token'=>$d['access_token']];
+  }
+  $msg = $d['error_description'] ?? ($d['error'] ?? ($res['body'] ?? 'پاسخی از گوگل نیامد'));
+  if(($d['error'] ?? '') === 'invalid_grant') $msg = 'اجازه‌ی یوتیوب باطل یا منقضی شده — در تنظیمات دوباره «اتصال به یوتیوب» را بزن (اگر اپ گوگل در حالت Testing است، اجازه‌ها بعد از ۷ روز باطل می‌شوند؛ آن را In production کن)';
+  return ['ok'=>false, 'message'=>$msg];
+}
+
+// ارسال بدنه‌ی باینری بزرگ (ویدیو): از رله در حالت «جریان خام» تا Worker مجبور به base64 نشود
+function rawUpload($url, $headers, $bytes, $timeout=600){
+  $relayUrl = getSetting('RELAY_URL', cfg()['RELAY_URL'] ?? '');
+  $relaySecret = getSetting('RELAY_SECRET', cfg()['RELAY_SECRET'] ?? '');
+  $hdrs = [];
+  if($relayUrl){
+    $target = $relayUrl;
+    $hdrs = ['X-Relay-Secret: '.$relaySecret, 'X-Relay-Url: '.$url, 'X-Relay-Method: POST', 'X-Relay-Headers: '.json_encode($headers), 'Content-Type: application/octet-stream'];
+  }else{
+    $target = $url;
+    foreach($headers as $k=>$v) $hdrs[] = "$k: $v";
+  }
+  $ch = curl_init($target);
+  curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER=>true, CURLOPT_POST=>true, CURLOPT_POSTFIELDS=>$bytes, CURLOPT_HTTPHEADER=>$hdrs, CURLOPT_TIMEOUT=>$timeout]);
+  $res = curl_exec($ch); $err = curl_error($ch); $status = curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
+  if($err) return ['ok'=>false, 'status'=>0, 'body'=>$err];
+  return ['ok'=>$status>=200 && $status<300, 'status'=>$status, 'body'=>$res];
+}
+
+function publishToYouTube($item){
+  $vp = (string)($item['video_path'] ?? '');
+  if($vp === '') return ['ok'=>false, 'message'=>'ویدیوی این آیتم هنوز ساخته نشده — در برنامه جزئیات آیتم را باز کن و «🎬 ساخت ویدیو» را بزن، بعد «تلاش مجدد»'];
+  $full = __DIR__.'/'.str_replace(['..','\\'], '', $vp);
+  if(!is_file($full)) return ['ok'=>false, 'message'=>'فایل ویدیو روی سرور پیدا نشد: '.$vp];
+  $tok = ytAccessToken(); if(!$tok['ok']) return $tok;
+  $shop = $item['shop'] ?? '';
+  $title = trim(preg_replace('/\s+/u', ' ', bannedApply((string)$item['title'], $shop)));
+  $title = str_replace(['<','>'], '', $title);
+  if(mb_strlen($title) > 100) $title = rtrim(mb_substr($title, 0, 99)).'…';
+  $tags = array_values(array_filter(array_map(fn($t) => trim(str_replace(['<','>','#'], '', $t)), explode(',', bannedApplyTags($item['hashtags'] ?? '', $shop)))));
+  $tags = array_slice($tags, 0, 15);
+  $desc = str_replace(['<','>'], '', mb_substr(fullCaption($item), 0, 4900));
+  $privacy = (string)getSetting('YT_PRIVACY', 'public');
+  if(!in_array($privacy, ['public','unlisted','private'], true)) $privacy = 'public';
+  $meta = ['snippet'=>['title'=>$title, 'description'=>$desc, 'tags'=>$tags, 'categoryId'=>'26'],
+           'status'=>['privacyStatus'=>$privacy, 'selfDeclaredMadeForKids'=>false, 'embeddable'=>true]];
+  $mime = preg_match('/\.mp4$/i', $full) ? 'video/mp4' : 'video/webm';
+  $boundary = 'bgch'.bin2hex(random_bytes(8));
+  $body = "--{$boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n".json_encode($meta, JSON_UNESCAPED_UNICODE)."\r\n"
+        . "--{$boundary}\r\nContent-Type: {$mime}\r\n\r\n".file_get_contents($full)."\r\n--{$boundary}--";
+  $res = rawUpload('https://www.googleapis.com/upload/youtube/v3/videos?uploadType=multipart&part=snippet,status',
+    ['Authorization'=>'Bearer '.$tok['token'], 'Content-Type'=>'multipart/related; boundary='.$boundary], $body);
+  $d = json_decode($res['body'] ?? '', true);
+  if($res['ok'] && !empty($d['id'])) return ['ok'=>true, 'external_id'=>$d['id']];
+  $msg = $d['error']['message'] ?? ($res['body'] ?? 'پاسخی از یوتیوب نیامد');
+  if(stripos((string)$res['body'], 'Host not allowed') !== false) $msg = 'رله‌ی Cloudflare دامنه‌های گوگل را مجاز نمی‌داند — کد جدید relay-worker.js را در Worker بگذار.';
+  if(stripos((string)$res['body'], 'quotaExceeded') !== false) $msg = 'سهمیه‌ی روزانه‌ی یوتیوب تمام شده (هر آپلود ۱۶۰۰ واحد از ۱۰۰۰۰) — فردا خودکار دوباره امتحان کن';
+  return ['ok'=>false, 'message'=>mb_substr((string)$msg, 0, 500)];
 }

@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.64.1 -->
+<!-- APP_VERSION: 1.65.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v214</div>
+        <div class="logo-badge">v216</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1671,6 +1671,39 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
           ✅ دکمه کپی برای کپی سریع کپشن + هشتگ‌ها<br>
           ⚠️ پست خودکار نیاز به حساب Business دارد
         </div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:8px">📘 فیسبوک (صفحه‌ی بیزینسی)</div>
+        <div style="border:2px solid #1877f2;border-radius:12px;padding:12px 14px">
+          <div style="font-size:12px;color:var(--text2);line-height:2;margin-bottom:8px">پست‌های «محتوای معرفی» با همه‌ی عکس‌ها و کپشن در صفحه‌ی فیسبوک منتشر می‌شوند (فقط صفحه؛ پروفایل شخصی را فیسبوک اجازه نمی‌دهد). توکن را از Graph API Explorer بگیر: همان اپ متا که برای اینستاگرام ساختی را انتخاب کن، دسترسی‌های <span dir="ltr">pages_show_list, pages_read_engagement, pages_manage_posts</span> را تیک بزن، Generate Access Token، بعد در Access Token Debugger دکمه‌ی «Extend Access Token» را بزن و توکن بلندمدت را اینجا بچسبان. برنامه خودش توکن دائمی صفحه را از آن می‌گیرد.</div>
+          <div class="input-label">Access Token (کاربر یا صفحه)</div>
+          <input type="password" class="input" id="fbTokenInput" dir="ltr" placeholder="EAAG..." style="margin-bottom:8px">
+          <div class="input-label">شناسه‌ی صفحه <span style="color:var(--text3);font-weight:400">(فقط اگر چند صفحه داری)</span></div>
+          <input type="text" class="input" id="fbPageIdInput" dir="ltr" placeholder="1234567890" style="margin-bottom:8px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" type="button" onclick="saveFacebookToken()">💾 آزمایش و ذخیره</button><button class="btn btn-secondary btn-sm" type="button" onclick="renderFacebookStatus()">🔄 بررسی وضعیت</button><button class="btn btn-secondary btn-sm" type="button" onclick="disconnectFacebook()">✕ قطع اتصال</button></div>
+          <div id="fbStatus" style="font-size:12px;margin-top:8px;line-height:1.9"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:8px">▶️ یوتیوب (ویدیوی افقی از تصویرها)</div>
+        <div style="border:2px solid #ff0000;border-radius:12px;padding:12px 14px">
+          <div style="font-size:12px;color:var(--text2);line-height:2;margin-bottom:8px">برنامه از تصویرهای هر آیتم یک ویدیوی افقی (۱۹۲۰×۱۰۸۰، ویدیوی معمولی نه Shorts) می‌سازد و زمان انتشار آن را روی کانال یوتیوب آپلود می‌کند. یک‌بار لازم است: در console.cloud.google.com یک پروژه بساز، «YouTube Data API v3» را Enable کن، در OAuth consent screen حالت را <b>In production</b> بگذار (در حالت Testing اتصال هر ۷ روز قطع می‌شود)، بعد در Credentials یک «OAuth client ID» از نوع <b>Web application</b> بساز و آدرس زیر را در Authorized redirect URIs بگذار. Client ID و Client Secret را اینجا ذخیره کن و «اتصال به یوتیوب» را بزن.</div>
+          <div class="input-label">Authorized redirect URI (در گوگل همین را بگذار)</div>
+          <div style="display:flex;gap:6px;margin-bottom:8px"><input type="text" class="input" id="ytRedirect" dir="ltr" readonly style="flex:1"><button class="btn btn-secondary btn-sm" type="button" onclick="copyText(document.getElementById('ytRedirect').value)">📋</button></div>
+          <div class="input-label">Client ID</div>
+          <input type="text" class="input" id="ytClientId" dir="ltr" placeholder="....apps.googleusercontent.com" style="margin-bottom:8px">
+          <div class="input-label">Client Secret</div>
+          <input type="password" class="input" id="ytClientSecret" dir="ltr" placeholder="GOCSPX-..." style="margin-bottom:8px">
+          <div class="input-label">نوع انتشار ویدیو</div>
+          <select class="input" id="ytPrivacy" onchange="saveYouTubePrivacy(this.value)" style="width:auto;margin-bottom:8px"><option value="public">عمومی (Public)</option><option value="unlisted">فقط با لینک (Unlisted)</option><option value="private">خصوصی (Private)</option></select>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" type="button" onclick="saveYouTubeClient()">💾 ذخیره‌ی Client</button><button class="btn btn-primary btn-sm" type="button" onclick="connectYouTube()">🔗 اتصال به یوتیوب</button><button class="btn btn-secondary btn-sm" type="button" onclick="renderYouTubeStatus()">🔄 بررسی وضعیت</button><button class="btn btn-secondary btn-sm" type="button" onclick="disconnectYouTube()">✕ قطع اتصال</button></div>
+          <div id="ytStatus" style="font-size:12px;margin-top:8px;line-height:1.9"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:8px">📤 پلتفرم‌های پیش‌فرض هنگام تأیید محتوا</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.9;margin-bottom:8px">وقتی آیتمی را «تأیید» می‌کنی و برایش پلتفرمی انتخاب نکرده‌ای، این‌ها انتخاب می‌شوند. اگر یوتیوب تیک داشته باشد، ویدیو موقع تأیید خودکار ساخته می‌شود.</div>
+        <div id="crDefaultPlatBox" style="display:flex;flex-wrap:wrap;gap:14px"></div>
       </div>
       <div class="card">
         <div class="card-title" style="margin-bottom:14px">🔔 تنظیمات اعلان</div>
@@ -2816,7 +2849,7 @@ function nav(name, el) {
   if(name==='customers'){ if(typeof uiRestore === 'function') uiRestore(); renderCustomersFromCache(); }
   if(name==='settings' && typeof renderPinterestRss === 'function') renderPinterestRss();
   if((name==='seo' || name==='optimize') && typeof etsySyncCheck === 'function'){ autoDetectOptimizedOnce(); renderSyncBar(); etsySyncCheck(true); }
-  if(name==='settings' && typeof renderInstagramToken === 'function') renderInstagramToken();
+  if(name==='settings' && typeof renderInstagramToken === 'function'){ renderInstagramToken(); try{ renderFacebookStatus(); renderYouTubeStatus(); renderCrDefaultPlatforms(); }catch(e){} }
   if(name==='studio' && window.studioReloadForShop) window.studioReloadForShop(); // هر بار که استودیو باز می‌شه با فروشگاه فعلی همگام می‌شه
   // وقتی صفحه optimize باز می‌شود لیست را render کن
   if(name==='optimize' && Object.keys(S.analyzed).length){
@@ -4852,7 +4885,7 @@ async function generateAllCrDrafts(){
 }
 const crStatusLabel = { draft:'📝 پیش‌نویس', generated:'✍️ کپشن آماده', review:'⏳ آماده‌ی بررسی', approved:'✅ تأییدشده — منتظر انتشار', published:'📤 منتشرشده', rejected:'🗑 ردشده', failed:'❌ ناموفق' };
 const crStatusBadgeClass = { draft:'badge-neutral', generated:'badge-info', review:'badge-wait', approved:'badge-ok', published:'badge-ok', rejected:'badge-no', failed:'badge-no' };
-const crPlatformLabel = { telegram:'تلگرام', instagram:'اینستاگرام', pinterest:'پینترست' };
+const crPlatformLabel = { telegram:'تلگرام', instagram:'اینستاگرام', pinterest:'پینترست', facebook:'فیسبوک', youtube:'یوتیوب (ویدیو)' };
 const crPlatformClass = { pending:'badge-wait', published:'badge-ok', failed:'badge-no' };
 const crPlatformText = { pending:'⏳ در صف', published:'✅ منتشرشد', failed:'❌ خطا' };
 
@@ -4962,7 +4995,7 @@ function copyFromField(id){
   if(el) copyText(el.value);
 }
 
-const crAllPlatforms = ['telegram','instagram','pinterest'];
+const crAllPlatforms = ['telegram','instagram','pinterest','facebook','youtube'];
 const crSlideIndex = {};
 function buildContentDetailHTML(item){
   const r = item.research;
@@ -5004,6 +5037,7 @@ function buildContentDetailHTML(item){
       </div>
 
       ${buildSlideshowHTML(item, imgUrls, images)}
+      ${crVideoHtml(item)}
 
       <div style="background:var(--surface3);border-radius:10px;padding:14px;margin-bottom:10px">
         <div class="field-label" style="margin-top:0">✍️ کپشن <button class="btn btn-secondary btn-sm" onclick="copyFromField('cr-caption-${item.id}')">📋 کپی</button></div>
@@ -5114,6 +5148,8 @@ async function toggleContentPlatform(itemId){
     const res = await fetch(crApiUrl('update_content.php'), { method:'POST', headers:crHeaders(), body:JSON.stringify({id:itemId, platforms}) });
     if(!res.ok) throw new Error((await res.json()).error||'خطا');
     log('✓ پلتفرم‌های هدف به‌روزرسانی شد','ok');
+    const it = crCurrentItems.find(x => x.id === itemId);
+    if(platforms.includes('youtube') && it && !it.video_path) await crMakeVideo(itemId, true);
     await loadContentReview(); openContentDetail(itemId);
   }catch(e){ log('✗ خطا: '+e.message,'err'); }
 }
@@ -5146,8 +5182,19 @@ async function saveContentFields(id){
   }catch(e){ log('✗ خطا: '+e.message,'err'); }
 }
 async function setContentStatus(id, status){
+  const body = {id, status};
+  if(status === 'approved'){
+    const item = crCurrentItems.find(x => x.id === id);
+    const cur = (item && item.platforms || []).map(p => p.platform);
+    body.platforms = cur.length ? cur : crDefaultPlatforms();
+    if(item && body.platforms.includes('youtube') && !item.video_path){
+      toast('🎬 اول ویدیوی یوتیوب ساخته می‌شود...');
+      if(!await crMakeVideo(id, true) && !confirm('ساخت ویدیو ناموفق بود. بدون یوتیوب تأیید شود؟')) return;
+      if(!item.video_path) body.platforms = body.platforms.filter(p => p !== 'youtube');
+    }
+  }
   try{
-    const res = await fetch(crApiUrl('update_content.php'), { method:'POST', headers:crHeaders(), body:JSON.stringify({id,status}) });
+    const res = await fetch(crApiUrl('update_content.php'), { method:'POST', headers:crHeaders(), body:JSON.stringify(body) });
     if(!res.ok) throw new Error((await res.json()).error||'خطا');
     log('✓ وضعیت به‌روزرسانی شد','ok');
     await loadContentReview(); openContentDetail(id);
@@ -8448,6 +8495,193 @@ async function saveInstagramToken(){
     await renderInstagramToken();
   }catch(e){ st.innerHTML = '<span style="color:var(--red)">✗ ' + escHtml(e.message) + '</span>'; }
 }
+// ══ فیسبوک: ثبت توکن صفحه روی سرور ══
+async function renderFacebookStatus(){
+  const st = document.getElementById('fbStatus'); if(!st) return;
+  if(!S.contentBackendUrl){ st.innerHTML = '<span style="color:var(--red)">اول آدرس و رمز بک‌اند سوشال مدیا را وارد کن.</span>'; return; }
+  st.textContent = '⏳ در حال بررسی...';
+  try{
+    const r = await fetch(crApiUrl('facebook_token.php'), { headers: crHeaders() }); const d = await r.json(); if(!r.ok) throw new Error(d.error || ('خطای ' + r.status));
+    if(!d.configured){ st.innerHTML = '<span style="color:var(--text2)">هنوز صفحه‌ی فیسبوک وصل نشده.</span>'; return; }
+    st.innerHTML = d.valid ? '<span style="color:var(--green)">✓ وصل به صفحه‌ی «' + escHtml(d.page_name || d.page_id) + '»</span>' : '<span style="color:var(--red)">✗ توکن صفحه کار نمی‌کند: ' + escHtml(d.message || '') + ' — توکن تازه را ذخیره کن.</span>';
+  }catch(e){ st.innerHTML = '<span style="color:var(--red)">خطا: ' + escHtml(e.message) + ' — فایل api/facebook_token.php باید روی سرور باشد.</span>'; }
+}
+async function saveFacebookToken(){
+  const st = document.getElementById('fbStatus'), token = (document.getElementById('fbTokenInput').value || '').trim(), pid = (document.getElementById('fbPageIdInput').value || '').trim();
+  if(!S.contentBackendUrl){ st.innerHTML = '<span style="color:var(--red)">آدرس بک‌اند وارد نشده.</span>'; return; }
+  if(!token){ st.innerHTML = '<span style="color:var(--red)">توکن را بچسبان.</span>'; return; }
+  st.textContent = '⏳ در حال آزمایش با فیسبوک...';
+  try{
+    const r = await fetch(crApiUrl('facebook_token.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify({ token, page_id: pid }) });
+    const d = await r.json();
+    if(!r.ok){ let m = d.error || ('خطای ' + r.status); if(d.pages) m += '<br>' + d.pages.map(x => escHtml(x.name) + ' : <span dir="ltr" style="user-select:all">' + escHtml(x.id) + '</span>').join('<br>'); st.innerHTML = '<span style="color:var(--red)">✗ ' + m + '</span>'; return; }
+    document.getElementById('fbTokenInput').value = '';
+    log('📘 صفحه‌ی فیسبوک «' + (d.page_name || d.page_id) + '» وصل شد', 'ok'); toast('✅ صفحه‌ی فیسبوک وصل شد');
+    await renderFacebookStatus();
+  }catch(e){ st.innerHTML = '<span style="color:var(--red)">✗ ' + escHtml(e.message) + '</span>'; }
+}
+async function disconnectFacebook(){
+  if(!confirm('اتصال صفحه‌ی فیسبوک قطع شود؟')) return;
+  try{ await fetch(crApiUrl('facebook_token.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify({ disconnect: true }) }); }catch(e){}
+  renderFacebookStatus();
+}
+// ══ یوتیوب: اتصال با OAuth گوگل (روی سرور) ══
+async function ytApi(body){
+  const r = await fetch(crApiUrl('youtube_auth.php'), body ? { method:'POST', headers: crHeaders(), body: JSON.stringify(body) } : { headers: crHeaders() });
+  const d = await r.json().catch(() => ({})); if(!r.ok) throw new Error(d.error || ('خطای ' + r.status + ' — فایل api/youtube_auth.php باید روی سرور باشد')); return d;
+}
+async function renderYouTubeStatus(){
+  const st = document.getElementById('ytStatus'); if(!st) return;
+  if(!S.contentBackendUrl){ st.innerHTML = '<span style="color:var(--red)">اول آدرس و رمز بک‌اند سوشال مدیا را وارد کن.</span>'; return; }
+  st.textContent = '⏳ در حال بررسی...';
+  try{
+    const d = await ytApi();
+    document.getElementById('ytRedirect').value = d.redirect_uri || '';
+    const ci = document.getElementById('ytClientId'); if(ci && !ci.value) ci.value = d.client_id || '';
+    const pv = document.getElementById('ytPrivacy'); if(pv) pv.value = d.privacy || 'public';
+    if(!d.has_client) st.innerHTML = '<span style="color:var(--text2)">قدم اول: Client ID و Client Secret را ذخیره کن.</span>';
+    else if(!d.connected) st.innerHTML = '<span style="color:var(--text2)">مشخصات اپ گوگل ذخیره شده — حالا «اتصال به یوتیوب» را بزن.</span>';
+    else st.innerHTML = d.valid ? '<span style="color:var(--green)">✓ وصل به کانال «' + escHtml(d.channel || '') + '»</span>' : '<span style="color:var(--red)">✗ ' + escHtml(d.message || 'اتصال کار نمی‌کند') + '</span>';
+  }catch(e){ st.innerHTML = '<span style="color:var(--red)">خطا: ' + escHtml(e.message) + '</span>'; }
+}
+async function saveYouTubeClient(){
+  const st = document.getElementById('ytStatus');
+  try{ await ytApi({ client_id: document.getElementById('ytClientId').value.trim(), client_secret: document.getElementById('ytClientSecret').value.trim() }); document.getElementById('ytClientSecret').value = ''; toast('✅ مشخصات اپ گوگل ذخیره شد'); renderYouTubeStatus(); }
+  catch(e){ st.innerHTML = '<span style="color:var(--red)">✗ ' + escHtml(e.message) + '</span>'; }
+}
+async function connectYouTube(){
+  const st = document.getElementById('ytStatus'), w = window.open('about:blank', '_blank');
+  try{
+    const d = await ytApi({ action: 'begin' });
+    if(w) w.location.href = d.url; else location.href = d.url;
+    st.innerHTML = '<span style="color:var(--text2)">در تب باز شده با حساب گوگلِ کانال وارد شو و اجازه بده (اگر هشدار «Google hasn\'t verified this app» آمد: Advanced ← Go to … ). بعد این‌جا «بررسی وضعیت» را بزن.</span>';
+  }catch(e){ if(w) w.close(); st.innerHTML = '<span style="color:var(--red)">✗ ' + escHtml(e.message) + '</span>'; }
+}
+async function saveYouTubePrivacy(v){ try{ await ytApi({ privacy: v }); toast('✅ نوع انتشار ویدیو ذخیره شد'); }catch(e){ toast('✗ ' + e.message); } }
+async function disconnectYouTube(){ if(!confirm('اتصال یوتیوب قطع شود؟')) return; try{ await ytApi({ disconnect: true }); }catch(e){} renderYouTubeStatus(); }
+// ══ پلتفرم‌های پیش‌فرض هنگام تأیید ══
+function crDefaultPlatforms(){ try{ const v = JSON.parse(localStorage.getItem('cr_default_platforms') || 'null'); if(Array.isArray(v) && v.length) return v.filter(x => crAllPlatforms.includes(x)); }catch(e){} return ['telegram','instagram','pinterest']; }
+function renderCrDefaultPlatforms(){
+  const box = document.getElementById('crDefaultPlatBox'); if(!box) return; const cur = crDefaultPlatforms();
+  box.innerHTML = crAllPlatforms.map(p => '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="' + p + '" ' + (cur.includes(p) ? 'checked' : '') + ' onchange="saveCrDefaultPlatforms()" style="width:16px;height:16px"> ' + (crPlatformLabel[p] || p) + '</label>').join('');
+}
+function saveCrDefaultPlatforms(){ const v = [...document.querySelectorAll('#crDefaultPlatBox input:checked')].map(x => x.value); try{ localStorage.setItem('cr_default_platforms', JSON.stringify(v)); }catch(e){} toast('✅ ذخیره شد'); }
+
+// ══ ویدیوی یوتیوب: اسلایدشوی افقی (۱۹۲۰×۱۰۸۰) از تصویرهای یک آیتم محتوای معرفی، ساخته‌شده در مرورگر ══
+const CRV_W = 1920, CRV_H = 1080, CRV_FONT = "'Segoe UI', Tahoma, Arial, sans-serif";
+function crVideoMime(){ return ["video/mp4;codecs=avc1.42E01E","video/mp4","video/webm;codecs=vp9","video/webm"].find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || ""; }
+function crLoadCors(src){ return new Promise((res, rej) => { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => res(im); im.onerror = () => rej(new Error('تصویر خوانده نشد: ' + src)); im.src = src; }); }
+function crWrapLines(c, text, maxW, maxLines){
+  const words = String(text || '').split(/\s+/).filter(Boolean), lines = []; let line = '';
+  for(const w of words){ const t = line ? line + ' ' + w : w; if(c.measureText(t).width > maxW && line){ lines.push(line); line = w; if(lines.length === maxLines) break; } else line = t; }
+  if(lines.length < maxLines && line) lines.push(line);
+  if(lines.length === maxLines && words.join(' ').length > lines.join(' ').length){ let l = lines[maxLines-1]; while(c.measureText(l + '…').width > maxW && l.length > 1) l = l.slice(0, -1); lines[maxLines-1] = l + '…'; }
+  return lines;
+}
+// برای هر تصویر یک‌بار: پس‌زمینه‌ی محو و کارت تصویر آماده می‌شود تا هر فریم فقط کپی ساده باشد (ضبط روان)
+function crPrepSlide(im){
+  const bg = document.createElement('canvas'); bg.width = CRV_W/4; bg.height = CRV_H/4; const b = bg.getContext('2d');
+  const sc = Math.max(bg.width/im.width, bg.height/im.height) * 1.3; b.fillStyle = '#000'; b.fillRect(0, 0, bg.width, bg.height); b.filter = 'blur(14px) brightness(0.55) saturate(1.2)';
+  b.drawImage(im, (bg.width - im.width*sc)/2, (bg.height - im.height*sc)/2, im.width*sc, im.height*sc);
+  const fit = Math.min(960 / im.width, 880 / im.height), cw = Math.round(im.width * fit), ch = Math.round(im.height * fit), card = document.createElement('canvas'); card.width = cw + 60; card.height = ch + 60;
+  const k = card.getContext('2d'); k.shadowColor = 'rgba(0,0,0,.45)'; k.shadowBlur = 30; k.shadowOffsetY = 10;
+  const r = 28; k.beginPath(); k.moveTo(30+r,30); k.arcTo(30+cw,30,30+cw,30+ch,r); k.arcTo(30+cw,30+ch,30,30+ch,r); k.arcTo(30,30+ch,30,30,r); k.arcTo(30,30,30+cw,30,r); k.closePath();
+  k.fillStyle = '#fff'; k.fill(); k.shadowColor = 'transparent'; k.save(); k.clip();
+  const s2 = Math.max(cw/im.width, ch/im.height); k.drawImage(im, 30 + (cw - im.width*s2)/2, 30 + (ch - im.height*s2)/2, im.width*s2, im.height*s2); k.restore();
+  return {bg, card};
+}
+async function crRenderVideo(item, onProgress){
+  const mime = crVideoMime(); if(!mime) throw new Error('این مرورگر ساخت ویدیو را پشتیبانی نمی‌کند (Chrome یا Edge جدید لازم است)');
+  const paths = ((item.images && item.images.length) ? item.images : (item.hero_image_path ? [item.hero_image_path] : [])).slice(0, 15);
+  if(!paths.length) throw new Error('این آیتم هنوز تصویری ندارد');
+  const base = S.contentBackendUrl.replace(/\/$/, '') + '/api/image.php?path=';
+  const imgs = []; for(const p of paths){ try{ imgs.push(await crLoadCors(base + encodeURIComponent(p))); }catch(e){} }
+  if(!imgs.length) throw new Error('هیچ تصویری خوانده نشد — نسخه‌ی جدید api/image.php (با اجازه‌ی CORS) باید روی سرور باشد');
+  const slides = imgs.map(crPrepSlide);
+  const per = Math.max(2.2, Math.min(3.4, 40 / slides.length)), fade = 0.5, outro = 2.6, total = slides.length * per + outro;
+  const title = String(item.title || '').trim(), shop = String(item.shop || S.shopName || '').trim();
+  const cv = document.createElement('canvas'); cv.width = CRV_W; cv.height = CRV_H; const c = cv.getContext('2d');
+  c.font = '800 66px ' + CRV_FONT; const tLines = crWrapLines(c, title, 760, 5);
+  const drawSlide = (i, t, alpha) => {
+    const sl = slides[i], z = 1 + 0.06 * Math.min(1, t / per);
+    c.globalAlpha = alpha; c.drawImage(sl.bg, 0, 0, CRV_W, CRV_H);
+    const w = sl.card.width * z, h = sl.card.height * z; c.drawImage(sl.card, 1390 - w/2, CRV_H/2 - h/2, w, h); c.globalAlpha = 1;
+  };
+  const drawText = a => {
+    c.globalAlpha = a; c.textAlign = 'left'; c.fillStyle = '#fff'; c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 18;
+    const y0 = CRV_H/2 - (tLines.length * 84)/2 + 50;
+    c.font = '800 66px ' + CRV_FONT; tLines.forEach((l, k) => c.fillText(l, 110, y0 + k*84));
+    if(shop){ c.font = '700 42px ' + CRV_FONT; c.fillText(shop, 110, 990); }
+    c.shadowBlur = 0; c.globalAlpha = 1;
+  };
+  const draw = t => {
+    c.fillStyle = '#111'; c.fillRect(0, 0, CRV_W, CRV_H);
+    const showT = slides.length * per;
+    if(t < showT){
+      const i = Math.min(slides.length - 1, Math.floor(t / per)), lt = t - i*per;
+      drawSlide(i, lt, 1);
+      if(i + 1 < slides.length && lt > per - fade) drawSlide(i + 1, lt - per, (lt - (per - fade)) / fade);
+      drawText(Math.min(1, t / 0.6));
+    }else{
+      const ot = t - showT, a = Math.min(1, ot / 0.5); drawSlide(slides.length - 1, per, 1);
+      c.fillStyle = 'rgba(0,0,0,' + (0.55 * a) + ')'; c.fillRect(0, 0, CRV_W, CRV_H);
+      c.globalAlpha = a; c.textAlign = 'center'; c.fillStyle = '#fff';
+      c.font = '800 96px ' + CRV_FONT; c.fillText(shop || 'Etsy', CRV_W/2, 470);
+      c.font = '600 56px ' + CRV_FONT; c.fillText('Find it on Etsy', CRV_W/2, 580);
+      c.font = '500 42px ' + CRV_FONT; c.fillText('Link in the description', CRV_W/2, 660); c.globalAlpha = 1;
+    }
+  };
+  draw(0);
+  let stream; try{ stream = cv.captureStream(30); }catch(e){ throw new Error('ضبط از تصویرها ممکن نشد (احتمالاً api/image.php روی سرور هنوز نسخه‌ی قدیمی و بدون CORS است): ' + e.message); }
+  let rec = null, lastErr = null; for(const opt of [{mimeType: mime, videoBitsPerSecond: 6e6}, {mimeType: mime}, {}]){ try{ rec = new MediaRecorder(stream, opt); break; }catch(e){ lastErr = e; } }
+  if(!rec) throw new Error('ساخت ضبط‌کننده ممکن نشد: ' + (lastErr && lastErr.message));
+  const chunks = []; let recErr = null, hiddenT = 0, lastT = 0; rec.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); }; rec.onerror = e => { recErr = e && e.error || e; };
+  const stopped = new Promise(r => rec.onstop = r); rec.start(500); const t0 = performance.now();
+  await new Promise((res, rej) => { (function loop(){
+    const t = (performance.now() - t0) / 1000; if(t >= total){ res(); return; }
+    if(document.hidden) hiddenT += t - lastT; lastT = t;
+    try{ draw(t); }catch(e){ try{ rec.stop(); }catch(_){} rej(e); return; }
+    if(onProgress) onProgress(t / total); setTimeout(loop, 16);
+  })(); });
+  draw(total); await new Promise(r => setTimeout(r, 250)); rec.stop(); await stopped;
+  if(recErr) throw new Error('خطای ضبط: ' + (recErr.message || recErr.name || recErr));
+  if(hiddenT > total * 0.2) throw new Error('در حین ساخت ویدیو این تب در پس‌زمینه بود و ویدیو خراب شد — دوباره بزن و تا پایان روی همین تب بمان');
+  const blob = new Blob(chunks, {type: String(rec.mimeType || mime).split(';')[0]});
+  if(!blob.size) throw new Error('ویدیوی ساخته‌شده خالی بود — دوباره امتحان کن');
+  return blob;
+}
+// ساخت ویدیو + آپلود روی سرور (content_items.video_path)
+async function crMakeVideo(id, silent){
+  const item = crCurrentItems.find(x => x.id === id); if(!item) return false;
+  const bt = Busy.start('🎬 ساخت ویدیو برای «' + String(item.title || '').slice(0, 30) + '»', {pct: 0});
+  try{
+    const blob = await crRenderVideo(item, k => Busy.set(bt, '🎬 ساخت ویدیو — تب را عوض نکن', k * 90));
+    Busy.set(bt, '⬆ آپلود ویدیو روی سرور', 92);
+    const form = new FormData(); form.append('id', String(id)); form.append('file', blob, 'video.' + (/mp4/.test(blob.type) ? 'mp4' : 'webm'));
+    const r = await fetch(crApiUrl('upload_video.php'), { method:'POST', headers:{'X-Agent-Secret': S.contentBackendSecret || ''}, body: form });
+    const d = await r.json().catch(() => ({})); if(!r.ok) throw new Error(d.error || ('خطای ' + r.status + ' — فایل api/upload_video.php باید روی سرور باشد'));
+    item.video_path = d.path; log('🎬 ویدیوی یوتیوب برای #' + id + ' ساخته شد (' + Math.round(blob.size/1024) + ' KB)', 'ok');
+    if(!silent){ toast('✅ ویدیو ساخته شد'); try{ openContentDetail(id); }catch(e){} }
+    return true;
+  }catch(e){ log('✗ ساخت ویدیو #' + id + ': ' + e.message, 'err'); toast('✗ ' + e.message); return false; }
+  finally{ Busy.end(bt); }
+}
+async function crRemoveVideo(id){
+  if(!confirm('ویدیوی این آیتم حذف شود؟')) return;
+  try{ const r = await fetch(crApiUrl('upload_video.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify({id, remove: true}) }); if(!r.ok) throw new Error((await r.json()).error || 'خطا'); const it = crCurrentItems.find(x => x.id === id); if(it) it.video_path = null; openContentDetail(id); }
+  catch(e){ toast('✗ ' + e.message); }
+}
+function crVideoHtml(item){
+  const wantsYt = (item.platforms || []).some(p => p.platform === 'youtube');
+  const url = item.video_path ? S.contentBackendUrl.replace(/\/$/, '') + '/' + item.video_path : '';
+  return `<div style="background:var(--surface3);border-radius:10px;padding:14px;margin-bottom:12px">
+    <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px">🎬 ویدیو برای یوتیوب (افقی ۱۹۲۰×۱۰۸۰، از روی تصویرهای همین آیتم)</div>
+    ${url ? `<video src="${url}" controls playsinline style="width:360px;max-width:100%;border-radius:10px;background:#000;display:block;margin-bottom:8px"></video>` : `<div style="font-size:12px;color:${wantsYt ? 'var(--red)' : 'var(--text3)'};margin-bottom:8px">${wantsYt ? '⚠ یوتیوب انتخاب شده ولی ویدیو هنوز ساخته نشده.' : 'هنوز ویدیویی ساخته نشده.'}</div>`}
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="crMakeVideo(${item.id})">${url ? '🔁 ساخت دوباره‌ی ویدیو' : '🎬 ساخت ویدیو از تصویرها'}</button>${url ? `<button class="btn btn-secondary btn-sm" onclick="crRemoveVideo(${item.id})">🗑 حذف ویدیو</button>` : ''}</div>
+    <div style="font-size:11px;color:var(--text3);margin-top:6px">ساخت حدود ${'۳۰ تا ۵۰'} ثانیه طول می‌کشد؛ تا پایان روی همین تب بمان. اگر ترتیب یا تصویرها را عوض کردی، ویدیو را دوباره بساز.</div>
+  </div>`;
+}
+
 // ══ انتشار خودکار پینترست با فید RSS ══
 function pinFeedUrlGuess(){ return S.contentBackendUrl ? S.contentBackendUrl.replace(/\/$/,'') + '/api/pinterest_feed.php?shop=' + encodeURIComponent(S.shopName||'') : ''; }
 async function renderPinterestRss(){
@@ -12833,6 +13067,15 @@ save();
     'viewReportFromHistory':'باز کردن این گزارش',
     'deleteReportsHistoryItem':'حذف از تاریخچه',
     'doLogin':'ورود به پنل',
+    'saveFacebookToken':'آزمایش توکن با فیسبوک و ذخیره‌ی توکن دائمی صفحه روی سرور',
+    'renderFacebookStatus':'بررسی اینکه صفحه‌ی فیسبوک هنوز وصل است',
+    'disconnectFacebook':'قطع اتصال صفحه‌ی فیسبوک',
+    'saveYouTubeClient':'ذخیره‌ی Client ID و Client Secret اپ گوگل روی سرور',
+    'connectYouTube':'باز کردن صفحه‌ی اجازه‌ی گوگل برای وصل کردن کانال یوتیوب',
+    'renderYouTubeStatus':'بررسی اتصال و نام کانال یوتیوب',
+    'disconnectYouTube':'قطع اتصال کانال یوتیوب',
+    'crMakeVideo':'ساخت ویدیوی افقی از تصویرهای این آیتم و آپلودش روی سرور برای یوتیوب',
+    'crRemoveVideo':'حذف ویدیوی این آیتم',
     'doLogout':'خروج از پنل',
     'setDailySizeN':'تعداد اندازه‌ی این محصول در یک لیستینگ'
   };

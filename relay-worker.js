@@ -13,6 +13,8 @@ const ALLOWED_HOSTS = [
   'api.telegram.org',
   'api.etsy.com', // اتسی درخواست‌های سمت‌سرور از IP هاست ایران رو به‌خاطر تحریم بلاک می‌کنه (تبادل/تمدید توکن OAuth)
   'openapi.etsy.com', // ساخت/ویرایش لیستینگ (POST/PATCH) از مرورگر
+  'oauth2.googleapis.com', // یوتیوب: گرفتن/تمدید توکن گوگل
+  'www.googleapis.com', // یوتیوب: آپلود ویدیو و خواندن نام کانال
 ];
 
 // این رو با یه رشته‌ی تصادفی طولانی عوض کن، و همون رو توی config.php به‌عنوان RELAY_SECRET بذار
@@ -27,6 +29,19 @@ export default {
     const secret = request.headers.get('X-Relay-Secret');
     if (secret !== RELAY_SECRET) {
       return new Response('Unauthorized', { status: 401 });
+    }
+
+    // حالت «جریان خام» برای فایل‌های بزرگ (آپلود ویدیو یوتیوب): بدنه بدون تبدیل مستقیم عبور می‌کند
+    // مقصد و روش و هدرها در هدرهای X-Relay-* می‌آیند
+    const rawUrl = request.headers.get('X-Relay-Url');
+    if (rawUrl) {
+      let t;
+      try { t = new URL(rawUrl); } catch { return new Response('Bad URL', { status: 400 }); }
+      if (!ALLOWED_HOSTS.includes(t.hostname)) return new Response('Host not allowed: ' + t.hostname, { status: 403 });
+      let h = {};
+      try { h = JSON.parse(request.headers.get('X-Relay-Headers') || '{}'); } catch {}
+      const r = await fetch(t.toString(), { method: request.headers.get('X-Relay-Method') || 'POST', headers: h, body: request.body });
+      return new Response(await r.text(), { status: r.status, headers: { 'Content-Type': r.headers.get('Content-Type') || 'text/plain; charset=utf-8' } });
     }
 
     let payload;
