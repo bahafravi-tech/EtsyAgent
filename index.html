@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.66.0 -->
+<!-- APP_VERSION: 1.66.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v217</div>
+        <div class="logo-badge">v218</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -2746,12 +2746,20 @@ function updateSEOStats(){
   // تعداد واقعاً بهینه‌شده (نه فقط score بالا)
   updateOptimizedCount();
 }
+function isOptimizedIdx(i){ const v = S.optimized && S.optimized[i]; return v===true||v?.done===true||(typeof v==='object'&&v!==null); }
 function updateOptimizedCount(){
-  // S.optimized می‌تواند {0:true, 1:true} یا {0:{...}} باشد
-  const optCount=Object.entries(S.optimized).filter(([k,v])=>v===true||v?.done===true||(typeof v==='object'&&v!==null)).length;
+  // فقط محصول‌هایی که الان در فهرست هستند شمرده می‌شوند (کلیدهای قدیمیِ محصولات حذف‌شده حساب نمی‌شوند)
+  let optCount=0, good=0, need=0;
+  S.products.forEach((p,i)=>{ if(isOptimizedIdx(i)) optCount++; else { const a=S.analyzed[i]; if(a&&a.score>=70) good++; else need++; } });
   const el=document.getElementById('statOptimized'); if(el) el.textContent=optCount;
   const delta=document.getElementById('statOptDelta');
-  if(delta && S.products.length) delta.textContent=optCount+' از '+S.products.length+' محصول';
+  if(delta && S.products.length){
+    // محصولِ بهینه‌نشده‌ای که امتیاز سئوی خوب (۷۰+) دارد نیازی به بهینه‌سازی ندارد و در «بهینه نشده» هم نمی‌آید
+    delta.innerHTML=optCount+' از '+S.products.length+(good?' · <span title="این محصول‌ها با دکمه‌ی بهینه‌سازی بهینه نشده‌اند ولی امتیاز سئوی‌شان ۷۰ یا بیشتر است، پس نیازی ندارند" style="cursor:help">'+good+' از قبل امتیاز خوب</span>':'')+
+      (need?' · <a href="#" onclick="event.preventDefault();goToNotOptimized()" style="color:var(--orange);text-decoration:none;font-weight:700" title="دیدن محصول‌هایی که هنوز نیاز به بهینه‌سازی دارند">⚠ '+need+' نیاز به بهینه‌سازی ←</a>':' ✅');
+  }
+  const pd=document.getElementById('statProductsDelta');
+  if(pd) pd.textContent=S.products.length?(S.products.filter(p=>p._listing_id).length+' محصول از Etsy'):'— محصول بارگذاری نشده';
   const meta=document.getElementById('sidebarShopMeta');
   if(meta) meta.textContent=S.products.length+' محصول · '+optCount+' بهینه';
   return optCount;
@@ -5926,6 +5934,8 @@ async function runOptimizeSelected(){
 }
 
 let optCurrentFilter='all';
+// از داشبورد: مستقیم فهرست محصول‌هایی که هنوز نیاز به بهینه‌سازی دارند
+function goToNotOptimized(){ nav('optimize'); setOptFilter('notopt', document.getElementById('optFilterNotOpt')); }
 function setOptFilter(f, btn){
   optCurrentFilter=f;
   document.querySelectorAll('#optFilterAll,#optFilterWeak,#optFilterNotOpt,#optFilterOpt').forEach(b=>{
@@ -13128,6 +13138,7 @@ save();
     'connectYouTube':'باز کردن صفحه‌ی اجازه‌ی گوگل برای وصل کردن کانال یوتیوب',
     'renderYouTubeStatus':'بررسی اتصال و نام کانال یوتیوب',
     'disconnectYouTube':'قطع اتصال کانال یوتیوب',
+    'goToNotOptimized':'رفتن به فهرست محصول‌هایی که هنوز نیاز به بهینه‌سازی دارند',
     'crPublishNow':'همین حالا این آیتم را در پلتفرم‌های انتخاب‌شده‌اش منتشر می‌کند (بدون صبر برای Cron و زمان‌بندی)',
     'crPublishSelectedNow':'آیتم‌های تیک‌خورده را یکی‌یکی همین حالا منتشر می‌کند',
     'crMakeVideo':'ساخت ویدیوی افقی از تصویرهای این آیتم و آپلودش روی سرور برای یوتیوب',
