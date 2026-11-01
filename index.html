@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.65.1 -->
+<!-- APP_VERSION: 1.66.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v216</div>
+        <div class="logo-badge">v217</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -974,7 +974,8 @@ margin:0;background:var(--paper);color:var(--ink);
     <span style="font-size:13px;font-weight:700;color:var(--orange)"><span id="crSelectedCount">0</span> مورد انتخاب‌شده</span>
     <button class="btn btn-secondary btn-sm" onclick="crSelectAllVisible()">انتخاب همه‌ی این صفحه</button>
     <button class="btn btn-secondary btn-sm" onclick="crDeselectAll()">لغو انتخاب‌ها</button>
-    <button class="btn btn-red btn-sm" style="margin-inline-start:auto" onclick="deleteCrSelected()">🗑 حذف انتخاب‌شده‌ها</button>
+    <button class="btn btn-primary btn-sm" style="margin-inline-start:auto" onclick="crPublishSelectedNow(this)">🚀 انتشار فوری انتخاب‌شده‌ها</button>
+    <button class="btn btn-red btn-sm" onclick="deleteCrSelected()">🗑 حذف انتخاب‌شده‌ها</button>
   </div>
   <div id="crList"></div>
   </div>
@@ -4459,6 +4460,57 @@ async function runCronNow(btn){
   btn.disabled = false; btn.textContent = t;
 }
 
+// ══ انتشار فوری: یک آیتم همین حالا در پلتفرم‌هایش منتشر می‌شود (بدون صبر برای Cron و زمان‌بندی) ══
+function crPlatformsFor(item){
+  const cur = (item.platforms || []).map(p => p.platform);
+  return cur.length ? cur : crDefaultPlatforms();
+}
+// خروجی: {ok, lines[], error}
+async function crPublishOne(id, opt){
+  const item = crCurrentItems.find(x => x.id === id); if(!item) return {ok: false, error: 'آیتم پیدا نشد'};
+  let platforms = crPlatformsFor(item);
+  const pending = platforms.filter(p => !(item.platforms || []).some(x => x.platform === p && x.status === 'published'));
+  if(!pending.length) return {ok: false, error: 'در همه‌ی پلتفرم‌ها قبلاً منتشر شده'};
+  if(pending.includes('youtube') && !item.video_path){
+    if(!await crMakeVideo(id, true)){ if(opt && opt.askOnVideoFail && !confirm('ساخت ویدیوی یوتیوب ناموفق بود. بدون یوتیوب منتشر شود؟')) return {ok: false, error: 'لغو شد'}; platforms = platforms.filter(p => p !== 'youtube'); }
+  }
+  const r = await fetch(crApiUrl('publish_now.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify({id, platforms}) });
+  const d = await r.json().catch(() => ({}));
+  if(!r.ok) return {ok: false, error: d.error || ('خطای ' + r.status + ' — فایل api/publish_now.php باید روی سرور باشد')};
+  const lines = (d.details || []).map(x => (x.ok ? '✅ ' : '❌ ') + (crPlatformLabel[x.platform] || x.platform) + (x.ok ? '' : ': ' + String(x.message || '').slice(0, 160)));
+  (d.details || []).forEach(x => log((x.ok ? '✅' : '❌') + ' انتشار فوری #' + id + ' → ' + (crPlatformLabel[x.platform] || x.platform) + (x.ok ? '' : ': ' + x.message), x.ok ? 'ok' : 'err'));
+  if(d.skipped_already_published && d.skipped_already_published.length) lines.push('⏭ قبلاً منتشرشده: ' + d.skipped_already_published.map(p => crPlatformLabel[p] || p).join('، '));
+  return {ok: (d.published || 0) > 0, failed: d.failed || 0, lines};
+}
+async function crPublishNow(id, btn){
+  const item = crCurrentItems.find(x => x.id === id); if(!item) return;
+  const plats = crPlatformsFor(item);
+  if(!confirm('«' + String(item.title || '').slice(0, 60) + '» همین حالا منتشر شود؟\n\nپلتفرم‌ها: ' + plats.map(p => crPlatformLabel[p] || p).join('، ') + (item.scheduled_at ? '\n(زمان‌بندی قبلی برداشته می‌شود)' : '') + '\n\nبرای تغییر پلتفرم‌ها، اول در جزئیات آیتم تیک‌ها را عوض و ذخیره کن.')) return;
+  const t = btn ? btn.textContent : ''; if(btn){ btn.disabled = true; btn.textContent = '⏳ در حال انتشار...'; }
+  const bt = Busy.start('🚀 انتشار فوری #' + id);
+  try{
+    const res = await crPublishOne(id, {askOnVideoFail: true});
+    if(res.error) throw new Error(res.error);
+    alert((res.failed ? '⚠ بخشی منتشر نشد' : '✅ منتشر شد') + '\n\n' + res.lines.join('\n'));
+  }catch(e){ log('✗ انتشار فوری #' + id + ': ' + e.message, 'err'); alert('✗ ' + e.message); }
+  finally{ Busy.end(bt); if(btn && btn.isConnected){ btn.disabled = false; btn.textContent = t; } }
+  await loadContentReview(); try{ if(document.getElementById('crDetailModal').classList.contains('open')) openContentDetail(id); }catch(e){}
+}
+async function crPublishSelectedNow(btn){
+  const ids = [...crSelected]; if(!ids.length){ alert('چیزی انتخاب نشده'); return; }
+  if(!confirm(ids.length + ' آیتم همین حالا (یکی‌یکی) منتشر شوند؟ هر آیتم در پلتفرم‌های خودش، یا اگر پلتفرمی ندارد در پلتفرم‌های پیش‌فرض.')) return;
+  btn.disabled = true; const bt = Busy.start('🚀 انتشار فوری ' + ids.length + ' آیتم', {pct: 0}); const out = [];
+  try{
+    for(const [k, id] of ids.entries()){
+      Busy.set(bt, '🚀 انتشار ' + (k + 1) + ' از ' + ids.length + ' (#' + id + ')', k / ids.length * 100);
+      try{ const r = await crPublishOne(id, {}); out.push('#' + id + ': ' + (r.error ? '✗ ' + r.error : r.lines.join(' · '))); }
+      catch(e){ out.push('#' + id + ': ✗ ' + e.message); }
+    }
+  } finally { Busy.end(bt); btn.disabled = false; }
+  alert('نتیجه‌ی انتشار فوری:\n\n' + out.slice(0, 15).join('\n') + (out.length > 15 ? '\n… بقیه در «لاگ فعالیت‌ها»' : ''));
+  crSelected.clear(); updateCrSelectedCount(); await loadContentReview();
+}
+
 let crBannedSyncedFor = '';
 async function loadContentReview(){
   if(S.contentBackendUrl && S.shopName && crBannedSyncedFor !== S.shopName){ crBannedSyncedFor = S.shopName; pushBannedToServer(false); }
@@ -4921,6 +4973,7 @@ function renderContentReviewList(items){
       <div style="font-size:14px;font-weight:800;margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escHtml(item.title)}</div>
       <div style="font-size:12px;color:var(--text2);margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:32px">${escHtml(excerpt)}${excerpt.length>=90?'…':''}</div>
       ${item.scheduled_at?`<div style="font-size:10.5px;color:var(--orange);margin-bottom:6px">⏰ ${new Date(item.scheduled_at.replace(' ','T')).toLocaleString('fa-IR')}</div>`:''}
+      ${!crSelectMode&&item.status!=='rejected'&&item.status!=='published'?`<button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:8px" onclick="event.stopPropagation();crPublishNow(${item.id}, this)">🚀 انتشار فوری</button>`:''}
       <div style="font-size:11px;color:var(--text3);display:flex;justify-content:space-between;align-items:center;gap:6px">
         <span>${dateStr}</span>
         <span style="text-align:left">${platformNames||'—'}</span>
@@ -5057,6 +5110,7 @@ function buildContentDetailHTML(item){
           📤 آپلود عکس (تا ۱۰ تا با هم)
           <input type="file" accept="image/*" multiple style="display:none" onchange="handleManualImageUpload(event, ${item.id})">
         </label>
+        ${item.status!=='rejected'?`<button class="btn btn-primary btn-sm" onclick="crPublishNow(${item.id}, this)">🚀 انتشار فوری</button>`:''}
         ${item.status!=='approved'&&item.status!=='published'?`<button class="btn btn-green btn-sm" onclick="setContentStatus(${item.id},'approved')">✅ تأیید و صف انتشار</button>`:''}
         ${item.status!=='rejected'?`<button class="btn btn-red btn-sm" onclick="setContentStatus(${item.id},'rejected')">🗑 رد کن</button>`:''}
         <button class="btn btn-red btn-sm" onclick="deleteContentItem(${item.id})">🗑 حذف کامل (برگشت‌ناپذیر)</button>
@@ -13074,6 +13128,8 @@ save();
     'connectYouTube':'باز کردن صفحه‌ی اجازه‌ی گوگل برای وصل کردن کانال یوتیوب',
     'renderYouTubeStatus':'بررسی اتصال و نام کانال یوتیوب',
     'disconnectYouTube':'قطع اتصال کانال یوتیوب',
+    'crPublishNow':'همین حالا این آیتم را در پلتفرم‌های انتخاب‌شده‌اش منتشر می‌کند (بدون صبر برای Cron و زمان‌بندی)',
+    'crPublishSelectedNow':'آیتم‌های تیک‌خورده را یکی‌یکی همین حالا منتشر می‌کند',
     'crMakeVideo':'ساخت ویدیوی افقی از تصویرهای این آیتم و آپلودش روی سرور برای یوتیوب',
     'crRemoveVideo':'حذف ویدیوی این آیتم',
     'doLogout':'خروج از پنل',

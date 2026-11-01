@@ -4,11 +4,16 @@
 require_once __DIR__.'/db.php';
 require_once __DIR__.'/lib_banned.php';
 
-function runCronOnce(){
+// $onlyId: فقط همان آیتم، بدون توجه به زمان‌بندی (انتشار فوری از api/publish_now.php)
+function runCronOnce($onlyId = null){
   @set_time_limit(300); // کاروسل چندعکسی ممکنه هر عکس تا ۳۰ ثانیه طول بکشه، پس سقف رو بازتر می‌ذاریم
   try{ refreshInstagramTokenIfNeeded(); }catch(Throwable $e){ /* تمدید ناموفق نباید انتشار را متوقف کند */ }
   $pdo = db();
-  $items = $pdo->query("SELECT * FROM content_items WHERE status='approved' AND (scheduled_at IS NULL OR scheduled_at <= NOW())")->fetchAll();
+  if($onlyId){
+    $st = $pdo->prepare("SELECT * FROM content_items WHERE id=? AND status='approved'"); $st->execute([(int)$onlyId]); $items = $st->fetchAll();
+  }else{
+    $items = $pdo->query("SELECT * FROM content_items WHERE status='approved' AND (scheduled_at IS NULL OR scheduled_at <= NOW())")->fetchAll();
+  }
   $summary = ['checked'=>count($items), 'attempted'=>0, 'published'=>0, 'failed'=>0, 'details'=>[]];
 
   foreach($items as $item){
