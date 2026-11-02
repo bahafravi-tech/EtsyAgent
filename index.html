@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.68.0 -->
+<!-- APP_VERSION: 1.69.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v220</div>
+        <div class="logo-badge">v221</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -13020,7 +13020,7 @@ const AuditDB = {
   async get(k, d){ const db = await this.open(); return new Promise(res => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result === undefined ? d : q.result); q.onerror = () => res(d); }); },
   async set(k, v){ const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = () => res(); t.onerror = () => rej(t.error); }); }
 };
-const AUDIT_DEFAULTS = { maxChanges: 50, scheduleDays: 7, autoSyncOnLoad: true, autoPush: true, maxOptimize: 20, fix: { category: true, description: true, title: true, tags: true, attributes: true, featured: true, duplicates: true, shopText: true } };
+const AUDIT_DEFAULTS = { maxChanges: 50, scheduleDays: 7, dupMode: 'differentiate', autoSyncOnLoad: true, autoPush: true, maxOptimize: 20, fix: { category: true, description: true, title: true, tags: true, attributes: true, featured: true, duplicates: true, shopText: true } };
 const AUDIT_SEV = { critical: {fa: 'بحرانی', c: '#b91c1c', bg: '#fee2e2', w: 10}, high: {fa: 'زیاد', c: '#c2410c', bg: '#ffedd5', w: 5}, medium: {fa: 'متوسط', c: '#a16207', bg: '#fef9c3', w: 2}, low: {fa: 'کم', c: '#475569', bg: '#f1f5f9', w: 0.5} };
 const AUDIT_CHECK_FA = { category: 'دسته‌بندی', description: 'توضیحات', duplicate: 'تکراری', title: 'عنوان', tags: 'تگ‌ها', attributes: 'ویژگی‌ها (Holiday)', price: 'قیمت', discount: 'تخفیف دائمی', featured: 'محصولات ویژه', media: 'تصویر و ویدیو', shopText: 'متن فروشگاه', seasonal: 'فصلی' };
 const AUDIT_FIELD_FA = { title: 'عنوان', description: 'توضیحات', tags: 'تگ‌ها', taxonomy_id: 'دسته‌بندی', state: 'وضعیت', featured_rank: 'ویژه', property: 'ویژگی', announcement: 'اطلاعیه‌ی فروشگاه', sale_message: 'پیام بعد از خرید' };
@@ -13102,11 +13102,9 @@ function auditDescProblems(d, isDigital){
 }
 // ── عنوان: حذف Digital Download و فرمت‌ها (به‌جز یک SVG نزدیک ابتدا)، کلمه‌ی تکراری و طول ──
 function auditFixTitleBasic(title, isCut){
-  let t = String(title || '').replace(/\b(instant|digital)\s+download(s)?\b/gi, ' ').replace(AUDIT_FORMATS, ' ').replace(/\p{Extended_Pictographic}/gu, ' ');
-  t = t.replace(/\b(\w+)(\s+\1\b)+/gi, '$1'); // کلمه‌ی پشت‌سرهم تکراری
-  t = t.replace(/\s*([,|])\s*([,|]\s*)+/g, '$1 ').replace(/\s{2,}/g, ' ').replace(/^[\s,|\-–]+|[\s,|\-–]+$/g, '').replace(/\s+([,|])/g, '$1');
+  // همان اصلاح قانون مشترک (SVG اول سر جایش می‌ماند، بقیه‌ی فرمت‌ها و Digital Download حذف) + حذف بخش‌های تکراری
+  let t = titleRuleClean(String(title || '').replace(/\p{Extended_Pictographic}/gu, ' '), isCut ? {TITLE: 'svg'} : {TITLE: ''});
   const segs = t.split(/\s*[,|]\s*/), seenSeg = new Set(); t = segs.filter(x => { const k = x.toLowerCase(); if(!k || seenSeg.has(k)) return false; seenSeg.add(k); return true; }).join(', ');
-  if(isCut){ const m = t.match(/^[^,|]+/), first = m ? m[0].trim() : ''; if(first && first.length <= 36) t = first + ' SVG' + t.slice(m[0].length); else { const w = t.split(' '); t = w.slice(0, 2).join(' ') + ' SVG ' + w.slice(2).join(' '); } t = t.trim(); }
   return sanitizeEtsyTitle(t).slice(0, 140).trim();
 }
 function auditTitleProblems(l, ctx){
@@ -13114,7 +13112,7 @@ function auditTitleProblems(l, ctx){
   if(/\b(instant|digital)\s+download/i.test(t)) p.push('«Digital Download» در عنوان');
   const fm = (t.match(AUDIT_FORMATS) || []); const extra = fm.filter((x, i) => !(i === 0 && /svg/i.test(x) && t.toLowerCase().indexOf('svg') < 40));
   if(extra.length) p.push('فرمت فایل در عنوان (' + [...new Set(fm.map(x => x.toUpperCase()))].join('، ') + ')');
-  const toks = auditTokens(t); if(new Set(toks).size < toks.length) p.push('کلمه‌ی تکراری');
+  const toks = auditTokens(t), cnt = {}; toks.forEach(w => cnt[w] = (cnt[w] || 0) + 1); if(Object.values(cnt).some(n => n >= 3)) p.push('کلمه‌ی تکراری');
   if(t.length > 140) p.push('بیش از ۱۴۰ نویسه');
   // کلیدواژه‌ی اصلی = اولین تگ چندکلمه‌ای که در خود عنوان آمده؛ باید در ۴۰ نویسه‌ی اول باشد
   const tl = t.toLowerCase(), kw = (l.tags || []).map(x => String(x).toLowerCase().trim()).find(x => x.split(/\s+/).length >= 2 && tl.includes(x));
@@ -13176,7 +13174,8 @@ async function auditFetch(shopKey, bt){
 }
 
 // ── بررسی‌ها: هر مشکل {check, sev, lid, msg, fix?} ؛ fix = {field, compute|value, auto} ──
-function auditChecks(snap){
+function auditChecks(snap, o){
+  o = o || {}; const dupMode = o.dupMode || 'differentiate';
   const L = snap.listings, issues = [], now = new Date(), seasons = auditSeasons(now), n = L.length || 1;
   const byId = Object.fromEntries(L.map(l => [l.listing_id, l]));
   L.forEach(l => { l._type = auditType(l); l._isCut = /svg|cut file|cricut|silhouette|laser|dxf|stencil/i.test(l.title + ' ' + l.tags.join(' ')); l._season = seasons.find(s => s.re.test(l.title + ' ' + l.tags.join(' '))); });
@@ -13200,7 +13199,12 @@ function auditChecks(snap){
   const losers = new Set();
   Object.values(groups).filter(g => g.length > 1).forEach(g => {
     g.sort(rank); const keep = g[0];
-    g.slice(1).forEach(l => { losers.add(l.listing_id); add({check: 'duplicate', sev: 'medium', lid: l.listing_id, msg: 'تقریباً همان «' + keep.title.slice(0, 50) + '» است (#' + keep.listing_id + ' با فروش/پسند بیشتر نگه داشته می‌شود)', fix: {field: 'state', value: 'inactive', kind: 'duplicates'}}); });
+    g.slice(1).forEach(l => {
+      if(dupMode === 'inactive') losers.add(l.listing_id);
+      const base = 'تقریباً همان «' + keep.title.slice(0, 50) + '» است (#' + keep.listing_id + ' با فروش/پسند بیشتر)';
+      const fix = dupMode === 'inactive' ? {field: 'state', value: 'inactive', kind: 'duplicates'} : dupMode === 'differentiate' ? {field: 'title', compute: 'dup', kind: 'duplicates', keepId: keep.listing_id, group: g.map(x => x.listing_id)} : null;
+      add({check: 'duplicate', sev: 'medium', lid: l.listing_id, msg: base + (dupMode === 'inactive' ? ' — غیرفعال می‌شود' : dupMode === 'differentiate' ? ' — عنوان و تگ‌هایش برای یک جستجوی دیگر بازنویسی می‌شود' : ' — دستی بررسی کن'), fix});
+    });
   });
   soft.filter(([a, b]) => !losers.has(a.listing_id) && !losers.has(b.listing_id)).slice(0, 30).forEach(([a, b]) => add({check: 'duplicate', key: 'soft' + b.listing_id, sev: 'low', lid: a.listing_id, msg: 'شاید تکراری با #' + b.listing_id + ' «' + b.title.slice(0, 40) + '» (همان کلیدواژه‌ی اصلی و نوع) — دستی بررسی کن'}));
 
@@ -13212,6 +13216,7 @@ function auditChecks(snap){
 
   L.forEach(l => {
     if(losers.has(l.listing_id)) return; // لیستینگ تکراری غیرفعال می‌شود؛ بقیه‌ی اصلاح‌ها رویش لازم نیست
+    const isDup = issues.some(x => x.check === 'duplicate' && x.lid === l.listing_id && x.fix && x.fix.compute === 'dup');
     // ۱. دسته‌بندی
     if(l._type.k !== 'other' && l.taxPath){
       const unrelated = AUDIT_UNRELATED_TOP.test(l.taxPath), mismatch = !l._type.path.test(l.taxPath);
@@ -13225,10 +13230,10 @@ function auditChecks(snap){
     if(dp.length){ const nd = auditCleanDesc(l.description, l.is_digital); if(nd && nd !== l.description.trim()) add({check: 'description', sev: 'high', lid: l.listing_id, msg: dp.join('، '), fix: {field: 'description', value: nd, kind: 'description'}}); }
     // ۴. عنوان
     const tp = auditTitleProblems(l, ctx);
-    if(tp.p.length){ const basic = auditFixTitleBasic(l.title, /\bsvg\b/i.test(l.title)); add({check: 'title', sev: 'medium', lid: l.listing_id, msg: tp.p.join('، '), fix: {field: 'title', value: tp.needsAI ? null : (basic !== l.title ? basic : null), compute: tp.needsAI ? 'ai' : null, basic, generic: tp.generic, kind: 'title'}}); }
+    if(tp.p.length && !isDup){ const basic = auditFixTitleBasic(l.title, /\bsvg\b/i.test(l.title)); add({check: 'title', sev: 'medium', lid: l.listing_id, msg: tp.p.join('، '), fix: {field: 'title', value: tp.needsAI ? null : (basic !== l.title ? basic : null), compute: tp.needsAI ? 'ai' : null, basic, generic: tp.generic, kind: 'title'}}); }
     // ۵. تگ‌ها
     const gp = auditTagProblems(l);
-    if(gp.p.length) add({check: 'tags', sev: l.tags.length < 10 ? 'high' : 'medium', lid: l.listing_id, msg: gp.p.join('، ') + (gp.bad.length ? ': ' + gp.bad.slice(0, 5).join('، ') : ''), fix: {field: 'tags', compute: 'ai', bad: gp.bad, kind: 'tags'}});
+    if(gp.p.length && !isDup) add({check: 'tags', sev: l.tags.length < 10 ? 'high' : 'medium', lid: l.listing_id, msg: gp.p.join('، ') + (gp.bad.length ? ': ' + gp.bad.slice(0, 5).join('، ') : ''), fix: {field: 'tags', compute: 'ai', bad: gp.bad, kind: 'tags'}});
     // ۱۲. فصلی: در فصل فعال، محصول همان فصل بدون تگ فصل
     const s = l._season;
     if(s && s.active && !l.tags.some(t => t.toLowerCase().includes(s.word.split(' ')[0]))){
@@ -13337,7 +13342,7 @@ async function auditRun(mode, opts){
   if(!S.shopId){ alert('اول یک فروشگاه انتخاب کن'); return; }
   if(!S.etsyOAuthToken){ alert('این فروشگاه به Etsy وصل نیست — اول از تنظیمات «اتصال به Etsy» را انجام بده'); return; }
   const shopKey = S.shopId, shopName = S.shopName, st = await auditSettings(shopKey);
-  if(mode === 'apply' && !opts.silent && !confirm('بازرسی کامل «' + shopName + '» انجام و حداکثر ' + st.maxChanges + ' اصلاح مستقیماً روی Etsy اعمال شود؟\n\nهر تغییر در تاریخچه ذخیره می‌شود و با یک کلیک برمی‌گردد. قیمت‌ها هیچ‌وقت خودکار تغییر نمی‌کنند. تکراری‌ها فقط غیرفعال می‌شوند (حذف نمی‌شوند).')) return;
+  if(mode === 'apply' && !opts.silent && !confirm('بازرسی کامل «' + shopName + '» انجام و حداکثر ' + st.maxChanges + ' اصلاح مستقیماً روی Etsy اعمال شود؟\n\nهر تغییر در تاریخچه ذخیره می‌شود و با یک کلیک برمی‌گردد. قیمت‌ها هیچ‌وقت خودکار تغییر نمی‌کنند. تکراری‌ها حذف نمی‌شوند.')) return;
   AUDIT.running = true; const bt = Busy.start('🩺 بازرسی فروشگاه «' + shopName + '»', {pct: 0});
   const runId = 'r' + Date.now().toString(36), sameShop = () => S.shopId === shopKey;
   try{
@@ -13345,12 +13350,13 @@ async function auditRun(mode, opts){
     if(!sameShop()) throw new Error('فروشگاه وسط کار عوض شد — بازرسی متوقف شد');
     await auditUpdateImpact(shopKey, snap);
     Busy.set(bt, 'بررسی ' + snap.listings.length + ' لیستینگ', 40);
-    const res = auditChecks(snap), byId = Object.fromEntries(snap.listings.map(l => [l.listing_id, l]));
+    const res = auditChecks(snap, {dupMode: st.fix.duplicates === false ? 'flag' : (st.dupMode || 'differentiate')}), byId = Object.fromEntries(snap.listings.map(l => [l.listing_id, l]));
     const ctx = {generic: res.generic};
     // اصلاح‌پذیرها به ترتیب شدت، تا سقف تعداد تغییر
     const order = {critical: 0, high: 1, medium: 2, low: 3};
     const skipText = opts.skipText || new Set();
-    const fixable = res.issues.filter(x => x.fix && st.fix[x.fix.kind] !== false && !(x.lid && skipText.has(String(x.lid)) && ['title', 'tags', 'description'].includes(x.fix.kind))).sort((a, b) => order[a.sev] - order[b.sev]);
+    const fixable = res.issues.filter(x => x.fix && (st.fix[x.fix.kind] !== false || x.fix.compute === 'dup') && !(x.lid && skipText.has(String(x.lid)) && ['title', 'tags', 'description'].includes(x.fix.kind))).sort((a, b) => order[a.sev] - order[b.sev]);
+    const diffLids = [];
     const plan = []; // {issue, lid, field, old, new, reason}
     const lidFields = {}; const take = (x, field, oldV, newV, extra) => { if(plan.length >= st.maxChanges) return false; const k = (x.lid || 'shop') + ':' + field; if(lidFields[k]){ lidFields[k].new = newV; lidFields[k].reason += ' + ' + AUDIT_CHECK_FA[x.check]; return true; } const c = Object.assign({id: runId + '-' + plan.length, lid: x.lid || null, field, old: oldV, new: newV, reason: AUDIT_CHECK_FA[x.check] + ': ' + x.msg, issueId: x.id, ltitle: x.ltitle || ''}, extra || {}); plan.push(c); lidFields[k] = c; x.planned = c.id; return true; };
     // ۱) اصلاح‌های مستقیم (بدون AI)
@@ -13382,6 +13388,35 @@ async function auditRun(mode, opts){
         const x = a.issues.find(i => i.fix.field === 'tags');
         if(x && clean.join(',') !== a.l.tags.join(',') && clean.length >= Math.min(13, a.l.tags.length)) take(x, 'tags', a.l.tags, clean);
       }
+    }
+    // ۲ب) تکراری‌ها: عنوان و تگ تازه برای یک جستجوی متفاوت (به‌جای غیرفعال کردن)
+    for(const x of fixable.filter(x => !x.planned && x.fix.compute === 'dup')){
+      if(plan.length + 2 > st.maxChanges) break;
+      const l = byId[x.lid], keep = byId[x.fix.keepId]; if(!l || !keep) continue;
+      Busy.set(bt, 'متمایز کردن محصول تکراری', 55);
+      const others = x.fix.group.filter(id => id !== x.lid).map(id => byId[id]).filter(Boolean);
+      const prompt = `Two or more listings in this Etsy shop are near-duplicates and compete for the same searches. Rewrite ONLY the listing below so it targets a DIFFERENT, real search intent (another specific occasion, use, recipient, style or size) that genuinely fits this product according to its description. Return ONLY JSON {"title":"...","tags":["... 13 tags ..."],"intent":"short english phrase"}.
+${shopCtx(null)}
+${titleRulesText(null)}
+(isCutFile=${l._isCut}: if false, no file formats or machine words.)
+${tagRulesText()}
+The new title and tags must be clearly different from these sibling listings (do not reuse their main phrases):
+${others.map(o => '- ' + o.title + ' | tags: ' + o.tags.join(', ')).join('\n')}
+LISTING TO REWRITE:
+Title: ${l.title}
+Tags: ${l.tags.join(', ')}
+Description: ${l.description.slice(0, 600)}`;
+      try{
+        const j = parseJSON(await callClaude(prompt, 900));
+        let t = sanitizeEtsyTitle(titleRuleClean(String(j.title || '').replace(/\p{Extended_Pictographic}/gu, ''), {TITLE: l.title, TAGS: l.tags.join(','), DESCRIPTION: l.description})).slice(0, 140);
+        const simMax = Math.max(...others.map(o => auditDice(auditTokens(t).filter(w => !AUDIT_FILLER.has(w)), auditTokens(o.title).filter(w => !AUDIT_FILLER.has(w)))));
+        const otherTags = new Set(others.flatMap(o => o.tags.map(z => z.toLowerCase())));
+        const tags = etsyCleanTags(pickBestTags((j.tags || []).filter(z => !otherTags.has(String(z).toLowerCase())), t, []));
+        if(t && t !== l.title && simMax <= 0.6 && tags.length >= 10){
+          x.msg += ' — هدف تازه: ' + String(j.intent || '').slice(0, 60);
+          take(x, 'title', l.title, t); take(x, 'tags', l.tags, tags); diffLids.push(String(x.lid));
+        }else x.msg += ' (متن متمایز قابل‌قبولی ساخته نشد — دستی بررسی کن)';
+      }catch(e){ x.msg += ' (ساخت متن متمایز ناموفق: ' + e.message + ')'; }
     }
     // ۳) دسته‌ی بدون پیشنهاد در خود فروشگاه → AI از بین دسته‌های مرتبط
     for(const x of fixable.filter(x => !x.planned && x.fix.compute === 'taxonomy')){ if(plan.length >= st.maxChanges) break; Busy.set(bt, 'پیدا کردن دسته‌ی درست', 60); const id = await auditAiTaxonomy(byId[x.lid]); if(id && id !== byId[x.lid].taxonomy_id){ x.msg += ' — پیشنهاد: ' + ((auditTaxCache[id] || {}).path || id); take(x, 'taxonomy_id', byId[x.lid].taxonomy_id, id); } }
@@ -13420,7 +13455,7 @@ async function auditRun(mode, opts){
     const counts = {critical: 0, high: 0, medium: 0, low: 0}; res.issues.forEach(x => counts[x.sev]++);
     const run = {id: runId, at: Date.now(), mode, score: res.score, counts, listings: snap.listings.length, salesOk: snap.salesOk,
       issues: res.issues.map(x => ({id: x.id, check: x.check, sev: x.sev, lid: x.lid, ltitle: x.ltitle, msg: x.msg, planned: x.planned || null, canFix: !!x.fix})),
-      plan: mode === 'dry' ? plan : [], base: mode === 'dry' ? Object.fromEntries(plan.filter(c => c.lid && byId[c.lid]).map(c => [c.lid, {v: byId[c.lid].views, f: byId[c.lid].favs}])) : null, applied: changes.filter(c => c.status === 'applied').length, failed: changes.filter(c => c.status === 'failed').length, capped: plan.length >= st.maxChanges};
+      diffLids, plan: mode === 'dry' ? plan : [], base: mode === 'dry' ? Object.fromEntries(plan.filter(c => c.lid && byId[c.lid]).map(c => [c.lid, {v: byId[c.lid].views, f: byId[c.lid].favs}])) : null, applied: changes.filter(c => c.status === 'applied').length, failed: changes.filter(c => c.status === 'failed').length, capped: plan.length >= st.maxChanges};
     const runs = await AuditDB.get(auditKey(shopKey, 'runs'), []);
     await AuditDB.set(auditKey(shopKey, 'runs'), [run, ...runs].slice(0, 20));
     if(mode !== 'dry') await AuditDB.set(auditKey(shopKey, 'settings'), Object.assign({}, await AuditDB.get(auditKey(shopKey, 'settings'), {}), {lastRun: Date.now()}));
@@ -13536,11 +13571,12 @@ async function smartSync(opts){
     if(!sameShop()) throw new Error('فروشگاه وسط کار عوض شد');
     sum.fresh = freshIds.size;
     // انتخاب محصولات برای بهینه‌سازی کامل
-    const optIdx = S.products.map((p, i) => i).filter(i => S.products[i]._listing_id && (freshIds.has(String(S.products[i]._listing_id)) || smartNeedsOptimize(S.products[i], i))).slice(0, st.maxOptimize);
+    let optIdx = S.products.map((p, i) => i).filter(i => S.products[i]._listing_id && (freshIds.has(String(S.products[i]._listing_id)) || smartNeedsOptimize(S.products[i], i))).slice(0, st.maxOptimize);
     // ۲) بازرسی (بی‌صدا)
     Busy.set(bt, '۲/۴ بازرسی و اصلاح فروشگاه', 15);
     const run = await auditRun('apply', {silent: true, skipText: new Set(optIdx.map(i => String(S.products[i]._listing_id)))});
     if(run) sum.audited = run.applied || 0;
+    if(run && run.diffLids && run.diffLids.length){ const dl = new Set(run.diffLids); for(let k = optIdx.length - 1; k >= 0; k--) if(dl.has(String(S.products[optIdx[k]]._listing_id))) optIdx.splice(k, 1); }
     if(!sameShop()) throw new Error('فروشگاه وسط کار عوض شد');
     // ۳) بهینه‌سازی کامل
     for(const [k, i] of optIdx.entries()){
@@ -13592,7 +13628,7 @@ async function auditSaveSettings(){
   const fix = {}; document.querySelectorAll('#auditSettings [data-fix]').forEach(c => fix[c.dataset.fix] = c.checked);
   const maxC = Math.max(1, Math.min(500, parseInt(document.getElementById('auditMax').value) || 50));
   const maxO = Math.max(0, Math.min(200, parseInt(document.getElementById('auditMaxOpt').value) || 0));
-  await AuditDB.set(k, Object.assign({}, cur, {maxChanges: maxC, scheduleDays: parseInt(document.getElementById('auditSched').value) || 0, fix, maxOptimize: maxO, autoSyncOnLoad: document.getElementById('auditAutoLoad').checked, autoPush: document.getElementById('auditAutoPush').checked}));
+  await AuditDB.set(k, Object.assign({}, cur, {maxChanges: maxC, scheduleDays: parseInt(document.getElementById('auditSched').value) || 0, fix, maxOptimize: maxO, dupMode: document.getElementById('auditDupMode').value, autoSyncOnLoad: document.getElementById('auditAutoLoad').checked, autoPush: document.getElementById('auditAutoPush').checked}));
   toast('✅ تنظیمات بازرسی این فروشگاه ذخیره شد');
 }
 function auditSetTab(t){ AUDIT.tab = t; auditRender(); }
@@ -13621,10 +13657,11 @@ async function auditRender(){
     (last && last.capped ? '<div style="font-size:11px;color:#a16207;margin-top:4px">⚠ به سقف ' + st.maxChanges + ' تغییر رسید — بقیه در اجرای بعدی اصلاح می‌شوند.</div>' : '') +
     (last && last.salesOk === false ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">آمار فروش خوانده نشد؛ برای انتخاب نسخه‌ی اصلیِ تکراری‌ها از پسند و بازدید استفاده شد.</div>' : '') + '</div>' +
     '<div style="font-size:11px;color:var(--text3);line-height:1.9">' + (st.scheduleDays ? '⏰ همگام‌سازی خودکار هر ' + st.scheduleDays + ' روز' + (st.lastRun ? '<br>بعدی: ' + new Date(st.lastRun + st.scheduleDays*864e5).toLocaleDateString('fa-IR') : '') : '⏰ همگام‌سازی خودکار خاموش') + '</div></div>';
-  const fixNames = {category: 'دسته‌بندی', description: 'پاکسازی توضیحات', title: 'عنوان', tags: 'تگ‌ها و تگ فصلی', attributes: 'ویژگی Holiday', featured: 'محصولات ویژه', duplicates: 'غیرفعال کردن تکراری‌ها', shopText: 'اطلاعیه و پیام فروشگاه'};
+  const fixNames = {category: 'دسته‌بندی', description: 'پاکسازی توضیحات', title: 'عنوان', tags: 'تگ‌ها و تگ فصلی', attributes: 'ویژگی Holiday', featured: 'محصولات ویژه', duplicates: 'رسیدگی به تکراری‌ها', shopText: 'اطلاعیه و پیام فروشگاه'};
   document.getElementById('auditSettings').innerHTML = '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:13px;margin-bottom:10px">' +
     '<label>حداکثر تغییر در هر اجرا <input class="input" id="auditMax" type="number" min="1" max="500" value="' + st.maxChanges + '" style="width:80px;display:inline-block;margin-inline-start:6px"></label>' +
     '<label>همگام‌سازی خودکار <select class="input" id="auditSched" style="width:auto;display:inline-block;margin-inline-start:6px">' + [[0, 'خاموش'], [1, 'روزانه'], [7, 'هفتگی'], [14, 'هر دو هفته'], [30, 'ماهانه']].map(([v, t]) => '<option value="' + v + '"' + (st.scheduleDays === v ? ' selected' : '') + '>' + t + '</option>').join('') + '</select></label>' +
+    '<label>محصولات تکراری <select class="input" id="auditDupMode" style="width:auto;display:inline-block;margin-inline-start:6px">' + [['differentiate', 'متمایز کردن عنوان و تگ (پیشنهادی)'], ['inactive', 'غیرفعال کردن نسخه‌ی ضعیف‌تر'], ['flag', 'فقط علامت‌گذاری']].map(([v, t]) => '<option value="' + v + '"' + ((st.dupMode || 'differentiate') === v ? ' selected' : '') + '>' + t + '</option>').join('') + '</select></label>' +
     '<label>حداکثر بهینه‌سازی کامل در هر اجرا <input class="input" id="auditMaxOpt" type="number" min="0" max="200" value="' + st.maxOptimize + '" style="width:70px;display:inline-block;margin-inline-start:6px"></label></div>' +
     '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;margin-bottom:10px"><label style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" id="auditAutoLoad" ' + (st.autoSyncOnLoad ? 'checked' : '') + '> بعد از هر «بارگذاری از Etsy»، بازرسی و بهینه‌سازی خودکار انجام شود</label><label style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" id="auditAutoPush" ' + (st.autoPush ? 'checked' : '') + '> نتیجه خودکار به Etsy ارسال شود</label></div>' +
     '<div style="font-size:12px;color:var(--text2);margin-bottom:6px">اصلاح خودکار این موارد:</div><div style="display:flex;gap:14px;flex-wrap:wrap;font-size:13px">' + Object.entries(fixNames).map(([k, t]) => '<label style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" data-fix="' + k + '" ' + (st.fix[k] !== false ? 'checked' : '') + '> ' + t + '</label>').join('') + '</div>' +
