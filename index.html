@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.69.0 -->
+<!-- APP_VERSION: 1.69.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v221</div>
+        <div class="logo-badge">v222</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -13298,7 +13298,7 @@ For needTags return that many NEW tags (not in keepTags).`;
     try{
       const r = await callClaude(prompt, 1800); const j = parseJSON(r);
       (j.items || []).forEach(it => { out[it.id] = it; });
-    }catch(e){ log('⚠ بازرسی: ساخت عنوان/تگ با AI ناموفق بود: ' + e.message, 'warn'); }
+    }catch(e){ out.__err = e.message; log('⚠ بازرسی: ساخت عنوان/تگ با AI ناموفق بود: ' + e.message, 'warn'); }
   }
   return out;
 }
@@ -13379,14 +13379,17 @@ async function auditRun(mode, opts){
           let t = r.title ? sanitizeEtsyTitle(String(r.title).replace(/\p{Extended_Pictographic}/gu, '')).slice(0, 140) : x.fix.basic;
           if(t && (/\b(instant|digital)\s+download/i.test(t) || (t.match(AUDIT_FORMATS) || []).filter(m => !/svg/i.test(m)).length || ctx.generic.some(g => t.toLowerCase().includes(g)))) t = x.fix.basic;
           if(t && t !== a.l.title) take(x, 'title', a.l.title, t);
+          else x.msg += ai.__err ? ' (هوش مصنوعی جواب نداد: ' + String(ai.__err).slice(0, 80) + ')' : !r.title ? ' (هوش مصنوعی عنوانی برنگرداند)' : ' (عنوان پیشنهادی قانون را رعایت نکرد)';
         }
       }
       if(a.needTags > 0 || a.season){
-        const titleSet = new Set(auditTokens(r.title || a.l.title)); const tags = [...a.keepTags];
-        (r.tags || []).map(t => String(t).toLowerCase().trim()).forEach(t => { if(tags.length < 13 && auditValidTag(t, titleSet) && !tags.some(x => x.toLowerCase() === t)) tags.push(t); });
+        // تگ‌های نگه‌داشته + بهترین تگ‌های تازه؛ اگر تگ عالی کم بود، با تگ‌های قابل‌قبول (و در آخر تگ‌های قبلی) پر می‌شود تا تعداد کم نشود
+        const tags = [...a.keepTags];
+        pickBestTags(r.tags || [], r.title || a.l.title, a.bad || []).forEach(t => { if(tags.length < 13 && t.split(' ').length >= 2 && !tags.some(x => x.toLowerCase() === t)) tags.push(t); });
         const clean = etsyCleanTags(tags);
         const x = a.issues.find(i => i.fix.field === 'tags');
         if(x && clean.join(',') !== a.l.tags.join(',') && clean.length >= Math.min(13, a.l.tags.length)) take(x, 'tags', a.l.tags, clean);
+        else if(x && !x.planned) x.msg += ai.__err ? ' (هوش مصنوعی جواب نداد)' : ' (تگ تازه‌ی کافی ساخته نشد)';
       }
     }
     // ۲ب) تکراری‌ها: عنوان و تگ تازه برای یک جستجوی متفاوت (به‌جای غیرفعال کردن)
