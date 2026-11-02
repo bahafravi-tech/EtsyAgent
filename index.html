@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.70.0 -->
+<!-- APP_VERSION: 1.71.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v225</div>
+        <div class="logo-badge">v227</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -742,9 +742,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div class="nav-item" onclick="nav('content-review',this)" data-tip="بررسی و تأیید محتوای معرفی قبل از انتشار خودکار در سوشال مدیا"><span class="ni">📢</span> محتوای معرفی</div>
     <div class="nav-item" onclick="nav('marketing',this)" data-tip="تحلیل عملکرد و پیشنهاد پلن بازاریابی بر اساس آمار واقعی"><span class="ni">📈</span> بازاریابی خودکار <span class="nav-new">NEW</span></div>
     <div class="nav-item" onclick="confirmReloadProducts()" data-tip="بارگذاری مجدد فایل CSV محصولات"><span class="ni">🔄</span> بارگذاری مجدد</div>
-    <div class="nav-item" onclick="nav('seo',this)" data-tip="آنالیز SEO عنوان، تگ و توضیحات"><span class="ni">🔍</span> آنالیز SEO</div>
-    <div class="nav-item" onclick="nav('optimize',this)" data-tip="بهینه‌سازی خودکار با AI"><span class="ni">⚡</span> بهینه‌سازی</div>
-    <div class="nav-item" onclick="nav('audit',this)" data-tip="بازرسی کامل فروشگاه در Etsy و اصلاح خودکار با امکان برگرداندن"><span class="ni">🩺</span> بازرسی فروشگاه <span class="nav-new">NEW</span></div>
+    <div class="nav-item" onclick="nav('audit',this)" data-tip="همه‌چیز درباره‌ی سئو و سلامت فروشگاه: بازرسی، همگام‌سازی، آنالیز SEO و بهینه‌سازی دستی"><span class="ni">🩺</span> بازرسی و سئو <span class="nav-new">NEW</span></div>
     <div class="nav-item" onclick="nav('pricing',this)" data-tip="تحلیل و پیشنهاد قیمت‌گذاری"><span class="ni">💰</span> قیمت‌گذاری</div>
     <div class="nav-item" onclick="nav('studio',this)" data-tip="آماده‌سازی فایل‌ها، تصویرها و متن هر محصول قبل از انتشار در اتسی"><span class="ni">📦</span> استودیو محصولات <span class="nav-new">NEW</span></div>
   </div>
@@ -797,6 +795,7 @@ margin:0;background:var(--paper);color:var(--ink);
       <button class="btn btn-primary" onclick="runDailyAgent(this)">▶ اجرای Agent امروز</button>
     </div>
   </div>
+  <div id="dashHealth"></div>
 
   <div class="stats-grid">
     <div class="stat-card stat-orange"><div class="stat-icon">📦</div><div class="stat-val" id="statProducts">0</div><div class="stat-label">کل محصولات</div><div class="stat-delta up" id="statProductsDelta">— محصول بارگذاری نشده</div></div>
@@ -1159,6 +1158,7 @@ margin:0;background:var(--paper);color:var(--ink);
       <label style="font-size:12px;display:inline-flex;gap:4px;align-items:center;cursor:pointer" data-tip="بعد از هر بهینه‌سازی گروهی، خودکار پیشنهاد ارسال به Etsy می‌آید (یک تأیید می‌گیرد)"><input type="checkbox" class="autoPushChk" onchange="setAutoPush(this.checked)"> ارسال خودکار پس از بهینه‌سازی</label>
     </div>
   </div>
+  <div class="audit-subnav"></div>
   <div id="selectModeBar" style="display:none;background:var(--orange-light);border:1px solid var(--orange-mid);border-radius:12px;padding:12px 16px;margin-bottom:14px;align-items:center;gap:12px">
     <span style="font-size:13px;font-weight:600;color:var(--orange)"><span id="selectedCount">0</span> محصول انتخاب شده</span>
     <button class="btn btn-sm btn-secondary" onclick="selectAll()">انتخاب همه</button>
@@ -1188,6 +1188,7 @@ margin:0;background:var(--paper);color:var(--ink);
       <button class="btn btn-primary" onclick="runOptimizeSelected()">⚡ بهینه‌سازی</button>
     </div>
   </div>
+  <div class="audit-subnav"></div>
   <!-- فیلتر بهینه‌سازی -->
   <details class="card" id="bannedCard" style="margin-bottom:12px;padding:12px 16px">
     <summary style="cursor:pointer;font-weight:700;font-size:14px">🚫 واژه‌های ممنوعه و حساس (ایران، نام برند و …) — برای این فروشگاه</summary>
@@ -1233,6 +1234,7 @@ margin:0;background:var(--paper);color:var(--ink);
       <button class="btn btn-secondary btn-sm" onclick="auditRun('apply')">🩺 فقط بازرسی و اصلاح</button>
     </div>
   </div>
+  <div class="audit-subnav"></div>
   <div id="auditTop"></div>
   <div class="card" style="margin-bottom:14px">
     <div class="card-title" style="margin-bottom:10px">⚙️ تنظیمات بازرسی این فروشگاه</div>
@@ -2769,17 +2771,22 @@ function updateSEOStats(){
   // تعداد واقعاً بهینه‌شده (نه فقط score بالا)
   updateOptimizedCount();
 }
+function renderAuditSubnav(active){
+  const tabs=[['audit','🩺 بازرسی و همگام‌سازی'],['seo','🔍 آنالیز SEO (فقط امتیاز)'],['optimize','⚡ بهینه‌سازی دستی یک محصول']];
+  document.querySelectorAll('.audit-subnav').forEach(el=>{ el.className='audit-subnav sec-tabs'; el.style.marginBottom='14px'; el.innerHTML=tabs.map(([k,t])=>'<div class="sec-tab'+(k===active?' active':'')+'" onclick="nav(\''+k+'\')">'+t+'</div>').join(''); });
+}
 function isOptimizedIdx(i){ const v = S.optimized && S.optimized[i]; return v===true||v?.done===true||(typeof v==='object'&&v!==null); }
+// محصول «در وضعیت خوب»: یا بهینه‌سازی شده، یا امتیاز سئوی ۷۰+ دارد، یا همه‌ی قانون‌های عنوان و تگ را رعایت می‌کند
+function productRulesOk(p){ const t=String(p.TITLE||''), tags=String(p.TAGS||'').split(',').filter(Boolean); return !titleRuleProblems(t,p).length && t.length<=140 && titleWordCount(t)<=14 && tags.length>=13; }
+function isGoodIdx(i){ const a=S.analyzed[i], p=S.products[i]; return isOptimizedIdx(i) || (a&&a.score>=70) || (p&&productRulesOk(p)); }
 function updateOptimizedCount(){
   // فقط محصول‌هایی که الان در فهرست هستند شمرده می‌شوند (کلیدهای قدیمیِ محصولات حذف‌شده حساب نمی‌شوند)
-  let optCount=0, good=0, need=0;
-  S.products.forEach((p,i)=>{ if(isOptimizedIdx(i)) optCount++; else { const a=S.analyzed[i]; if(a&&a.score>=70) good++; else need++; } });
+  let optCount=0, need=0;
+  S.products.forEach((p,i)=>{ if(isGoodIdx(i)) optCount++; else need++; });
   const el=document.getElementById('statOptimized'); if(el) el.textContent=optCount;
   const delta=document.getElementById('statOptDelta');
   if(delta && S.products.length){
-    // محصولِ بهینه‌نشده‌ای که امتیاز سئوی خوب (۷۰+) دارد نیازی به بهینه‌سازی ندارد و در «بهینه نشده» هم نمی‌آید
-    delta.innerHTML=optCount+' از '+S.products.length+(good?' · <span title="این محصول‌ها با دکمه‌ی بهینه‌سازی بهینه نشده‌اند ولی امتیاز سئوی‌شان ۷۰ یا بیشتر است، پس نیازی ندارند" style="cursor:help">'+good+' از قبل امتیاز خوب</span>':'')+
-      (need?' · <a href="#" onclick="event.preventDefault();goToNotOptimized()" style="color:var(--orange);text-decoration:none;font-weight:700" title="دیدن محصول‌هایی که هنوز نیاز به بهینه‌سازی دارند">⚠ '+need+' نیاز به بهینه‌سازی ←</a>':' ✅');
+    delta.innerHTML=need?optCount+' از '+S.products.length+' · <a href="#" onclick="event.preventDefault();goToNotOptimized()" style="color:var(--orange);text-decoration:none;font-weight:700" title="دیدن محصول‌هایی که هنوز نیاز به بهینه‌سازی دارند">⚠ '+need+' نیاز به بهینه‌سازی ←</a>':'<span style="color:var(--green);font-weight:700">✅ همه‌ی '+S.products.length+' محصول در وضعیت خوب</span>';
   }
   const pd=document.getElementById('statProductsDelta');
   if(pd) pd.textContent=S.products.length?(S.products.filter(p=>p._listing_id).length+' محصول از Etsy'):'— محصول بارگذاری نشده';
@@ -2878,6 +2885,8 @@ function nav(name, el) {
   if(name==='settings'){ renderOtherShopsInSettings(); renderShopSwitcher(); }
   if(name==='content-review') loadContentReview();
   if(name==='audit' && typeof auditRender==='function') auditRender();
+  if(['audit','seo','optimize'].includes(name)){ renderAuditSubnav(name); if(name!=='audit') document.querySelectorAll('.nav-item').forEach(n=>{ if((n.getAttribute('onclick')||'').includes("'audit'")) n.classList.add('active'); }); }
+  if(name==='dashboard' && typeof renderDashHealth==='function') renderDashHealth();
   if(name==='marketing') loadMarketing();
   if(name==='customers'){ if(typeof uiRestore === 'function') uiRestore(); renderCustomersFromCache(); }
   if(name==='settings' && typeof renderPinterestRss === 'function') renderPinterestRss();
@@ -5906,7 +5915,7 @@ function optSelectAll(){
   if(optCurrentFilter==='weak') items=items.filter(({i,a})=>a&&a.score<70&&!S.optimized[i]);
   // «بهینه‌نشده» یعنی واقعاً نیاز به بهینه‌سازی داره: یا هنوز آنالیز نشده، یا امتیازش زیر ۷۰ است —
   // محصولی که از قبل امتیاز خوب داره نباید این‌جا بیفته فقط چون دکمه‌ی بهینه‌سازی روش زده نشده
-  else if(optCurrentFilter==='notopt') items=items.filter(({i,a})=>!S.optimized[i]&&(!a||a.score<70));
+  else if(optCurrentFilter==='notopt') items=items.filter(({i})=>!isGoodIdx(i));
   else if(optCurrentFilter==='opt') items=items.filter(({i})=>S.optimized[i]);
   // فیلتر 'all' یعنی همه‌ی محصولات، بدون هیچ محدودیتی
   optSelected=new Set(items.map(({i})=>parseInt(i)));
@@ -5979,7 +5988,7 @@ function renderOptimizeList(){
   // ساخت لیست بر اساس فیلتر
   let items=S.products.map((p,i)=>({i,p,a:S.analyzed[i]}));
   if(optCurrentFilter==='weak') items=items.filter(({i,a})=>a&&a.score<70&&!S.optimized[i]);
-  else if(optCurrentFilter==='notopt') items=items.filter(({i,a})=>!S.optimized[i]&&(!a||a.score<70));
+  else if(optCurrentFilter==='notopt') items=items.filter(({i})=>!isGoodIdx(i));
   else if(optCurrentFilter==='opt') items=items.filter(({i})=>S.optimized[i]);
   // sort: بهینه نشده‌ها اول، بعد بر اساس score
   items.sort((a,b)=>{
@@ -6217,7 +6226,7 @@ Return ONLY JSON (no markdown, no explanation):
     }
     if(r.new_description) S.products[idx].DESCRIPTION=normalizeDescription(typeof auditCleanDesc==='function'?auditCleanDesc(r.new_description, true):r.new_description);
     if(r.new_materials&&r.new_materials.length) S.products[idx].MATERIALS=sanitizeMaterials(r.new_materials, parseMaterials(p.MATERIALS)).join(',');
-    bannedFixProduct(S.products[idx]); S.optimized[idx]=true; if(S.pushedToEtsy) delete S.pushedToEtsy[idx];
+    bannedFixProduct(S.products[idx]); S.optimized[idx]=true; S.products[idx]._optAt=Date.now(); if(S.pushedToEtsy) delete S.pushedToEtsy[idx];
     try{ altAfterOptimize(idx); }catch(e){}
     // آنالیز مجدد محلی با قوانین واقعی
     const newScore=calcLocalScore(S.products[idx]);
@@ -8584,7 +8593,7 @@ function saveSettings(){
   const sn=document.getElementById('sidebarShopNameText'); if(sn) sn.textContent=name;
   const ssn=document.getElementById('settingsShopName'); if(ssn) ssn.textContent=name;
   const meta=document.getElementById('sidebarShopMeta');
-  if(meta) meta.textContent=S.products.length+' محصول · '+Object.values(S.optimized).filter(Boolean).length+' بهینه';
+  updateOptimizedCount();
   applyShopToUI(); renderShopSwitcher();
   document.getElementById('sidebarShopNameText').textContent=name||S.shopName||'انتخاب فروشگاه';
   saveCurrentShop();
@@ -13549,6 +13558,51 @@ async function auditUpdateImpact(shopKey, snap){
     if(age >= 7 && !c.d7){ c.d7 = {views: l.views, favs: l.favs}; ch = true; } if(age >= 30 && !c.d30){ c.d30 = {views: l.views, favs: l.favs}; ch = true; } });
   if(ch) await AuditDB.set(auditKey(shopKey, 'log'), logArr);
 }
+// ════ کارت وضعیت فروشگاه: آیا همه‌چیز مرتب است و چه کار دیگری می‌شود کرد ════
+async function shopHealthHtml(compact){
+  if(!S.shopId) return '';
+  const shopKey = S.shopId, st = await auditSettings(shopKey), runs = await AuditDB.get(auditKey(shopKey, 'runs'), []);
+  const last = runs.find(r => r.mode !== 'dry') || null, dry = runs[0] && runs[0].mode === 'dry' && runs[0].plan && runs[0].plan.length ? runs[0] : null;
+  const total = S.products.length, good = S.products.filter((p, i) => isGoodIdx(i)).length;
+  const sc = typeof etsySyncCounts === 'function' ? etsySyncCounts() : {local: 0, both: 0, remote: 0};
+  const appIds = S.products.filter(p => p._listing_id).length;
+  const rows = []; // [state: ok|warn|bad, text, action-html]
+  const btn = (t, js) => '<button class="btn btn-secondary btn-sm" style="padding:3px 10px;font-size:11.5px" onclick="' + js + '">' + t + '</button>';
+  rows.push(S.etsyOAuthToken ? ['ok', 'به Etsy وصل است'] : ['bad', 'به Etsy وصل نیست', btn('اتصال', "nav('settings')")]);
+  if(last && last.listings > appIds) rows.push(['warn', (last.listings - appIds) + ' محصول تازه روی Etsy هنوز وارد برنامه نشده', btn('🔄 همگام‌سازی هوشمند', "smartSync({trigger:'button'})")]);
+  else if(total) rows.push(['ok', 'همه‌ی ' + total + ' محصول Etsy در برنامه هست']);
+  rows.push(good === total && total ? ['ok', 'همه‌ی ' + total + ' محصول در وضعیت خوب سئو هستند (بهینه‌شده یا مطابق قانون)'] : ['warn', (total - good) + ' محصول هنوز بهینه‌سازی لازم دارند', btn('🔄 همگام‌سازی هوشمند', "smartSync({trigger:'button'})")]);
+  if(sc.local) rows.push(['warn', sc.local + ' ویرایش برنامه هنوز به Etsy نرفته', btn('ارسال', 'sendLocalChangesToEtsy()')]);
+  if(sc.both) rows.push(['bad', sc.both + ' محصول هم در برنامه و هم در Etsy تغییر کرده (تعارض)', btn('دیدن', "nav('optimize')")]);
+  if(!sc.local && !sc.both && total) rows.push(['ok', 'برنامه و Etsy با هم همگام‌اند']);
+  if(last){
+    const open = (last.issues || []).filter(x => !x.planned && x.canFix && x.sev !== 'low').length;
+    rows.push([last.failed ? 'warn' : 'ok', 'آخرین بازرسی ' + new Date(last.at).toLocaleDateString('fa-IR') + ' — امتیاز سلامت ' + last.score + (last.failed ? ' · ' + last.failed + ' تغییر ناموفق' : '')]);
+    if(dry) rows.push(['warn', 'یک پیش‌نمایش با ' + dry.plan.length + ' اصلاحِ اعمال‌نشده منتظر است', btn('دیدن', "nav('audit');auditSetTab('plan')")]);
+    else if(open) rows.push(['ok', open + ' مورد قابل‌اصلاح در اجرای بعدی (بعد از دوره‌ی ۳ هفته‌ای) انجام می‌شود']);
+  } else rows.push(['warn', 'فروشگاه هنوز بازرسی نشده', btn('🔍 پیش‌نمایش', "nav('audit');auditRun('dry')")]);
+  rows.push(st.scheduleDays ? ['ok', 'همگام‌سازی خودکار هر ' + st.scheduleDays + ' روز' + (st.lastRun ? ' — بعدی: ' + new Date(st.lastRun + st.scheduleDays * 864e5).toLocaleDateString('fa-IR') : '') + ' (وقتی برنامه باز است)'] : ['warn', 'همگام‌سازی خودکار خاموش است', btn('تنظیم', "nav('audit')")]);
+  // پیشنهادهای بهبود (کارهای دستی که برنامه نمی‌تواند خودش انجام دهد)
+  const tips = []; const iss = last ? last.issues || [] : [];
+  const cnt = f => iss.filter(f).length;
+  const noVid = cnt(x => x.check === 'media' && /ویدیو/.test(x.msg)), fewImg = cnt(x => x.check === 'media' && /تصویر/.test(x.msg));
+  if(fewImg) tips.push(['📸', fewImg + ' محصول کمتر از ۱۰ تصویر دارند — تصویرهای بیشتر (مثلاً با «استودیو محصولات») کلیک و خرید را بالا می‌برد', "nav('audit');auditSetTab('manual')"]);
+  if(noVid) tips.push(['🎬', noVid + ' محصول ویدیو ندارند — Etsy به لیستینگ‌های ویدیودار نمایش بیشتری می‌دهد', "nav('audit');auditSetTab('manual')"]);
+  const pr = cnt(x => x.check === 'price'); if(pr) tips.push(['💲', pr + ' قیمت غیرعادی نسبت به محصولات مشابه خودت — یک نگاه بینداز', "nav('audit');auditSetTab('manual')"]);
+  const sd = cnt(x => x.check === 'duplicate' && !x.canFix); if(sd) tips.push(['👯', sd + ' جفت محصول شاید تکراری‌اند — دستی بررسی کن', "nav('audit');auditSetTab('manual')"]);
+  const ff = cnt(x => x.check === 'featured' && !x.canFix); if(ff) tips.push(['⭐', 'فصل کریسمس است ولی جای محصولات ویژه پر است — یکی را با محصول کریسمسی عوض کن', "nav('audit');auditSetTab('manual')"]);
+  const ai = cnt(x => /هوش مصنوعی جواب نداد|قانون را رعایت نکرد|ساخته نشد/.test(x.msg)); if(ai) tips.push(['🤖', ai + ' مورد را هوش مصنوعی نتوانست خوب بنویسد — دستی ببین', "nav('audit');auditSetTab('manual')"]);
+  if(last) tips.push(['🏷', 'تخفیف‌ها را Etsy از API نمی‌دهد — گاهی در Marketing ← Sales and discounts ببین تخفیفی همیشگی نمانده باشد', '']);
+  const bad = rows.filter(r => r[0] === 'bad').length, warn = rows.filter(r => r[0] === 'warn').length;
+  const verdict = bad ? ['#b91c1c', '#fee2e2', '⛔ ' + bad + ' مورد نیاز به اقدام فوری دارد'] : warn ? ['#a16207', '#fef9c3', '⚠ ' + warn + ' کار پیشنهادی مانده — جزئیات پایین'] : ['#15803d', '#dcfce7', '✅ همه‌چیز مرتب است — کار فوری‌ای لازم نیست'];
+  const ic = {ok: '✅', warn: '⚠️', bad: '⛔'};
+  return '<div class="card" style="margin-bottom:14px"><div style="background:' + verdict[1] + ';color:' + verdict[0] + ';border-radius:10px;padding:12px 14px;font-weight:800;font-size:15px;margin-bottom:10px">' + verdict[2] + '</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:6px 18px">' + rows.map(r => '<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px dashed var(--border)"><span>' + ic[r[0]] + ' ' + r[1] + '</span>' + (r[2] || '') + '</div>').join('') + '</div>' +
+    (tips.length && !compact ? '<div style="margin-top:12px;font-weight:800;font-size:13px">💡 برای بهتر شدن فروشگاه (اختیاری، کار دستی):</div>' + tips.map(t => '<div style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;line-height:1.8;padding:4px 0">' + t[0] + ' <span style="flex:1">' + t[1] + '</span>' + (t[2] ? '<button class="btn btn-secondary btn-sm" style="padding:2px 9px;font-size:11px" onclick="' + t[2] + '">دیدن</button>' : '') + '</div>').join('') : (tips.length ? '<div style="margin-top:8px;font-size:12px;color:var(--text2)">💡 ' + tips.length + ' پیشنهاد اختیاری برای بهبود — <a href="#" onclick="event.preventDefault();nav(\'audit\')" style="color:var(--orange)">دیدن در «بازرسی و سئو»</a></div>' : '')) + '</div>';
+}
+async function renderDashHealth(){ const el = document.getElementById('dashHealth'); if(!el) return; try{ el.innerHTML = await shopHealthHtml(true); }catch(e){ el.innerHTML = ''; } }
+setTimeout(() => { try{ renderDashHealth(); }catch(e){} }, 2500);
+
 // ════ همگام‌سازی هوشمند ════
 // ۱) دریافت محصولات جدید/تغییرکرده از Etsy
 // ۲) بازرسی کل فروشگاه و اصلاح مستقیم روی Etsy (دسته، تکراری، ویژگی Holiday، ویژه‌ها، اطلاعیه، پاکسازی توضیحات)
@@ -13584,7 +13638,10 @@ async function smartSync(opts){
     if(!sameShop()) throw new Error('فروشگاه وسط کار عوض شد');
     sum.fresh = freshIds.size;
     // انتخاب محصولات برای بهینه‌سازی کامل
-    let optIdx = S.products.map((p, i) => i).filter(i => S.products[i]._listing_id && (freshIds.has(String(S.products[i]._listing_id)) || smartNeedsOptimize(S.products[i], i))).slice(0, st.maxOptimize);
+    const coolT = Date.now() - 21 * 864e5, recent = new Set();
+    (await AuditDB.get(auditKey(shopKey, 'log'), [])).forEach(c => { if(c.status === 'applied' && c.lid && c.at > coolT && ['title', 'tags', 'description'].includes(c.field)) recent.add(String(c.lid)); });
+    S.products.forEach(p => { if(p._optAt && p._optAt > coolT) recent.add(String(p._listing_id)); });
+    let optIdx = S.products.map((p, i) => i).filter(i => { const p = S.products[i], id = String(p._listing_id || ''); if(!p._listing_id) return false; if(freshIds.has(id)) return true; return !recent.has(id) && smartNeedsOptimize(p, i); }).slice(0, st.maxOptimize);
     // ۲) بازرسی (بی‌صدا)
     Busy.set(bt, '۲/۴ بازرسی و اصلاح فروشگاه', 15);
     const run = await auditRun('apply', {silent: true, skipText: new Set(optIdx.map(i => String(S.products[i]._listing_id)))});
@@ -13618,8 +13675,12 @@ async function smartSync(opts){
     try{ renderSyncBar(); renderSEOList(); renderOptimizeList(); updateOptimizedCount(); }catch(e){}
     const msg = '🔄 همگام‌سازی «' + shopName + '» تمام شد: ' + sum.fresh + ' محصول تازه، ' + sum.audited + ' اصلاح بازرسی، ' + sum.optimized + ' بهینه‌سازی، ' + sum.pushed + ' ارسال به Etsy' + (sum.failed ? '، ' + sum.failed + ' ارسال ناموفق' : '') + (sum.conflicts ? '، ' + sum.conflicts + ' تعارض (دستی)' : '');
     log(msg, sum.failed ? 'warn' : 'ok');
-    if(!opts.silent){ if(sum.failed && typeof etsyPushReport === 'function') etsyPushReport(S.products.map((p, i) => ({p, i})).filter(x => x.p._etsy_err), sum.pushed); else toast(msg); }
+    if(!opts.silent){
+      if(sum.failed && typeof etsyPushReport === 'function') etsyPushReport(S.products.map((p, i) => ({p, i})).filter(x => x.p._etsy_err), sum.pushed);
+      else alert('✅ همگام‌سازی «' + shopName + '» با موفقیت تمام شد\n\n📥 محصول تازه از Etsy: ' + sum.fresh + '\n🩺 اصلاح بازرسی روی Etsy: ' + sum.audited + '\n✨ محصول بهینه‌شده: ' + sum.optimized + '\n📤 ارسال به Etsy: ' + sum.pushed + (sum.conflicts ? '\n⚠ تعارض (دستی): ' + sum.conflicts : '') + '\n\nوضعیت کامل و کارهای پیشنهادی در «بازرسی و سئو» و صفحه‌ی خلاصه وضعیت.');
+    }
     if(document.getElementById('page-audit').classList.contains('active')) auditRender();
+    renderDashHealth();
   }catch(e){ log('✗ همگام‌سازی هوشمند: ' + e.message, 'err'); if(!opts.silent) alert('همگام‌سازی ناموفق بود: ' + e.message); }
   finally{ SMART.running = false; window.__smartSyncing = false; Busy.end(bt); }
 }
@@ -13663,7 +13724,8 @@ async function auditRender(){
   const flow = '<div class="card" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px"><div class="card-title">🔄 روند کار</div><button class="btn btn-primary btn-sm" onclick="smartSync({trigger:\'button\'})">🔄 همگام‌سازی هوشمند (همه‌ی مراحل)</button></div>' +
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px">' + steps.map((x, i) => '<div style="background:var(--surface3);border-radius:10px;padding:10px"><div style="font-weight:800;font-size:13px">' + x[0] + ' ' + (i + 1) + '. ' + x[1] + '</div><div style="font-size:11.5px;color:var(--text2);margin-top:4px;line-height:1.7">' + x[2] + '</div></div>').join('') + '</div>' +
     '<div style="font-size:11.5px;color:var(--text3);margin-top:8px;line-height:1.8">' + (st.autoSyncOnLoad ? 'هر بار که «بارگذاری از Etsy» را بزنی، مراحل ۲ تا ۴ خودکار اجرا می‌شوند.' : 'اجرای خودکار بعد از «بارگذاری از Etsy» خاموش است.') + (ls ? ' · آخرین همگام‌سازی: ' + new Date(ls.at).toLocaleString('fa-IR') + ' — ' + ls.fresh + ' تازه، ' + ls.audited + ' اصلاح بازرسی، ' + ls.optimized + ' بهینه‌سازی، ' + ls.pushed + ' ارسال' + (ls.failed ? ', <span style="color:var(--red)">' + ls.failed + ' ناموفق</span>' : '') + (ls.conflicts ? '، ' + ls.conflicts + ' تعارض' : '') : '') + '</div></div>';
-  top.innerHTML = flow + '<div class="card" style="margin-bottom:14px;display:flex;gap:18px;align-items:center;flex-wrap:wrap">' +
+  const health = await shopHealthHtml(false); if(S.shopId !== shopKey) return;
+  top.innerHTML = health + flow + '<div class="card" style="margin-bottom:14px;display:flex;gap:18px;align-items:center;flex-wrap:wrap">' +
     '<div style="width:92px;height:92px;border-radius:50%;border:8px solid ' + scoreC + ';display:flex;align-items:center;justify-content:center;flex-direction:column"><div style="font-size:26px;font-weight:900;color:' + scoreC + '">' + (last ? last.score : '—') + '</div><div style="font-size:10px;color:var(--text3)">سلامت</div></div>' +
     '<div style="flex:1;min-width:220px"><div style="font-weight:800;font-size:15px">🏪 ' + escHtml(S.shopName || '') + '</div>' +
     '<div style="font-size:12px;color:var(--text2);margin:4px 0">' + (last ? 'آخرین بازرسی: ' + new Date(last.at).toLocaleString('fa-IR') + ' · ' + last.listings + ' لیستینگ' + (last.mode === 'dry' ? ' · (پیش‌نمایش)' : ' · ' + (last.applied || 0) + (last.mode === 'plan' ? ' اصلاح از پیش‌نمایش' : ' اصلاح خودکار')) + (last.failed ? ' · <span style="color:var(--red)">' + last.failed + ' ناموفق</span>' : '') : 'هنوز بازرسی نشده — «پیش‌نمایش» را بزن تا بدون تغییر چیزی، مشکلات را ببینی.') + '</div>' + sevChips +
@@ -13925,6 +13987,7 @@ setTimeout(auditMaybeScheduled, 20000);
     'goToNotOptimized':'رفتن به فهرست محصول‌هایی که هنوز نیاز به بهینه‌سازی دارند',
     'auditRun:dry':'همه‌ی بررسی‌ها انجام می‌شود و اصلاح‌های پیشنهادی نشان داده می‌شوند، بدون هیچ تغییری روی Etsy',
     'auditRun:apply':'بازرسی کامل و اعمال خودکار اصلاح‌ها روی Etsy (تا سقف تعیین‌شده؛ هر تغییر قابل برگرداندن است)',
+    'renderAuditSubnav':'رفتن به این بخش',
     'smartSync':'همه‌ی مراحل پشت سر هم: دریافت محصولات تازه از Etsy، بازرسی و اصلاح، بهینه‌سازی کامل محصولات تازه و ضعیف، و ارسال به Etsy',
     'auditRun:apply':'فقط بازرسی و اصلاح خودکار روی Etsy (بدون بهینه‌سازی کامل)',
     'auditUndo':'برگرداندن همین یک تغییر روی Etsy به مقدار قبلی',
