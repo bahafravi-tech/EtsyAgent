@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.69.2 -->
+<!-- APP_VERSION: 1.70.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v223</div>
+        <div class="logo-badge">v225</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -13123,11 +13123,13 @@ function auditTitleProblems(l, ctx){
 function auditTagProblems(l){
   const tags = (l.tags || []).map(String), title = new Set(auditTokens(l.title)), bad = [], p = [];
   if(tags.length < 13) p.push((13 - tags.length) + ' جای تگ خالی');
+  const echo = [];
   tags.forEach(t => {
     if(t.length > 20) bad.push(t);
     else if(t.trim().split(/\s+/).length < 2) bad.push(t);
-    else { const w = auditTokens(t); if(w.length && w.every(x => title.has(x))) bad.push(t); }
+    else { const w = auditTokens(t); if(w.length && w.every(x => title.has(x))) echo.push(t); }
   });
+  if(echo.length > 3) bad.push(...echo.slice(3));
   const dup = tags.filter((t, i) => tags.findIndex(x => x.toLowerCase() === t.toLowerCase()) !== i); bad.push(...dup);
   if(bad.length) p.push(bad.length + ' تگ ضعیف (تک‌کلمه، تکرار عنوان یا تکراری)');
   return {p, bad: [...new Set(bad)]};
@@ -13356,7 +13358,11 @@ async function auditRun(mode, opts){
     const ctx = {generic: res.generic};
     // اصلاح‌پذیرها به ترتیب شدت، تا سقف تعداد تغییر
     const order = {critical: 0, high: 1, medium: 2, low: 3};
-    const skipText = opts.skipText || new Set();
+    const skipText = new Set(opts.skipText || []);
+    const recentLog = await AuditDB.get(auditKey(shopKey, 'log'), []), cool = Date.now() - 21 * 864e5, cooled = new Set();
+    recentLog.forEach(c => { if(c.status === 'applied' && c.lid && c.at > cool && ['title', 'tags', 'description'].includes(c.field)) cooled.add(String(c.lid)); });
+    cooled.forEach(id => skipText.add(id));
+    res.issues.forEach(x => { if(x.lid && cooled.has(String(x.lid)) && ['title', 'tags', 'description', 'seasonal'].includes(x.check)) x.msg += ' (این لیستینگ در ۳ هفته‌ی اخیر اصلاح شده؛ فعلاً دوباره تغییر نمی‌کند تا Etsy فرصت سنجش داشته باشد)'; });
     const fixable = res.issues.filter(x => x.fix && (st.fix[x.fix.kind] !== false || x.fix.compute === 'dup') && !(x.lid && skipText.has(String(x.lid)) && ['title', 'tags', 'description'].includes(x.fix.kind))).sort((a, b) => order[a.sev] - order[b.sev]);
     const diffLids = [];
     const plan = []; // {issue, lid, field, old, new, reason}
@@ -13380,6 +13386,7 @@ async function auditRun(mode, opts){
         if(x.fix.field === 'title' && a.needTitle){
           let t = r.title ? sanitizeEtsyTitle(String(r.title).replace(/\p{Extended_Pictographic}/gu, '')).slice(0, 140) : x.fix.basic;
           if(t && (/\b(instant|digital)\s+download/i.test(t) || (t.match(AUDIT_FORMATS) || []).filter(m => !/svg/i.test(m)).length || ctx.generic.some(g => t.toLowerCase().includes(g)))) t = x.fix.basic;
+          if(t && t !== a.l.title){ const before = auditTitleProblems(a.l, ctx).p.length, after = auditTitleProblems(Object.assign({}, a.l, {title: t}), ctx).p.length; if(after >= before) t = null; }
           if(t && t !== a.l.title) take(x, 'title', a.l.title, t);
           else x.msg += ai.__err ? ' (هوش مصنوعی جواب نداد: ' + String(ai.__err).slice(0, 80) + ')' : !r.title ? ' (هوش مصنوعی عنوانی برنگرداند)' : ' (عنوان پیشنهادی قانون را رعایت نکرد)';
         }
@@ -13390,7 +13397,8 @@ async function auditRun(mode, opts){
         pickBestTags(r.tags || [], r.title || a.l.title, a.bad || []).forEach(t => { if(tags.length < 13 && t.split(' ').length >= 2 && !tags.some(x => x.toLowerCase() === t)) tags.push(t); });
         const clean = etsyCleanTags(tags);
         const x = a.issues.find(i => i.fix.field === 'tags');
-        if(x && clean.join(',') !== a.l.tags.join(',') && clean.length >= Math.min(13, a.l.tags.length)) take(x, 'tags', a.l.tags, clean);
+        const badBefore = auditTagProblems(a.l).bad.length + Math.max(0, 13 - a.l.tags.length), badAfter = auditTagProblems(Object.assign({}, a.l, {tags: clean})).bad.length + Math.max(0, 13 - clean.length);
+        if(x && clean.join(',') !== a.l.tags.join(',') && clean.length >= Math.min(13, a.l.tags.length) && (badAfter < badBefore || a.season)) take(x, 'tags', a.l.tags, clean);
         else if(x && !x.planned) x.msg += ai.__err ? ' (هوش مصنوعی جواب نداد)' : ' (تگ تازه‌ی کافی ساخته نشد)';
       }
     }
@@ -13460,7 +13468,7 @@ Description: ${l.description.slice(0, 600)}`;
     const counts = {critical: 0, high: 0, medium: 0, low: 0}; res.issues.forEach(x => counts[x.sev]++);
     const run = {id: runId, at: Date.now(), mode, score: res.score, counts, listings: snap.listings.length, salesOk: snap.salesOk,
       issues: res.issues.map(x => ({id: x.id, check: x.check, sev: x.sev, lid: x.lid, ltitle: x.ltitle, msg: x.msg, planned: x.planned || null, canFix: !!x.fix})),
-      diffLids, plan: mode === 'dry' ? plan : [], base: mode === 'dry' ? Object.fromEntries(plan.filter(c => c.lid && byId[c.lid]).map(c => [c.lid, {v: byId[c.lid].views, f: byId[c.lid].favs}])) : null, applied: changes.filter(c => c.status === 'applied').length, failed: changes.filter(c => c.status === 'failed').length, capped: plan.length >= st.maxChanges};
+      diffLids, plan: mode === 'dry' ? plan : [], base: mode === 'dry' ? Object.fromEntries(plan.filter(c => c.lid && byId[c.lid]).map(c => [c.lid, {v: byId[c.lid].views, f: byId[c.lid].favs}])) : null, applied: changes.filter(c => c.status === 'applied').length, failed: changes.filter(c => c.status === 'failed').length, capped: plan.length >= st.maxChanges, cap: st.maxChanges};
     const runs = await AuditDB.get(auditKey(shopKey, 'runs'), []);
     await AuditDB.set(auditKey(shopKey, 'runs'), [run, ...runs].slice(0, 20));
     if(mode !== 'dry') await AuditDB.set(auditKey(shopKey, 'settings'), Object.assign({}, await AuditDB.get(auditKey(shopKey, 'settings'), {}), {lastRun: Date.now()}));
@@ -13659,7 +13667,7 @@ async function auditRender(){
     '<div style="width:92px;height:92px;border-radius:50%;border:8px solid ' + scoreC + ';display:flex;align-items:center;justify-content:center;flex-direction:column"><div style="font-size:26px;font-weight:900;color:' + scoreC + '">' + (last ? last.score : '—') + '</div><div style="font-size:10px;color:var(--text3)">سلامت</div></div>' +
     '<div style="flex:1;min-width:220px"><div style="font-weight:800;font-size:15px">🏪 ' + escHtml(S.shopName || '') + '</div>' +
     '<div style="font-size:12px;color:var(--text2);margin:4px 0">' + (last ? 'آخرین بازرسی: ' + new Date(last.at).toLocaleString('fa-IR') + ' · ' + last.listings + ' لیستینگ' + (last.mode === 'dry' ? ' · (پیش‌نمایش)' : ' · ' + (last.applied || 0) + (last.mode === 'plan' ? ' اصلاح از پیش‌نمایش' : ' اصلاح خودکار')) + (last.failed ? ' · <span style="color:var(--red)">' + last.failed + ' ناموفق</span>' : '') : 'هنوز بازرسی نشده — «پیش‌نمایش» را بزن تا بدون تغییر چیزی، مشکلات را ببینی.') + '</div>' + sevChips +
-    (last && last.capped ? '<div style="font-size:11px;color:#a16207;margin-top:4px">⚠ به سقف ' + st.maxChanges + ' تغییر رسید — بقیه در اجرای بعدی اصلاح می‌شوند.</div>' : '') +
+    (last && last.capped ? '<div style="font-size:11px;color:#a16207;margin-top:4px">⚠ این اجرا به سقف ' + (last.cap || st.maxChanges) + ' تغییر رسید — بقیه در اجرای بعدی اصلاح می‌شوند.</div>' : '') +
     (last && last.salesOk === false ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">آمار فروش خوانده نشد؛ برای انتخاب نسخه‌ی اصلیِ تکراری‌ها از پسند و بازدید استفاده شد.</div>' : '') + '</div>' +
     '<div style="font-size:11px;color:var(--text3);line-height:1.9">' + (st.scheduleDays ? '⏰ همگام‌سازی خودکار هر ' + st.scheduleDays + ' روز' + (st.lastRun ? '<br>بعدی: ' + new Date(st.lastRun + st.scheduleDays*864e5).toLocaleDateString('fa-IR') : '') : '⏰ همگام‌سازی خودکار خاموش') + '</div></div>';
   const fixNames = {category: 'دسته‌بندی', description: 'پاکسازی توضیحات', title: 'عنوان', tags: 'تگ‌ها و تگ فصلی', attributes: 'ویژگی Holiday', featured: 'محصولات ویژه', duplicates: 'رسیدگی به تکراری‌ها', shopText: 'اطلاعیه و پیام فروشگاه'};
