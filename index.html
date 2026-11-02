@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.69.1 -->
+<!-- APP_VERSION: 1.69.2 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v222</div>
+        <div class="logo-badge">v223</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -13178,7 +13178,7 @@ function auditChecks(snap, o){
   o = o || {}; const dupMode = o.dupMode || 'differentiate';
   const L = snap.listings, issues = [], now = new Date(), seasons = auditSeasons(now), n = L.length || 1;
   const byId = Object.fromEntries(L.map(l => [l.listing_id, l]));
-  L.forEach(l => { l._type = auditType(l); l._isCut = /svg|cut file|cricut|silhouette|laser|dxf|stencil/i.test(l.title + ' ' + l.tags.join(' ')); l._season = seasons.find(s => s.re.test(l.title + ' ' + l.tags.join(' '))); });
+  L.forEach(l => { l._type = auditType(l); l._isCut = /svg|cut file|cricut|silhouette|laser|dxf|stencil/i.test(l.title + ' ' + l.tags.join(' ')); l._season = seasons.find(s => s.re.test(l.title) || l.tags.some(t => new RegExp('\\b' + s.word.split(' ')[0].replace(/s$/, ''), 'i').test(t))); });
   // عبارت‌های عمومی پرتکرار (مثل «Birthday Wedding») در بیش از ۳۰٪ عنوان‌ها
   const bg = {}; L.forEach(l => { const w = auditTokens(l.title); const seen = new Set(); for(let i = 0; i < w.length - 1; i++){ if(AUDIT_FILLER.has(w[i]) && AUDIT_FILLER.has(w[i+1])){ const k = w[i] + ' ' + w[i+1]; if(!seen.has(k)){ seen.add(k); bg[k] = (bg[k] || 0) + 1; } } } });
   const generic = L.length >= 10 ? Object.keys(bg).filter(k => bg[k] / L.length > 0.3) : [];
@@ -13258,8 +13258,10 @@ function auditChecks(snap, o){
   });
   if(inXmas){
     const xm = L.filter(l => l._season === xmas && !losers.has(l.listing_id) && !(l.featured_rank >= 1)).sort(rank);
-    const xmFeat = featured.filter(l => l._season === xmas).length, slots = Math.max(0, Math.min(4, 2 - xmFeat));
-    xm.slice(0, slots).forEach((l, i) => add({check: 'featured', sev: 'medium', lid: l.listing_id, msg: 'فصل کریسمس است — این محصول پرفروش کریسمسی ویژه شود', fix: {field: 'featured_rank', value: Math.min(4, featured.length + i + 1), kind: 'featured'}}));
+    const freed = issues.filter(x => x.check === 'featured' && x.fix && x.fix.value === -1).length;
+    const xmFeat = featured.filter(l => l._season === xmas).length, free = Math.max(0, 4 - featured.length + freed), slots = Math.max(0, Math.min(free, 2 - xmFeat));
+    xm.slice(0, slots).forEach((l, i) => add({check: 'featured', sev: 'medium', lid: l.listing_id, msg: 'فصل کریسمس است — این محصول کریسمسی' + (l.sales ? ' (' + l.sales + ' فروش)' : '') + ' در یکی از جاهای خالی محصولات ویژه قرار گیرد', fix: {field: 'featured_rank', value: Math.min(4, featured.length - freed + i + 1), kind: 'featured'}}));
+    if(!slots && xm.length && xmFeat < 2) add({check: 'featured', key: 'xmasfull', sev: 'low', msg: 'فصل کریسمس است ولی هر ۴ جای محصولات ویژه پر است — اگر بخواهی، یکی را دستی با یک محصول کریسمسی (مثل «' + xm[0].title.slice(0, 40) + '») عوض کن'});
   }
 
   // ۱۱. متن‌های فروشگاه
