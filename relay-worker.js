@@ -20,8 +20,23 @@ const ALLOWED_HOSTS = [
 // این رو با یه رشته‌ی تصادفی طولانی عوض کن، و همون رو توی config.php به‌عنوان RELAY_SECRET بذار
 const RELAY_SECRET = 'REPLACE_WITH_YOUR_SECRET';
 
+// برنامه‌ی Etsy Agent از داخل مرورگر هم به این رله درخواست می‌فرستد، پس پاسخ‌ها باید هدر CORS داشته باشند
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, X-Relay-Secret, X-Relay-Url, X-Relay-Method, X-Relay-Headers',
+  'Access-Control-Max-Age': '86400',
+};
+const withCors = (resp) => { const h = new Headers(resp.headers); for (const [k, v] of Object.entries(CORS)) h.set(k, v); return new Response(resp.body, { status: resp.status, headers: h }); };
+
 export default {
   async fetch(request) {
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+    return withCors(await handle(request));
+  },
+};
+
+async function handle(request) {
     if (request.method !== 'POST') {
       return new Response('Method not allowed', { status: 405 });
     }
@@ -81,5 +96,4 @@ export default {
       status: resp.status,
       headers: { 'Content-Type': resp.headers.get('Content-Type') || 'text/plain; charset=utf-8' },
     });
-  },
-};
+}

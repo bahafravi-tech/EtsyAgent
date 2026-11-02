@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.67.0 -->
+<!-- APP_VERSION: 1.68.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v219</div>
+        <div class="logo-badge">v220</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -793,6 +793,7 @@ margin:0;background:var(--paper);color:var(--ink);
         </div>
       </div>
       <button class="btn btn-secondary btn-sm" onclick="loadFromEtsy(event.shiftKey)" title="فقط محصول‌های جدید یا تغییرکرده دانلود می‌شوند. برای بارگذاری کامل از نو، Shift را نگه دار و کلیک کن.">🛍️ بارگذاری از Etsy</button>
+      <button class="btn btn-primary btn-sm" onclick="smartSync({trigger:'button'})" title="دریافت از Etsy ← بازرسی ← بهینه‌سازی ← ارسال به Etsy، پشت سر هم">🔄 همگام‌سازی هوشمند</button>
       <button class="btn btn-primary" onclick="runDailyAgent(this)">▶ اجرای Agent امروز</button>
     </div>
   </div>
@@ -1229,7 +1230,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div><div class="page-title">🩺 بازرسی <span>فروشگاه</span></div><div class="page-sub">بررسی کامل لیستینگ‌ها و متن‌های فروشگاه فعلی در Etsy و اصلاح خودکار با امکان برگرداندن هر تغییر</div></div>
     <div class="page-actions">
       <button class="btn btn-secondary btn-sm" onclick="auditRun('dry')">🔍 پیش‌نمایش (بدون اعمال)</button>
-      <button class="btn btn-primary btn-sm" onclick="auditRun('apply')">▶ بازرسی و اصلاح خودکار</button>
+      <button class="btn btn-secondary btn-sm" onclick="auditRun('apply')">🩺 فقط بازرسی و اصلاح</button>
     </div>
   </div>
   <div id="auditTop"></div>
@@ -6071,8 +6072,7 @@ async function startOptimize(idx){
   document.getElementById('optModal').classList.add('open');
   const titleLen=p.TITLE.length;
   const fullDescS=p.DESCRIPTION||'';
-  const titleNote=titleLen<80?`⚠️ CURRENT TITLE IS ONLY ${titleLen} CHARS — MUST expand to 100-140 chars (max 14 words) by adding keywords, materials, occasions, use cases`:
-                  titleLen>140?`⚠️ CURRENT TITLE IS ${titleLen} CHARS — MUST shorten to under 140 chars`:'Title length OK';
+  const titleNote=titleLen>140?`⚠️ CURRENT TITLE IS ${titleLen} CHARS — MUST shorten`:titleLen<50?`⚠️ CURRENT TITLE IS ONLY ${titleLen} CHARS — make it clearer and more specific`:'Rewrite it following the rules';
   const prompt=`Optimize this Etsy listing for SEO. Return ONLY valid JSON, no extra text.
 Write new_title, new_tags, and new_description in natural, native ${S.contentLanguage||'English'} — not a literal word-for-word translation.
 ${shopCtx(p)}
@@ -6082,11 +6082,9 @@ Tags: ${p.TAGS}
 Materials: ${p.MATERIALS||'none'}
 Description: ${(p.DESCRIPTION||'').slice(0,300)}
 
-TITLE REQUIREMENT: ${titleNote}
-The new title MUST be between 100-140 characters AND contain AT MOST 14 WORDS (hard limit — count the words before responding; a word is any chunk with letters/digits, separators like "|" or "-" don't count). If you can't reach 100+ characters within 14 words, use fewer, longer, higher-value words — never exceed 14 words or 140 characters.
-Put the PRIMARY keyword in the FIRST 40 characters (most visible on mobile search results).
-Structure: [Primary Keyword] | [Secondary Keyword + modifier] | [Occasion/Recipient] — separate phrases with ", " (comma + space), not just a bare space, so Etsy's parser reads them as distinct phrases.
-${cutOr('Add: materials, occasions (gift, birthday, wedding), target users (Cricut, Silhouette), file formats.','Add: the real medium/materials, style, occasions (gift, housewarming, wedding) and the target buyers — only what truly applies to this product.')}
+TITLE: ${titleNote}
+${titleRulesText(p)}
+${tagRulesText()}
 ⚠️ ETSY VALIDATION RULES (violating these gets the listing REJECTED, not just a lower score):
 - More than 3 words that start with 2+ consecutive capital letters ${cutOr("(acronyms like SVG, DXF, PDF, AI, CDR, DIY, CNC, EPS, WMF — mixed-case brand names like Cricut/Silhouette don't count)","(all-caps acronyms such as PDF, DIY, USA)")} is REJECTED. Count every such word before responding — use AT MOST 3 total; drop or lowercase the rest.
 - Must start with a letter or number, never a quote mark or symbol.
@@ -6108,7 +6106,7 @@ MATERIALS RULES: 5-13 short items (each max 45 characters, letters/numbers/space
 ${descRules()}
 
 Return JSON:
-{"new_title":"keyword-rich title, 100-140 chars, MAX 14 words","new_tags":["2-3 word tag 1","tag 2","tag 3","tag 4","tag 5","tag 6","tag 7","tag 8","tag 9","tag 10","tag 11","tag 12","tag 13"],"new_materials":${cutOr('["cardstock","paper","vinyl"]','["paper","ink"]')},"new_description":"formatted per DESCRIPTION FORMAT: keyword hook, then icon headings with • bullets","improvements":["what changed 1","what changed 2","what changed 3"]}`;
+{"new_title":"60-120 chars, max 14 words, per TITLE RULES","new_tags":["2-3 word tag 1","tag 2","tag 3","tag 4","tag 5","tag 6","tag 7","tag 8","tag 9","tag 10","tag 11","tag 12","tag 13"],"new_materials":${cutOr('["cardstock","paper","vinyl"]','["paper","ink"]')},"new_description":"formatted per DESCRIPTION FORMAT: keyword hook, then icon headings with • bullets","improvements":["what changed 1","what changed 2","what changed 3"]}`;
   try{
     const text=await callClaude(prompt, 2800);
     log("📝 پاسخ بهینه‌سازی: "+text.slice(0,100)+"...","info");
@@ -6122,6 +6120,8 @@ Return JSON:
     }
     if(!result.new_title||!result.new_tags) throw new Error('فرمت پاسخ اشتباه');
     result.new_title=await ensureTitleQuality(result.new_title, p);
+    result.new_tags=pickBestTags(result.new_tags, result.new_title, String(p.TAGS||'').split(','));
+    if(result.new_description && typeof auditCleanDesc==='function') result.new_description=auditCleanDesc(result.new_description, true);
     if(result.new_materials) result.new_materials=sanitizeMaterials(result.new_materials, []);
     if(result.new_description) result.new_description=normalizeDescription(result.new_description);
     S.pendingOpt=result;
@@ -6163,8 +6163,7 @@ async function autoOpt(idx){
     const shopN=getShopName(), nicheN=getNiche();
     const tLen=p.TITLE.length;
     const fullDesc=p.DESCRIPTION||'';
-    const tWarn=tLen<80?`⚠️ CRITICAL: Title is only ${tLen} chars. You MUST write a NEW title of 100-140 characters (max 14 words). Do NOT keep the short title.`:
-                tLen>140?`⚠️ Title is ${tLen} chars, must be under 140.`:`Title is ${tLen} chars (good range).`;
+    const tWarn=tLen>140?`⚠️ Title is ${tLen} chars, must be shorter.`:`Rewrite the title following the TITLE RULES.`;
     const prompt=`Etsy SEO Expert. Shop: ${shopN} | Niche: ${nicheN}
 ${shopCtx(p)}
 Write the new title, tags, and description in natural, native ${S.contentLanguage||'English'} — not a literal word-for-word translation.
@@ -6173,7 +6172,8 @@ CURRENT TITLE (${tLen} chars): ${p.TITLE}
 ${tWarn}
 
 RULES:
-1. TITLE: MUST be 100-140 characters (count every character) AND AT MOST 14 WORDS — hard limit, count words before answering (a word = any chunk with letters/digits; "|" or "-" separators don't count); if 100+ chars isn't reachable in 14 words, use fewer, longer, higher-value words. Structure: [Primary Keyword] | [Secondary Keyword+modifier] | [Occasion/Recipient], separated by ", " (comma+space, not bare space). Primary keyword in first 40 chars. ${cutOr("Add: file formats, machine compatibility (Cricut/Silhouette/laser), occasions (gift/birthday/wedding), sizes, digital download.","Add: the real medium/materials, style, occasions (gift/housewarming/wedding), sizes, and the product format — only what truly applies to this product.")}
+1. ${titleRulesText(p)}
+${tagRulesText()}
 ⚠️ ETSY VALIDATION (violating these gets the listing REJECTED, not just a lower score):
 - More than 3 words starting with 2+ consecutive capital letters ${cutOr("(SVG, DXF, PDF, AI, CDR, DIY, CNC, EPS, WMF — Cricut/Silhouette don't count)","(all-caps acronyms such as PDF, DIY, USA)")} is REJECTED. Use AT MOST 3 total; drop or lowercase the rest.
 - Must start with a letter/number, never a quote or symbol. Never use: $ ^ \` . ° anywhere. Characters % : & may each appear AT MOST ONCE.
@@ -6194,11 +6194,12 @@ Description (${fullDesc.length} chars — preserve ALL):
 ${fullDesc}
 
 Return ONLY JSON (no markdown, no explanation):
-{"new_title":"110-138 CHARACTERS (count them) AND MAX 14 WORDS — write it here","new_tags":["phrase one","phrase two","phrase three","phrase four","phrase five","phrase six","phrase seven","phrase eight","phrase nine","phrase ten","phrase eleven","phrase twelve","phrase thirteen"],"new_materials":${cutOr('["cardstock","paper","vinyl"]','["paper","ink"]')},"new_description":"formatted per DESCRIPTION FORMAT: keyword hook, then icon headings with • bullets"}`;
+{"new_title":"60-120 chars, max 14 words, per TITLE RULES","new_tags":["phrase one","phrase two","phrase three","phrase four","phrase five","phrase six","phrase seven","phrase eight","phrase nine","phrase ten","phrase eleven","phrase twelve","phrase thirteen"],"new_materials":${cutOr('["cardstock","paper","vinyl"]','["paper","ink"]')},"new_description":"formatted per DESCRIPTION FORMAT: keyword hook, then icon headings with • bullets"}`;
     const text=await callClaude(prompt,2800);
     let r;
     try{ r=parseJSON(text); } catch(e){ const m=text.match(/\{[\s\S]*\}/); if(m) r=JSON.parse(m[0]); else throw e; }
     if(r.new_title) S.products[idx].TITLE=await ensureTitleQuality(r.new_title, p);
+    if(r.new_tags&&r.new_tags.length) r.new_tags=pickBestTags(r.new_tags, S.products[idx].TITLE, String(p.TAGS||'').split(','));
     if(r.new_tags&&r.new_tags.length){
       // اعمال کامل قوانین Etsy
       const cleanTags=r.new_tags
@@ -6214,7 +6215,7 @@ Return ONLY JSON (no markdown, no explanation):
       S.products[idx].TAGS=cleanTags.join(',');
       log(`tags: ${cleanTags.length}/13`,'ok');
     }
-    if(r.new_description) S.products[idx].DESCRIPTION=normalizeDescription(r.new_description);
+    if(r.new_description) S.products[idx].DESCRIPTION=normalizeDescription(typeof auditCleanDesc==='function'?auditCleanDesc(r.new_description, true):r.new_description);
     if(r.new_materials&&r.new_materials.length) S.products[idx].MATERIALS=sanitizeMaterials(r.new_materials, parseMaterials(p.MATERIALS)).join(',');
     bannedFixProduct(S.products[idx]); S.optimized[idx]=true; if(S.pushedToEtsy) delete S.pushedToEtsy[idx];
     try{ altAfterOptimize(idx); }catch(e){}
@@ -6389,6 +6390,50 @@ function shopCtx(p){
   else t += 'This shop is NOT a cutting-machine or packaging shop. Cut-file versions for laser/Cricut/Silhouette are at most a minor side line: never make them the focus, and only treat them as relevant when the specific product is itself a cut file.' + String.fromCharCode(10);
   return t + bannedPromptLine();
 }
+// ── قانون مشترک عنوان و تگ: بهینه‌سازی تکی، گروهی، بازرسی و «همگام‌سازی هوشمند» همه از همین استفاده می‌کنند ──
+// بر پایه‌ی راهنمای Etsy: عنوان کوتاه و روشن که اول خودِ محصول را می‌گوید (روی موبایل فقط حدود ۴۰ نویسه‌ی اول دیده می‌شود)،
+// بدون پرکردن با کلیدواژه؛ فرمت فایل و «Digital Download» جایشان در تگ/توضیحات/نشان دیجیتال خود Etsy است.
+function titleRulesText(p){
+  const cut = p ? productIsCut(p) : shopIsCutNiche();
+  return `TITLE RULES (one shared rulebook — follow exactly):
+- Clear and natural, 60-120 characters (never over 140), AT MOST 14 words. Do not pad with filler to reach a length.
+- The FIRST 40 characters must say exactly what the product is with the main search keyword (mobile shows only ~40 characters).
+- Then 1-2 short phrases with a specific use, style or recipient, separated by ", ". No keyword stuffing, no repeated words.
+- ${cut ? 'Use "SVG" exactly ONCE, inside the first 40 characters; "Cricut" may appear once. NO other file formats (DXF, PDF, PNG, EPS, AI, Studio) — they belong in tags and description.' : 'No file formats and no cutting-machine words.'}
+- Never write "Digital Download" / "Instant Download" (Etsy already shows a digital badge).
+- No vague generic strings like "Birthday Wedding Party Gift" — name ONE specific real use instead.
+- No subjective words (premium, beautiful, amazing, best, gorgeous, luxury, stunning, perfect), no emojis, no markdown.`;
+}
+function tagRulesText(){
+  return `TAG RULES: 13 tags; each 2-3 words, max 20 characters, lowercase letters/numbers/spaces only; long-tail phrases real buyers type; each a DIFFERENT search intent; avoid tags that only repeat the title's words (use synonyms, uses, styles, recipients instead); no single words, no duplicates.`;
+}
+// ۱۳ تگ بهتر: اول تگ‌های معتبرِ غیرتکراری با عنوان، بعد بقیه برای پر کردن جای خالی
+function pickBestTags(cands, title, fallback){
+  const titleSet = new Set(String(title || '').toLowerCase().split(/[^a-z0-9']+/).filter(w => w.length >= 3));
+  const norm = t => String(t || '').replace(/_/g, ' ').replace(/[^\p{L}\p{N}\s\-']/gu, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+  const all = [...(cands || []), ...(fallback || [])].map(norm).filter(t => t && t.length <= 20).filter((t, i, a) => a.indexOf(t) === i);
+  const multi = t => t.split(' ').length >= 2, onlyTitle = t => { const w = t.split(' ').filter(x => x.length >= 3); return w.length && w.every(x => titleSet.has(x)); };
+  const good = all.filter(t => multi(t) && !onlyTitle(t)), weak = all.filter(t => multi(t) && onlyTitle(t)), single = all.filter(t => !multi(t));
+  return [...good, ...weak, ...single].slice(0, 13);
+}
+// اصلاح قطعی عنوان طبق قانون مشترک (بدون AI): حذف Digital Download و فرمت‌های اضافه، فقط یک SVG
+function titleRuleClean(t, p){
+  let x = String(t || '').replace(/\b(instant|digital)\s+downloads?\b/gi, ' ');
+  const cut = p ? productIsCut(p) : false, hadSvg = /\bsvg\b/i.test(x);
+  x = x.replace(/\b(dxf|pdf|png|eps|jpe?g|studio3?|cdr)\b/gi, ' ').replace(/\bai\b(?=\s*(,|\||$|file|files|format))/gi, ' ');
+  let firstSvg = true; x = x.replace(/\bsvg\b/gi, m => { if(firstSvg && cut){ firstSvg = false; return 'SVG'; } return ' '; });
+  x = x.replace(/\b(\w+)(\s+\1\b)+/gi, '$1').replace(/\s*([,|])\s*([,|]\s*)+/g, '$1 ').replace(/\s{2,}/g, ' ').replace(/^[\s,|\-–]+|[\s,|\-–]+$/g, '').replace(/\s+([,|])/g, '$1');
+  if(cut && hadSvg && !/\bSVG\b/.test(x)){ const m = x.match(/^[^,|]+/); x = m && m[0].trim().length <= 36 ? m[0].trim() + ' SVG' + x.slice(m[0].length) : x; }
+  return x.trim();
+}
+function titleRuleProblems(t, p){
+  const out = []; t = String(t || '');
+  if(/\b(instant|digital)\s+download/i.test(t)) out.push('Digital Download');
+  if(/\b(dxf|pdf|png|eps|studio3?|cdr)\b/i.test(t)) out.push('file formats');
+  if((t.match(/\bsvg\b/gi) || []).length > 1) out.push('SVG repeated');
+  const svgAt = t.toLowerCase().indexOf('svg'); if(svgAt > 40 && p && productIsCut(p)) out.push('SVG after 40 chars');
+  return out;
+}
 function descRules(){
   if(shopIsCutNiche()) return DESC_FORMAT_RULES;
   return DESC_FORMAT_RULES.replace(/✂️? COMPATIBLE WITH[\s\S]*?PERFECT FOR/, '🎨 ABOUT THE ARTWORK, 🖼 HOW TO DISPLAY, ❤️ PERFECT FOR') + String.fromCharCode(10) + '- Mention digital download or file formats ONLY if the listing data says the product is digital.';
@@ -6408,31 +6453,29 @@ function descFormatOk(d){
 
 // ── نگهبان طول عنوان: هر عنوان بهینه‌شده (تکی یا گروهی) باید ۱۰۰ تا ۱۴۰ نویسه و حداکثر ۱۴ کلمه باشد؛
 // اگر هوش مصنوعی رعایت نکرد یا بعد از کوتاه‌سازی کد کوتاه شد، تا دو بار فقط خود عنوان را درست می‌کنیم
-const TITLE_MIN_CHARS=100;
-function titleGap(t){ const L=String(t||'').length; return (L<TITLE_MIN_CHARS?TITLE_MIN_CHARS-L:L>TITLE_MAX_CHARS?L-TITLE_MAX_CHARS:0) + Math.max(0,titleWordCount(t)-TITLE_MAX_WORDS)*10; }
+const TITLE_MIN_CHARS=50;
+function titleGap(t, p){ const L=String(t||'').length; return (L<TITLE_MIN_CHARS?TITLE_MIN_CHARS-L:L>TITLE_MAX_CHARS?L-TITLE_MAX_CHARS:0) + Math.max(0,titleWordCount(t)-TITLE_MAX_WORDS)*10 + titleRuleProblems(t, p).length*20; }
 function titleOk(t){ return titleGap(t)===0; }
 async function ensureTitleQuality(title, p){
-  let best=sanitizeEtsyTitle(title);
-  for(let k=0; k<2 && !titleOk(best); k++){
+  let best=sanitizeEtsyTitle(titleRuleClean(title, p));
+  const ok = t => titleGap(t, p)===0;
+  for(let k=0; k<2 && !ok(best); k++){
     const L=best.length, W=titleWordCount(best);
     const prompt=`Fix this Etsy listing title. Return ONLY the new title on one line — no quotes, no explanation.
 ${shopCtx(p)}
 CURRENT TITLE (${L} characters, ${W} words): ${best}
-${L<TITLE_MIN_CHARS?`It is TOO SHORT by ${TITLE_MIN_CHARS-L} characters.`:L>TITLE_MAX_CHARS?`It is TOO LONG by ${L-TITLE_MAX_CHARS} characters.`:''}${W>TITLE_MAX_WORDS?` It has ${W-TITLE_MAX_WORDS} words too many.`:''}
-HARD REQUIREMENTS:
-- Length between 110 and 138 characters, counting every letter and space. Count before answering.
-- AT MOST 14 words. To reach the length with few words, use longer, specific, high-value words (materials, use, occasion, buyer), NOT filler.
-- Keep the primary keyword in the first 40 characters; separate phrases with ", ".
+${L<TITLE_MIN_CHARS?`It is too short and vague.`:L>TITLE_MAX_CHARS?`It is TOO LONG by ${L-TITLE_MAX_CHARS} characters.`:''}${W>TITLE_MAX_WORDS?` It has ${W-TITLE_MAX_WORDS} words too many.`:''}${titleRuleProblems(best, p).length?' It breaks these rules: '+titleRuleProblems(best, p).join(', ')+'.':''}
+${titleRulesText(p)}
 - Use only facts from this listing. Tags for ideas: ${String(p.TAGS||'').slice(0,300)}
-- At most 3 all-caps words; never use $ ^ \` . ° ; banned words: premium, beautiful, amazing, best, gorgeous, luxury, stunning, perfect.`;
+- At most 3 all-caps words; never use $ ^ \` . °`;
     try{
       const r=await callClaude(prompt, 300);
       const line=String(r||'').split('\n').map(x=>x.trim()).filter(Boolean)[0]||'';
-      const cand=sanitizeEtsyTitle(line.replace(/^(new title|title)\s*:\s*/i,'').replace(/^["'“”]+|["'“”]+$/g,''));
-      if(cand && titleGap(cand)<titleGap(best)) best=cand;
+      const cand=sanitizeEtsyTitle(titleRuleClean(line.replace(/^(new title|title)\s*:\s*/i,'').replace(/^["'“”]+|["'“”]+$/g,''), p));
+      if(cand && titleGap(cand, p)<titleGap(best, p)) best=cand;
     }catch(e){ log('⚠ اصلاح طول عنوان ممکن نشد: '+e.message,'warn'); break; }
   }
-  if(!titleOk(best)) log(`⚠ عنوان «${best.slice(0,40)}…» ${best.length} نویسه و ${titleWordCount(best)} کلمه است — بهتر است دستی بازبینی شود`,'warn');
+  if(!ok(best)) log(`⚠ عنوان «${best.slice(0,40)}…» ${best.length} نویسه و ${titleWordCount(best)} کلمه است — بهتر است دستی بازبینی شود`,'warn');
   return best;
 }
 function sanitizeEtsyTitle(title){
@@ -8265,8 +8308,21 @@ function etsyBuildProduct(l){
 }
 async function loadFromEtsy(full){
   if(!S.etsyApiKey || !S.etsyShopId){ alert('Etsy API Key و Shop ID لازم است'); nav('settings'); return; }
+  const before = new Set(S.products.map(p => String(p._listing_id || '')));
   const bt = Busy.start("دریافت محصولات از Etsy...");
-  try{ return await loadFromEtsyCore(bt, full === true); } finally { Busy.end(bt); }
+  let r; try{ r = await loadFromEtsyCore(bt, full === true); } finally { Busy.end(bt); }
+  // محصولات که از Etsy آمدند، بازرسی و بهینه‌سازی پشت سر هم و برگشت به Etsy (تنظیم «همگام‌سازی خودکار بعد از دریافت»)
+  try{
+    if(!window.__smartSyncing && S.etsyOAuthToken && typeof smartSync === 'function'){
+      const st = await auditSettings(S.shopId);
+      if(st.autoSyncOnLoad){
+        const freshIds = new Set(S.products.filter(p => p._listing_id && !before.has(String(p._listing_id))).map(p => String(p._listing_id)));
+        const need = freshIds.size || S.products.some((p, i) => smartNeedsOptimize(p, i));
+        if(need) setTimeout(() => smartSync({trigger: 'load', freshIds, silent: false}), 300);
+      }
+    }
+  }catch(e){}
+  return r;
 }
 async function loadFromEtsyCore(bt, full){
   log('📦 بارگذاری محصولات از اتسی' + (full ? ' (کامل)' : ' (فقط جدید و تغییرکرده)') + '...', 'info');
@@ -12964,7 +13020,7 @@ const AuditDB = {
   async get(k, d){ const db = await this.open(); return new Promise(res => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result === undefined ? d : q.result); q.onerror = () => res(d); }); },
   async set(k, v){ const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = () => res(); t.onerror = () => rej(t.error); }); }
 };
-const AUDIT_DEFAULTS = { maxChanges: 50, scheduleDays: 7, fix: { category: true, description: true, title: true, tags: true, attributes: true, featured: true, duplicates: true, shopText: true } };
+const AUDIT_DEFAULTS = { maxChanges: 50, scheduleDays: 7, autoSyncOnLoad: true, autoPush: true, maxOptimize: 20, fix: { category: true, description: true, title: true, tags: true, attributes: true, featured: true, duplicates: true, shopText: true } };
 const AUDIT_SEV = { critical: {fa: 'بحرانی', c: '#b91c1c', bg: '#fee2e2', w: 10}, high: {fa: 'زیاد', c: '#c2410c', bg: '#ffedd5', w: 5}, medium: {fa: 'متوسط', c: '#a16207', bg: '#fef9c3', w: 2}, low: {fa: 'کم', c: '#475569', bg: '#f1f5f9', w: 0.5} };
 const AUDIT_CHECK_FA = { category: 'دسته‌بندی', description: 'توضیحات', duplicate: 'تکراری', title: 'عنوان', tags: 'تگ‌ها', attributes: 'ویژگی‌ها (Holiday)', price: 'قیمت', discount: 'تخفیف دائمی', featured: 'محصولات ویژه', media: 'تصویر و ویدیو', shopText: 'متن فروشگاه', seasonal: 'فصلی' };
 const AUDIT_FIELD_FA = { title: 'عنوان', description: 'توضیحات', tags: 'تگ‌ها', taxonomy_id: 'دسته‌بندی', state: 'وضعیت', featured_rank: 'ویژه', property: 'ویژگی', announcement: 'اطلاعیه‌ی فروشگاه', sale_message: 'پیام بعد از خرید' };
@@ -13229,8 +13285,9 @@ async function auditAiTitlesTags(items, snap, ctx){
     const prompt = `You are an Etsy SEO editor. For each listing below, return improved fields. Return ONLY JSON: {"items":[{"id":123,"title":"...","tags":["..."]}]}.
 Include "title" only if asked (needTitle) and "tags" only if asked (needTags).
 ${shopCtx(null)}
-TITLE RULES: natural English, max 140 characters, no emojis, no markdown, never "Digital Download"/"Instant Download", no file formats (svg, dxf, pdf, eps, ai, png) EXCEPT a single "SVG" in the first 40 characters when isCutFile is true; put the main keyword in the first 40 characters; no repeated words; ${ctx.generic.length ? 'do NOT use these phrases that are overused in this shop: ' + ctx.generic.join(', ') + ' — use one specific real use case instead; ' : ''}never claim handmade or a physical item for digital downloads.
-TAG RULES: exactly 13 tags in total when combined with the kept tags; each 2-3 words, max 20 characters, lowercase, only letters/numbers/spaces; long-tail buyer phrases; must not simply repeat the title words; no duplicates.
+${titleRulesText(null)}
+(For listings with isCutFile=false: no file formats and no machine words at all.) ${ctx.generic.length ? 'Do NOT use these phrases that are overused in this shop: ' + ctx.generic.join(', ') + '. ' : ''}Never claim handmade or a physical item for digital downloads.
+${tagRulesText()} Return only NEW tags so that keepTags + new = 13.
 ${part.map(x => JSON.stringify({id: x.l.listing_id, needTitle: !!x.needTitle, needTags: x.needTags || 0, isCutFile: x.l._isCut, mainKeyword: auditMainKw(x.l), title: x.l.title, keepTags: x.keepTags || [], description: x.l.description.slice(0, 350)})).join('\n')}
 For needTags return that many NEW tags (not in keepTags).`;
     try{
@@ -13274,12 +13331,13 @@ async function auditHolidayFix(l, holiday, shopId){
 }
 
 // ── اجرای بازرسی: mode = dry (فقط پیش‌نمایش) | apply (دستی) | auto (زمان‌بندی‌شده) ──
-async function auditRun(mode){
-  if(AUDIT.running){ toast('بازرسی در حال اجراست'); return; }
+async function auditRun(mode, opts){
+  opts = opts || {};
+  if(AUDIT.running){ if(!opts.silent) toast('بازرسی در حال اجراست'); return null; }
   if(!S.shopId){ alert('اول یک فروشگاه انتخاب کن'); return; }
   if(!S.etsyOAuthToken){ alert('این فروشگاه به Etsy وصل نیست — اول از تنظیمات «اتصال به Etsy» را انجام بده'); return; }
   const shopKey = S.shopId, shopName = S.shopName, st = await auditSettings(shopKey);
-  if(mode === 'apply' && !confirm('بازرسی کامل «' + shopName + '» انجام و حداکثر ' + st.maxChanges + ' اصلاح مستقیماً روی Etsy اعمال شود؟\n\nهر تغییر در تاریخچه ذخیره می‌شود و با یک کلیک برمی‌گردد. قیمت‌ها هیچ‌وقت خودکار تغییر نمی‌کنند. تکراری‌ها فقط غیرفعال می‌شوند (حذف نمی‌شوند).')) return;
+  if(mode === 'apply' && !opts.silent && !confirm('بازرسی کامل «' + shopName + '» انجام و حداکثر ' + st.maxChanges + ' اصلاح مستقیماً روی Etsy اعمال شود؟\n\nهر تغییر در تاریخچه ذخیره می‌شود و با یک کلیک برمی‌گردد. قیمت‌ها هیچ‌وقت خودکار تغییر نمی‌کنند. تکراری‌ها فقط غیرفعال می‌شوند (حذف نمی‌شوند).')) return;
   AUDIT.running = true; const bt = Busy.start('🩺 بازرسی فروشگاه «' + shopName + '»', {pct: 0});
   const runId = 'r' + Date.now().toString(36), sameShop = () => S.shopId === shopKey;
   try{
@@ -13291,7 +13349,8 @@ async function auditRun(mode){
     const ctx = {generic: res.generic};
     // اصلاح‌پذیرها به ترتیب شدت، تا سقف تعداد تغییر
     const order = {critical: 0, high: 1, medium: 2, low: 3};
-    const fixable = res.issues.filter(x => x.fix && st.fix[x.fix.kind] !== false).sort((a, b) => order[a.sev] - order[b.sev]);
+    const skipText = opts.skipText || new Set();
+    const fixable = res.issues.filter(x => x.fix && st.fix[x.fix.kind] !== false && !(x.lid && skipText.has(String(x.lid)) && ['title', 'tags', 'description'].includes(x.fix.kind))).sort((a, b) => order[a.sev] - order[b.sev]);
     const plan = []; // {issue, lid, field, old, new, reason}
     const lidFields = {}; const take = (x, field, oldV, newV, extra) => { if(plan.length >= st.maxChanges) return false; const k = (x.lid || 'shop') + ':' + field; if(lidFields[k]){ lidFields[k].new = newV; lidFields[k].reason += ' + ' + AUDIT_CHECK_FA[x.check]; return true; } const c = Object.assign({id: runId + '-' + plan.length, lid: x.lid || null, field, old: oldV, new: newV, reason: AUDIT_CHECK_FA[x.check] + ': ' + x.msg, issueId: x.id, ltitle: x.ltitle || ''}, extra || {}); plan.push(c); lidFields[k] = c; x.planned = c.id; return true; };
     // ۱) اصلاح‌های مستقیم (بدون AI)
@@ -13368,9 +13427,9 @@ async function auditRun(mode){
     log('🩺 بازرسی «' + shopName + '»: امتیاز سلامت ' + res.score + ' — ' + res.issues.length + ' مشکل' + (mode === 'dry' ? '، ' + plan.length + ' اصلاح پیشنهادی (اعمال نشد)' : '، ' + run.applied + ' اصلاح اعمال شد' + (run.failed ? '، ' + run.failed + ' ناموفق' : '')), run.failed ? 'warn' : 'ok');
     AUDIT.tab = mode === 'dry' ? 'plan' : 'fixed';
     if(document.getElementById('page-audit').classList.contains('active')) auditRender();
-    if(mode !== 'auto') toast(mode === 'dry' ? '🔍 پیش‌نمایش آماده شد — ' + plan.length + ' اصلاح پیشنهادی' : '✅ بازرسی تمام شد — ' + run.applied + ' اصلاح اعمال شد');
-    else toast('🩺 بازرسی زمان‌بندی‌شده‌ی «' + shopName + '» انجام شد — ' + run.applied + ' اصلاح');
-  }catch(e){ log('✗ بازرسی فروشگاه: ' + e.message, 'err'); if(mode !== 'auto') alert('بازرسی ناموفق بود: ' + e.message); }
+    if(!opts.silent){ if(mode !== 'auto') toast(mode === 'dry' ? '🔍 پیش‌نمایش آماده شد — ' + plan.length + ' اصلاح پیشنهادی' : '✅ بازرسی تمام شد — ' + run.applied + ' اصلاح اعمال شد'); else toast('🩺 بازرسی زمان‌بندی‌شده‌ی «' + shopName + '» انجام شد — ' + run.applied + ' اصلاح'); }
+    return run;
+  }catch(e){ log('✗ بازرسی فروشگاه: ' + e.message, 'err'); if(mode !== 'auto' && !opts.silent) alert('بازرسی ناموفق بود: ' + e.message); return null; }
   finally{ AUDIT.running = false; Busy.end(bt); }
 }
 // اعمال یک تغییر روی Etsy (برای «برگرداندن» هم با مقدار قدیمی صدا زده می‌شود)
@@ -13442,6 +13501,79 @@ async function auditUpdateImpact(shopKey, snap){
     if(age >= 7 && !c.d7){ c.d7 = {views: l.views, favs: l.favs}; ch = true; } if(age >= 30 && !c.d30){ c.d30 = {views: l.views, favs: l.favs}; ch = true; } });
   if(ch) await AuditDB.set(auditKey(shopKey, 'log'), logArr);
 }
+// ════ همگام‌سازی هوشمند ════
+// ۱) دریافت محصولات جدید/تغییرکرده از Etsy
+// ۲) بازرسی کل فروشگاه و اصلاح مستقیم روی Etsy (دسته، تکراری، ویژگی Holiday، ویژه‌ها، اطلاعیه، پاکسازی توضیحات)
+//    — برای محصولاتی که در قدم ۳ بازنویسی می‌شوند، عنوان/تگ/توضیحات را بازرسی دست نمی‌زند تا دوبار کار نشود
+// ۳) بهینه‌سازی کامل (عنوان، تگ، توضیحات، جنس‌ها با AI و همان قانون مشترک) برای محصولات تازه و محصولاتی که قانون را رعایت نمی‌کنند
+// ۴) ارسال همه‌ی ویرایش‌های برنامه به Etsy و ثبت وضعیت «همگام»
+let SMART = { running: false };
+function smartNeedsOptimize(p, i){
+  if(!p._listing_id) return false;
+  if(typeof etsySyncState === 'function' && etsySyncState(i) === 'both') return false;
+  const t = String(p.TITLE || ''), tags = String(p.TAGS || '').split(',').filter(Boolean);
+  if(titleRuleProblems(t, p).length || t.length > 140 || titleWordCount(t) > 14 || tags.length < 13) return true;
+  const a = S.analyzed[i]; return !isOptimizedIdx(i) && (!a || a.score < 70);
+}
+async function smartSync(opts){
+  opts = opts || {};
+  if(SMART.running || AUDIT.running){ if(!opts.silent) toast('یک همگام‌سازی یا بازرسی در حال اجراست'); return; }
+  if(!S.shopId || !S.etsyOAuthToken){ if(!opts.silent) alert('این فروشگاه به Etsy وصل نیست — اول از تنظیمات «اتصال به Etsy» را انجام بده'); return; }
+  const shopKey = S.shopId, shopName = S.shopName, st = await auditSettings(shopKey), sameShop = () => S.shopId === shopKey;
+  if(opts.trigger === 'button' && !confirm('همگام‌سازی هوشمند «' + shopName + '»:\n۱) دریافت محصولات جدید/تغییرکرده از Etsy\n۲) بازرسی و اصلاح خودکار فروشگاه\n۳) بهینه‌سازی کامل تا ' + st.maxOptimize + ' محصول\n۴) ' + (st.autoPush ? 'ارسال همه‌ی تغییرها به Etsy' : 'تغییرها در برنامه می‌مانند (ارسال خودکار خاموش است)') + '\n\nادامه؟')) return;
+  SMART.running = true; window.__smartSyncing = true;
+  const sum = {at: Date.now(), trigger: opts.trigger || 'button', fresh: 0, audited: 0, optimized: 0, pushed: 0, failed: 0, conflicts: 0};
+  const bt = Busy.start('🔄 همگام‌سازی هوشمند «' + shopName + '»', {pct: 0});
+  try{
+    // ۱) دریافت
+    let freshIds = opts.freshIds;
+    if(!freshIds){
+      Busy.set(bt, '۱/۴ دریافت محصولات از Etsy', 2);
+      const before = new Set(S.products.map(p => String(p._listing_id || '')));
+      const lb = Busy.start('دریافت محصولات از Etsy...'); try{ await loadFromEtsyCore(lb, false); } finally{ Busy.end(lb); }
+      freshIds = new Set(S.products.filter(p => p._listing_id && !before.has(String(p._listing_id))).map(p => String(p._listing_id)));
+    }
+    if(!sameShop()) throw new Error('فروشگاه وسط کار عوض شد');
+    sum.fresh = freshIds.size;
+    // انتخاب محصولات برای بهینه‌سازی کامل
+    const optIdx = S.products.map((p, i) => i).filter(i => S.products[i]._listing_id && (freshIds.has(String(S.products[i]._listing_id)) || smartNeedsOptimize(S.products[i], i))).slice(0, st.maxOptimize);
+    // ۲) بازرسی (بی‌صدا)
+    Busy.set(bt, '۲/۴ بازرسی و اصلاح فروشگاه', 15);
+    const run = await auditRun('apply', {silent: true, skipText: new Set(optIdx.map(i => String(S.products[i]._listing_id)))});
+    if(run) sum.audited = run.applied || 0;
+    if(!sameShop()) throw new Error('فروشگاه وسط کار عوض شد');
+    // ۳) بهینه‌سازی کامل
+    for(const [k, i] of optIdx.entries()){
+      if(!sameShop()) throw new Error('فروشگاه وسط کار عوض شد');
+      Busy.set(bt, '۳/۴ بهینه‌سازی ' + (k + 1) + ' از ' + optIdx.length + ': ' + String(S.products[i].TITLE || '').slice(0, 35), 40 + k / Math.max(1, optIdx.length) * 35);
+      const before = S.products[i].TITLE + '|' + S.products[i].TAGS;
+      await autoOpt(i);
+      if(S.optimized[i] && before !== S.products[i].TITLE + '|' + S.products[i].TAGS) sum.optimized++;
+    }
+    saveCurrentShop();
+    // ۴) ارسال
+    if(st.autoPush){
+      const list = S.products.map((p, i) => ({p, i})).filter(x => etsyNeedsPush(x.i));
+      sum.conflicts = list.filter(x => etsySyncState(x.i) === 'both').length;
+      const go = list.filter(x => etsySyncState(x.i) === 'local');
+      for(const [k, x] of go.entries()){
+        if(!sameShop()) throw new Error('فروشگاه وسط کار عوض شد');
+        Busy.set(bt, '۴/۴ ارسال به Etsy ' + (k + 1) + ' از ' + go.length, 76 + k / Math.max(1, go.length) * 23);
+        if(await etsyUpdateListing(x.p)){ sum.pushed++; S.pushedToEtsy = S.pushedToEtsy || {}; S.pushedToEtsy[x.i] = true; } else sum.failed++;
+        await new Promise(r => setTimeout(r, 1200));
+      }
+      saveCurrentShop();
+    }
+    const cur = await AuditDB.get(auditKey(shopKey, 'settings'), {});
+    await AuditDB.set(auditKey(shopKey, 'settings'), Object.assign({}, cur, {lastRun: Date.now(), lastSync: sum}));
+    try{ renderSyncBar(); renderSEOList(); renderOptimizeList(); updateOptimizedCount(); }catch(e){}
+    const msg = '🔄 همگام‌سازی «' + shopName + '» تمام شد: ' + sum.fresh + ' محصول تازه، ' + sum.audited + ' اصلاح بازرسی، ' + sum.optimized + ' بهینه‌سازی، ' + sum.pushed + ' ارسال به Etsy' + (sum.failed ? '، ' + sum.failed + ' ارسال ناموفق' : '') + (sum.conflicts ? '، ' + sum.conflicts + ' تعارض (دستی)' : '');
+    log(msg, sum.failed ? 'warn' : 'ok');
+    if(!opts.silent){ if(sum.failed && typeof etsyPushReport === 'function') etsyPushReport(S.products.map((p, i) => ({p, i})).filter(x => x.p._etsy_err), sum.pushed); else toast(msg); }
+    if(document.getElementById('page-audit').classList.contains('active')) auditRender();
+  }catch(e){ log('✗ همگام‌سازی هوشمند: ' + e.message, 'err'); if(!opts.silent) alert('همگام‌سازی ناموفق بود: ' + e.message); }
+  finally{ SMART.running = false; window.__smartSyncing = false; Busy.end(bt); }
+}
 // زمان‌بندی: وقتی فروشگاه باز است و موعد بازرسی رسیده، خودکار اجرا می‌شود
 async function auditMaybeScheduled(){
   try{
@@ -13449,8 +13581,8 @@ async function auditMaybeScheduled(){
     const st = await auditSettings(S.shopId);
     if(!st.scheduleDays || (st.lastRun && Date.now() - st.lastRun < st.scheduleDays * 864e5)) return;
     if(!st.lastRun){ await AuditDB.set(auditKey(S.shopId, 'settings'), Object.assign({}, await AuditDB.get(auditKey(S.shopId, 'settings'), {}), {lastRun: Date.now()})); return; } // اولین بار: فقط شروع شمارش (اولین اجرا دستی باشد)
-    log('🩺 موعد بازرسی خودکار «' + S.shopName + '» رسیده — شروع شد', 'info');
-    await auditRun('auto');
+    log('🔄 موعد همگام‌سازی خودکار «' + S.shopName + '» رسیده — شروع شد', 'info');
+    await smartSync({trigger: 'schedule', silent: true});
   }catch(e){}
 }
 
@@ -13459,7 +13591,8 @@ async function auditSaveSettings(){
   const k = auditKey(S.shopId, 'settings'), cur = await AuditDB.get(k, {});
   const fix = {}; document.querySelectorAll('#auditSettings [data-fix]').forEach(c => fix[c.dataset.fix] = c.checked);
   const maxC = Math.max(1, Math.min(500, parseInt(document.getElementById('auditMax').value) || 50));
-  await AuditDB.set(k, Object.assign({}, cur, {maxChanges: maxC, scheduleDays: parseInt(document.getElementById('auditSched').value) || 0, fix}));
+  const maxO = Math.max(0, Math.min(200, parseInt(document.getElementById('auditMaxOpt').value) || 0));
+  await AuditDB.set(k, Object.assign({}, cur, {maxChanges: maxC, scheduleDays: parseInt(document.getElementById('auditSched').value) || 0, fix, maxOptimize: maxO, autoSyncOnLoad: document.getElementById('auditAutoLoad').checked, autoPush: document.getElementById('auditAutoPush').checked}));
   toast('✅ تنظیمات بازرسی این فروشگاه ذخیره شد');
 }
 function auditSetTab(t){ AUDIT.tab = t; auditRender(); }
@@ -13476,17 +13609,24 @@ async function auditRender(){
   const last = runs.find(r => r.mode !== 'dry') || runs[0];
   const scoreC = !last ? 'var(--text3)' : last.score >= 80 ? 'var(--green)' : last.score >= 55 ? '#d97706' : 'var(--red)';
   const sevChips = last ? Object.keys(AUDIT_SEV).map(s => '<span style="display:inline-block;padding:3px 10px;border-radius:12px;background:' + AUDIT_SEV[s].bg + ';color:' + AUDIT_SEV[s].c + ';font-weight:700;font-size:12px;margin:2px">' + AUDIT_SEV[s].fa + ': ' + (last.counts[s] || 0) + '</span>').join('') : '';
-  top.innerHTML = '<div class="card" style="margin-bottom:14px;display:flex;gap:18px;align-items:center;flex-wrap:wrap">' +
+  const ls = st.lastSync;
+  const steps = [['📥', 'دریافت از Etsy', 'فقط محصولات جدید و تغییرکرده'], ['🩺', 'بازرسی', 'دسته، تکراری، Holiday، ویژه‌ها، اطلاعیه — مستقیم روی Etsy'], ['✨', 'بهینه‌سازی کامل', 'عنوان، تگ، توضیحات برای محصولات تازه و ضعیف (تا ' + st.maxOptimize + ' عدد)'], ['📤', 'ارسال و همگام', st.autoPush ? 'همه‌ی تغییرها به Etsy می‌رود' : 'خاموش — دستی ارسال کن']];
+  const flow = '<div class="card" style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px"><div class="card-title">🔄 روند کار</div><button class="btn btn-primary btn-sm" onclick="smartSync({trigger:\'button\'})">🔄 همگام‌سازی هوشمند (همه‌ی مراحل)</button></div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px">' + steps.map((x, i) => '<div style="background:var(--surface3);border-radius:10px;padding:10px"><div style="font-weight:800;font-size:13px">' + x[0] + ' ' + (i + 1) + '. ' + x[1] + '</div><div style="font-size:11.5px;color:var(--text2);margin-top:4px;line-height:1.7">' + x[2] + '</div></div>').join('') + '</div>' +
+    '<div style="font-size:11.5px;color:var(--text3);margin-top:8px;line-height:1.8">' + (st.autoSyncOnLoad ? 'هر بار که «بارگذاری از Etsy» را بزنی، مراحل ۲ تا ۴ خودکار اجرا می‌شوند.' : 'اجرای خودکار بعد از «بارگذاری از Etsy» خاموش است.') + (ls ? ' · آخرین همگام‌سازی: ' + new Date(ls.at).toLocaleString('fa-IR') + ' — ' + ls.fresh + ' تازه، ' + ls.audited + ' اصلاح بازرسی، ' + ls.optimized + ' بهینه‌سازی، ' + ls.pushed + ' ارسال' + (ls.failed ? ', <span style="color:var(--red)">' + ls.failed + ' ناموفق</span>' : '') + (ls.conflicts ? '، ' + ls.conflicts + ' تعارض' : '') : '') + '</div></div>';
+  top.innerHTML = flow + '<div class="card" style="margin-bottom:14px;display:flex;gap:18px;align-items:center;flex-wrap:wrap">' +
     '<div style="width:92px;height:92px;border-radius:50%;border:8px solid ' + scoreC + ';display:flex;align-items:center;justify-content:center;flex-direction:column"><div style="font-size:26px;font-weight:900;color:' + scoreC + '">' + (last ? last.score : '—') + '</div><div style="font-size:10px;color:var(--text3)">سلامت</div></div>' +
     '<div style="flex:1;min-width:220px"><div style="font-weight:800;font-size:15px">🏪 ' + escHtml(S.shopName || '') + '</div>' +
     '<div style="font-size:12px;color:var(--text2);margin:4px 0">' + (last ? 'آخرین بازرسی: ' + new Date(last.at).toLocaleString('fa-IR') + ' · ' + last.listings + ' لیستینگ' + (last.mode === 'dry' ? ' · (پیش‌نمایش)' : ' · ' + (last.applied || 0) + (last.mode === 'plan' ? ' اصلاح از پیش‌نمایش' : ' اصلاح خودکار')) + (last.failed ? ' · <span style="color:var(--red)">' + last.failed + ' ناموفق</span>' : '') : 'هنوز بازرسی نشده — «پیش‌نمایش» را بزن تا بدون تغییر چیزی، مشکلات را ببینی.') + '</div>' + sevChips +
     (last && last.capped ? '<div style="font-size:11px;color:#a16207;margin-top:4px">⚠ به سقف ' + st.maxChanges + ' تغییر رسید — بقیه در اجرای بعدی اصلاح می‌شوند.</div>' : '') +
     (last && last.salesOk === false ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">آمار فروش خوانده نشد؛ برای انتخاب نسخه‌ی اصلیِ تکراری‌ها از پسند و بازدید استفاده شد.</div>' : '') + '</div>' +
-    '<div style="font-size:11px;color:var(--text3);line-height:1.9">' + (st.scheduleDays ? '⏰ بازرسی خودکار هر ' + st.scheduleDays + ' روز' + (st.lastRun ? '<br>بعدی: ' + new Date(st.lastRun + st.scheduleDays*864e5).toLocaleDateString('fa-IR') : '') : '⏰ بازرسی خودکار خاموش') + '</div></div>';
+    '<div style="font-size:11px;color:var(--text3);line-height:1.9">' + (st.scheduleDays ? '⏰ همگام‌سازی خودکار هر ' + st.scheduleDays + ' روز' + (st.lastRun ? '<br>بعدی: ' + new Date(st.lastRun + st.scheduleDays*864e5).toLocaleDateString('fa-IR') : '') : '⏰ همگام‌سازی خودکار خاموش') + '</div></div>';
   const fixNames = {category: 'دسته‌بندی', description: 'پاکسازی توضیحات', title: 'عنوان', tags: 'تگ‌ها و تگ فصلی', attributes: 'ویژگی Holiday', featured: 'محصولات ویژه', duplicates: 'غیرفعال کردن تکراری‌ها', shopText: 'اطلاعیه و پیام فروشگاه'};
   document.getElementById('auditSettings').innerHTML = '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:13px;margin-bottom:10px">' +
     '<label>حداکثر تغییر در هر اجرا <input class="input" id="auditMax" type="number" min="1" max="500" value="' + st.maxChanges + '" style="width:80px;display:inline-block;margin-inline-start:6px"></label>' +
-    '<label>بازرسی خودکار <select class="input" id="auditSched" style="width:auto;display:inline-block;margin-inline-start:6px">' + [[0, 'خاموش'], [1, 'روزانه'], [7, 'هفتگی'], [14, 'هر دو هفته'], [30, 'ماهانه']].map(([v, t]) => '<option value="' + v + '"' + (st.scheduleDays === v ? ' selected' : '') + '>' + t + '</option>').join('') + '</select></label></div>' +
+    '<label>همگام‌سازی خودکار <select class="input" id="auditSched" style="width:auto;display:inline-block;margin-inline-start:6px">' + [[0, 'خاموش'], [1, 'روزانه'], [7, 'هفتگی'], [14, 'هر دو هفته'], [30, 'ماهانه']].map(([v, t]) => '<option value="' + v + '"' + (st.scheduleDays === v ? ' selected' : '') + '>' + t + '</option>').join('') + '</select></label>' +
+    '<label>حداکثر بهینه‌سازی کامل در هر اجرا <input class="input" id="auditMaxOpt" type="number" min="0" max="200" value="' + st.maxOptimize + '" style="width:70px;display:inline-block;margin-inline-start:6px"></label></div>' +
+    '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;margin-bottom:10px"><label style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" id="auditAutoLoad" ' + (st.autoSyncOnLoad ? 'checked' : '') + '> بعد از هر «بارگذاری از Etsy»، بازرسی و بهینه‌سازی خودکار انجام شود</label><label style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" id="auditAutoPush" ' + (st.autoPush ? 'checked' : '') + '> نتیجه خودکار به Etsy ارسال شود</label></div>' +
     '<div style="font-size:12px;color:var(--text2);margin-bottom:6px">اصلاح خودکار این موارد:</div><div style="display:flex;gap:14px;flex-wrap:wrap;font-size:13px">' + Object.entries(fixNames).map(([k, t]) => '<label style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" data-fix="' + k + '" ' + (st.fix[k] !== false ? 'checked' : '') + '> ' + t + '</label>').join('') + '</div>' +
     '<div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="auditSaveSettings()">💾 ذخیره تنظیمات</button><span style="font-size:11px;color:var(--text3)">قیمت هیچ‌وقت خودکار عوض نمی‌شود. بازرسی خودکار وقتی اجرا می‌شود که برنامه با همین فروشگاه باز باشد. برای تغییر اطلاعیه‌ی فروشگاه، اتصال Etsy باید دسترسی shops_w داشته باشد (اگر خطا داد، یک‌بار از تنظیمات دوباره به Etsy وصل شو).</span></div>';
   const lastApplied = runs.find(r => r.mode !== 'dry');
@@ -13735,6 +13875,8 @@ setTimeout(auditMaybeScheduled, 20000);
     'goToNotOptimized':'رفتن به فهرست محصول‌هایی که هنوز نیاز به بهینه‌سازی دارند',
     'auditRun:dry':'همه‌ی بررسی‌ها انجام می‌شود و اصلاح‌های پیشنهادی نشان داده می‌شوند، بدون هیچ تغییری روی Etsy',
     'auditRun:apply':'بازرسی کامل و اعمال خودکار اصلاح‌ها روی Etsy (تا سقف تعیین‌شده؛ هر تغییر قابل برگرداندن است)',
+    'smartSync':'همه‌ی مراحل پشت سر هم: دریافت محصولات تازه از Etsy، بازرسی و اصلاح، بهینه‌سازی کامل محصولات تازه و ضعیف، و ارسال به Etsy',
+    'auditRun:apply':'فقط بازرسی و اصلاح خودکار روی Etsy (بدون بهینه‌سازی کامل)',
     'auditUndo':'برگرداندن همین یک تغییر روی Etsy به مقدار قبلی',
     'auditUndoRun':'برگرداندن همه‌ی تغییرهای این اجرا',
     'auditApplyPlan':'اعمال همین اصلاح‌های پیش‌نمایش روی Etsy',
