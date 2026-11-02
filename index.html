@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.66.1 -->
+<!-- APP_VERSION: 1.67.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v218</div>
+        <div class="logo-badge">v219</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -744,6 +744,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div class="nav-item" onclick="confirmReloadProducts()" data-tip="بارگذاری مجدد فایل CSV محصولات"><span class="ni">🔄</span> بارگذاری مجدد</div>
     <div class="nav-item" onclick="nav('seo',this)" data-tip="آنالیز SEO عنوان، تگ و توضیحات"><span class="ni">🔍</span> آنالیز SEO</div>
     <div class="nav-item" onclick="nav('optimize',this)" data-tip="بهینه‌سازی خودکار با AI"><span class="ni">⚡</span> بهینه‌سازی</div>
+    <div class="nav-item" onclick="nav('audit',this)" data-tip="بازرسی کامل فروشگاه در Etsy و اصلاح خودکار با امکان برگرداندن"><span class="ni">🩺</span> بازرسی فروشگاه <span class="nav-new">NEW</span></div>
     <div class="nav-item" onclick="nav('pricing',this)" data-tip="تحلیل و پیشنهاد قیمت‌گذاری"><span class="ni">💰</span> قیمت‌گذاری</div>
     <div class="nav-item" onclick="nav('studio',this)" data-tip="آماده‌سازی فایل‌ها، تصویرها و متن هر محصول قبل از انتشار در اتسی"><span class="ni">📦</span> استودیو محصولات <span class="nav-new">NEW</span></div>
   </div>
@@ -1223,6 +1224,25 @@ margin:0;background:var(--paper);color:var(--ink);
 
 <!-- ── Content Creation ── -->
 <!-- ── Pricing ── -->
+<div class="page" id="page-audit">
+  <div class="page-header">
+    <div><div class="page-title">🩺 بازرسی <span>فروشگاه</span></div><div class="page-sub">بررسی کامل لیستینگ‌ها و متن‌های فروشگاه فعلی در Etsy و اصلاح خودکار با امکان برگرداندن هر تغییر</div></div>
+    <div class="page-actions">
+      <button class="btn btn-secondary btn-sm" onclick="auditRun('dry')">🔍 پیش‌نمایش (بدون اعمال)</button>
+      <button class="btn btn-primary btn-sm" onclick="auditRun('apply')">▶ بازرسی و اصلاح خودکار</button>
+    </div>
+  </div>
+  <div id="auditTop"></div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title" style="margin-bottom:10px">⚙️ تنظیمات بازرسی این فروشگاه</div>
+    <div id="auditSettings"></div>
+  </div>
+  <div class="card">
+    <div class="sec-tabs" id="auditTabs" style="margin-bottom:12px"></div>
+    <div id="auditBody"></div>
+  </div>
+</div>
+
 <div class="page" id="page-pricing">
   <div class="page-header"><div><div class="page-title">💰 <span>قیمت‌گذاری</span> هوشمند</div><div class="page-sub">پیشنهاد قیمت بهینه بر اساس بازار</div></div></div>
   <div class="card">
@@ -2632,6 +2652,8 @@ function switchShop(shopId){
   renderShopSwitcher();
 
   log(`✓ فروشگاه "${S.shopName}" فعال شد`,'ok');
+  // بازرسی: صفحه‌ی همین فروشگاه + بررسی موعد بازرسی خودکار
+  try{ if(document.getElementById('page-audit').classList.contains('active')) auditRender(); setTimeout(auditMaybeScheduled, 4000); }catch(e){}
 }
 
 function showNewShopModal(){
@@ -2854,6 +2876,7 @@ function nav(name, el) {
   }
   if(name==='settings'){ renderOtherShopsInSettings(); renderShopSwitcher(); }
   if(name==='content-review') loadContentReview();
+  if(name==='audit' && typeof auditRender==='function') auditRender();
   if(name==='marketing') loadMarketing();
   if(name==='customers'){ if(typeof uiRestore === 'function') uiRestore(); renderCustomersFromCache(); }
   if(name==='settings' && typeof renderPinterestRss === 'function') renderPinterestRss();
@@ -8932,7 +8955,7 @@ async function startEtsyOAuthFlow(){
   const redirectUri=etsyRedirectUri();
   sessionStorage.setItem('etsy_redirect_uri',redirectUri);
   log('🔗 Redirect URI ارسالی به Etsy: '+redirectUri+' · Keystring: '+etsyKeyMasked()+' — هر دو باید با اپ در Etsy یکی باشد','info');
-  const scopes='listings_r listings_w transactions_r shops_r';
+  const scopes='listings_r listings_w transactions_r shops_r shops_w'; // shops_w: تغییر اطلاعیه‌ی فروشگاه در «بازرسی فروشگاه»
   const state='etsyauth_'+Math.random().toString(36).slice(2);
   sessionStorage.setItem('etsy_oauth_state',state);
   const url=`https://www.etsy.com/oauth/connect?response_type=code`
@@ -12923,6 +12946,577 @@ save();
 </script>
 <!-- Shop modals removed — now in page-shopmanager -->
 
+<script>
+/* ════════════════ بازرسی و اصلاح خودکار فروشگاه (Shop Audit & Auto-Fix) — v1.67.0 ════════════════
+   هر فروشگاه کاملاً جدا: کلید همه‌ی داده‌ها S.shopId است (تنظیمات، اجراها، تاریخچه‌ی تغییرات، برگرداندن).
+   داده‌ها در IndexedDB مرورگر ذخیره می‌شوند. متن‌های تولیدی انگلیسی هستند؛ رابط کاربری فارسی. */
+const AuditDB = {
+  _db: null,
+  open(){
+    if(this._db) return Promise.resolve(this._db);
+    return new Promise((res, rej) => {
+      const r = indexedDB.open('etsyAgentAudit', 1);
+      r.onupgradeneeded = () => { r.result.createObjectStore('kv'); };
+      r.onsuccess = () => { this._db = r.result; res(this._db); };
+      r.onerror = () => rej(r.error);
+    });
+  },
+  async get(k, d){ const db = await this.open(); return new Promise(res => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result === undefined ? d : q.result); q.onerror = () => res(d); }); },
+  async set(k, v){ const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = () => res(); t.onerror = () => rej(t.error); }); }
+};
+const AUDIT_DEFAULTS = { maxChanges: 50, scheduleDays: 7, fix: { category: true, description: true, title: true, tags: true, attributes: true, featured: true, duplicates: true, shopText: true } };
+const AUDIT_SEV = { critical: {fa: 'بحرانی', c: '#b91c1c', bg: '#fee2e2', w: 10}, high: {fa: 'زیاد', c: '#c2410c', bg: '#ffedd5', w: 5}, medium: {fa: 'متوسط', c: '#a16207', bg: '#fef9c3', w: 2}, low: {fa: 'کم', c: '#475569', bg: '#f1f5f9', w: 0.5} };
+const AUDIT_CHECK_FA = { category: 'دسته‌بندی', description: 'توضیحات', duplicate: 'تکراری', title: 'عنوان', tags: 'تگ‌ها', attributes: 'ویژگی‌ها (Holiday)', price: 'قیمت', discount: 'تخفیف دائمی', featured: 'محصولات ویژه', media: 'تصویر و ویدیو', shopText: 'متن فروشگاه', seasonal: 'فصلی' };
+const AUDIT_FIELD_FA = { title: 'عنوان', description: 'توضیحات', tags: 'تگ‌ها', taxonomy_id: 'دسته‌بندی', state: 'وضعیت', featured_rank: 'ویژه', property: 'ویژگی', announcement: 'اطلاعیه‌ی فروشگاه', sale_message: 'پیام بعد از خرید' };
+const auditKey = (shopKey, k) => 'audit:' + shopKey + ':' + k;
+let AUDIT = { running: false, tab: 'fixed', view: null };
+async function auditSettings(shopKey){ const s = await AuditDB.get(auditKey(shopKey, 'settings'), {}); return Object.assign({}, AUDIT_DEFAULTS, s, {fix: Object.assign({}, AUDIT_DEFAULTS.fix, s.fix || {})}); }
+
+// ── صف درخواست Etsy: فاصله بین درخواست‌ها + تلاش دوباره با تأخیر فزاینده برای محدودیت نرخ (429) ──
+let auditLastCall = 0;
+async function auditCall(fn){
+  for(let k = 0; ; k++){
+    const wait = auditLastCall + 130 - Date.now(); if(wait > 0) await new Promise(r => setTimeout(r, wait));
+    auditLastCall = Date.now();
+    try{ return await fn(); }
+    catch(e){
+      if(k < 4 && /429|rate|too many|throttl/i.test(e.message || '')){ await new Promise(r => setTimeout(r, 1000 * Math.pow(2, k))); continue; }
+      throw e;
+    }
+  }
+}
+async function auditWrite(url, method, body){
+  let d = await auditCall(() => etsyWriteCall(url, method, body));
+  if(d && (d.error === 'invalid_token' || d.error_description === 'invalid_token')){ if(await refreshEtsyOAuthToken()) d = await auditCall(() => etsyWriteCall(url, method, body)); }
+  if(d && d.error) throw new Error(etsyErrFa(d.error + (d.error_description ? ' ' + d.error_description : '')));
+  return d || {};
+}
+
+// ── تشخیص نوع محصول و فصل ──
+const AUDIT_TYPES = [
+  {k: 'stencil', re: /stencil/i, path: /stencil|craft supplies|template|pattern/i, noun: 'stencil'},
+  {k: 'gift_tag', re: /gift tags?|hang tags?|\blabels?\b/i, path: /tag|label|stationery|party|craft supplies|template/i, noun: 'gift tags'},
+  {k: 'box', re: /\b(box|boxes|packaging|mailer|dieline|favor box|gift box)\b/i, path: /template|packaging|craft supplies|paper|box|pattern/i, noun: 'gift box'},
+  {k: 'clipart', re: /clip ?art|png bundle|sublimation/i, path: /clip art|craft supplies|digital|image/i, noun: 'clipart'},
+  {k: 'wall_art', re: /wall art|poster|calligraphy|art print|printable art/i, path: /art|print|wall decor|calligraphy/i, noun: 'wall art'},
+  {k: 'svg', re: /\bsvg\b|cut files?|cricut|silhouette|laser cut|\bdxf\b/i, path: /craft supplies|template|pattern|clip art|cut|digital/i, noun: 'svg'}
+];
+const AUDIT_UNRELATED_TOP = /^(Clothing|Jewelry|Shoes|Bags & Purses|Pet Supplies|Bath & Beauty|Electronics & Accessories|Books, Movies & Music|Toys & Games|Home & Living › Furniture)/i;
+function auditType(l){ const t = (l.title || '') + ' ' + (l.tags || []).join(' '); return (AUDIT_TYPES.find(x => x.re.test(t)) || {k: 'other', path: /./, noun: 'gift'}); }
+function auditEaster(y){ const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19*a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2*e + 2*i - h - k) % 7, m = Math.floor((a + 11*h + 22*l) / 451), mo = Math.floor((h + l - 7*m + 114) / 31), da = ((h + l - 7*m + 114) % 31) + 1; return new Date(y, mo - 1, da); }
+function auditSeasons(now){
+  const y = now.getFullYear(), d = (m, dd) => new Date(y, m - 1, dd), easter = auditEaster(y);
+  const may1 = d(5, 1), mothers = new Date(y, 4, 1 + ((7 - may1.getDay()) % 7) + 7);
+  return [
+    {k: 'christmas', fa: 'کریسمس', word: 'christmas', holiday: 'Christmas', re: /christmas|xmas|santa|advent|\bnoel\b|ornament|reindeer|snowman|stocking/i, from: d(10, 1), to: d(12, 25)},
+    {k: 'halloween', fa: 'هالووین', word: 'halloween', holiday: 'Halloween', re: /halloween|spooky|pumpkin|witch|trick or treat/i, from: d(9, 1), to: d(10, 31)},
+    {k: 'valentine', fa: 'ولنتاین', word: 'valentines', holiday: "Valentine's Day", re: /valentine|galentine/i, from: d(1, 10), to: d(2, 14)},
+    {k: 'easter', fa: 'عید پاک', word: 'easter', holiday: 'Easter', re: /easter|bunny|egg hunt/i, from: new Date(easter.getTime() - 45*864e5), to: easter},
+    {k: 'mothers', fa: 'روز مادر', word: 'mothers day', holiday: "Mother's Day", re: /mother'?s day|for mom\b|\bmama\b/i, from: d(4, 1), to: mothers}
+  ].map(s => Object.assign(s, {active: now >= s.from && now <= new Date(s.to.getTime() + 864e5)}));
+}
+const AUDIT_STOP = new Set('a an and the for with of to in on by your you my our this that is are be as at or from it its de la set pack bundle digital download instant file files'.split(' '));
+const AUDIT_FORMATS = /\b(svg|dxf|pdf|eps|ai|png|jpe?g|studio3?|cdr)\b/gi;
+function auditTokens(t){ return String(t || '').toLowerCase().replace(AUDIT_FORMATS, ' ').split(/[^a-z0-9']+/).filter(w => w.length >= 3 && !AUDIT_STOP.has(w)); }
+function auditDice(a, b){ const A = new Set(a), B = new Set(b); if(!A.size || !B.size) return 0; let n = 0; A.forEach(x => { if(B.has(x)) n++; }); return 2*n / (A.size + B.size); }
+function auditMainKw(l){ const t = (l.tags || []).find(x => String(x).trim().split(/\s+/).length >= 2); return (t || auditTokens(l.title).slice(0, 2).join(' ')).toLowerCase(); }
+const AUDIT_FILLER = new Set('birthday wedding party gift gifts anniversary baby shower holiday bridal mothers fathers valentine easter halloween christmas graduation any occasion perfect unique cute beautiful special everyday all occasions'.split(' '));
+
+// ── متن توضیحات: پاکسازی مارک‌داون، جمله‌های جاافتاده‌ی AI و ادعای «دست‌ساز» برای فایل دیجیتال ──
+const AUDIT_PLACEHOLDER = /not specified|not mentioned|not provided|\[\.\.\.\]|\[insert|\bTBD\b|lorem ipsum|\{\{|\}\}|as an ai\b|i hope this helps|let me know if/i;
+const AUDIT_PROMPT_LEFT = /^\s*(sure[,!]|certainly[,!]|here('s| is) (the|your|an?) |below is |note: as an ai|i've (rewritten|created)|rewritten description:|new description:)/i;
+function auditCleanDesc(d, isDigital){
+  let lines = String(d || '').replace(/\r/g, '').split('\n');
+  lines = lines.filter(x => !AUDIT_PLACEHOLDER.test(x) && !AUDIT_PROMPT_LEFT.test(x));
+  lines = lines.map(x => x.replace(/^\s{0,3}#{1,6}\s*/, '').replace(/\*\*([^*]+)\*\*/g, '$1').replace(/__([^_]+)__/g, '$1').replace(/\*\*|__/g, '').replace(/^\s*[*]\s+/, '• '));
+  if(isDigital){
+    lines = lines.filter(x => !/\b(will be|is) (shipped|mailed)\b|\bshipping (time|takes)\b/i.test(x));
+    lines = lines.map(x => x.replace(/\bhand[\s-]?made\b/gi, 'hand-designed'));
+  }
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+function auditDescProblems(d, isDigital){
+  const p = [];
+  if(/^\s{0,3}#{1,6}\s|\*\*|__/m.test(d)) p.push('مارک‌داون خام (## یا **)');
+  if(String(d).split('\n').some(x => AUDIT_PLACEHOLDER.test(x))) p.push('جمله‌ی جاافتاده‌ی AI (مثل not specified)');
+  if(String(d).split('\n').some(x => AUDIT_PROMPT_LEFT.test(x))) p.push('باقی‌مانده‌ی متن پرامپت');
+  if(isDigital && /\bhand[\s-]?made\b/i.test(d)) p.push('ادعای handmade برای فایل دیجیتال');
+  if(isDigital && /\b(will be|is) (shipped|mailed)\b/i.test(d)) p.push('ادعای ارسال فیزیکی برای فایل دیجیتال');
+  return p;
+}
+// ── عنوان: حذف Digital Download و فرمت‌ها (به‌جز یک SVG نزدیک ابتدا)، کلمه‌ی تکراری و طول ──
+function auditFixTitleBasic(title, isCut){
+  let t = String(title || '').replace(/\b(instant|digital)\s+download(s)?\b/gi, ' ').replace(AUDIT_FORMATS, ' ').replace(/\p{Extended_Pictographic}/gu, ' ');
+  t = t.replace(/\b(\w+)(\s+\1\b)+/gi, '$1'); // کلمه‌ی پشت‌سرهم تکراری
+  t = t.replace(/\s*([,|])\s*([,|]\s*)+/g, '$1 ').replace(/\s{2,}/g, ' ').replace(/^[\s,|\-–]+|[\s,|\-–]+$/g, '').replace(/\s+([,|])/g, '$1');
+  const segs = t.split(/\s*[,|]\s*/), seenSeg = new Set(); t = segs.filter(x => { const k = x.toLowerCase(); if(!k || seenSeg.has(k)) return false; seenSeg.add(k); return true; }).join(', ');
+  if(isCut){ const m = t.match(/^[^,|]+/), first = m ? m[0].trim() : ''; if(first && first.length <= 36) t = first + ' SVG' + t.slice(m[0].length); else { const w = t.split(' '); t = w.slice(0, 2).join(' ') + ' SVG ' + w.slice(2).join(' '); } t = t.trim(); }
+  return sanitizeEtsyTitle(t).slice(0, 140).trim();
+}
+function auditTitleProblems(l, ctx){
+  const t = String(l.title || ''), p = [];
+  if(/\b(instant|digital)\s+download/i.test(t)) p.push('«Digital Download» در عنوان');
+  const fm = (t.match(AUDIT_FORMATS) || []); const extra = fm.filter((x, i) => !(i === 0 && /svg/i.test(x) && t.toLowerCase().indexOf('svg') < 40));
+  if(extra.length) p.push('فرمت فایل در عنوان (' + [...new Set(fm.map(x => x.toUpperCase()))].join('، ') + ')');
+  const toks = auditTokens(t); if(new Set(toks).size < toks.length) p.push('کلمه‌ی تکراری');
+  if(t.length > 140) p.push('بیش از ۱۴۰ نویسه');
+  // کلیدواژه‌ی اصلی = اولین تگ چندکلمه‌ای که در خود عنوان آمده؛ باید در ۴۰ نویسه‌ی اول باشد
+  const tl = t.toLowerCase(), kw = (l.tags || []).map(x => String(x).toLowerCase().trim()).find(x => x.split(/\s+/).length >= 2 && tl.includes(x));
+  if(kw && tl.indexOf(kw) > 40) p.push('کلیدواژه‌ی اصلی («' + kw + '») در ۴۰ نویسه‌ی اول نیست');
+  const gen = ctx.generic.filter(g => t.toLowerCase().includes(g)); if(gen.length) p.push('عبارت تکراری در کل فروشگاه: ' + gen.join('، '));
+  return {p, needsAI: p.some(x => /کلیدواژه|عبارت تکراری|کلمه‌ی تکراری/.test(x)), generic: gen};
+}
+function auditTagProblems(l){
+  const tags = (l.tags || []).map(String), title = new Set(auditTokens(l.title)), bad = [], p = [];
+  if(tags.length < 13) p.push((13 - tags.length) + ' جای تگ خالی');
+  tags.forEach(t => {
+    if(t.length > 20) bad.push(t);
+    else if(t.trim().split(/\s+/).length < 2) bad.push(t);
+    else { const w = auditTokens(t); if(w.length && w.every(x => title.has(x))) bad.push(t); }
+  });
+  const dup = tags.filter((t, i) => tags.findIndex(x => x.toLowerCase() === t.toLowerCase()) !== i); bad.push(...dup);
+  if(bad.length) p.push(bad.length + ' تگ ضعیف (تک‌کلمه، تکرار عنوان یا تکراری)');
+  return {p, bad: [...new Set(bad)]};
+}
+function auditValidTag(t, titleSet){ t = String(t || '').trim().toLowerCase(); if(!t || t.length > 20 || t.split(/\s+/).length < 2 || /[^\p{L}\p{N}\s\-']/u.test(t)) return false; const w = auditTokens(t); return !(w.length && titleSet && w.every(x => titleSet.has(x))); }
+
+// ── جمع‌آوری داده‌ها از Etsy (فقط فروشگاه فعلی، با توکن خودش) ──
+let auditTaxCache = null; const auditPropCache = {};
+async function auditFetch(shopKey, bt){
+  const shopId = await resolveEtsyShopId(), base = 'https://openapi.etsy.com/v3/application';
+  Busy.set(bt, 'دریافت مشخصات فروشگاه', 3);
+  const shop = await auditCall(() => etsyApiGetWithAuth(base + '/shops/' + shopId));
+  const listings = []; let total = null;
+  for(let off = 0; off < 3000; off += 100){
+    Busy.set(bt, 'دریافت لیستینگ‌ها' + (total ? ' — ' + listings.length + ' از ' + total : ''), 5 + (total ? listings.length / total * 25 : 0));
+    const d = await auditCall(() => etsyApiGetWithAuth(base + '/shops/' + shopId + '/listings?state=active&limit=100&offset=' + off + '&includes=Images,Videos'));
+    (d.results || []).forEach(l => listings.push({
+      listing_id: l.listing_id, title: l.title || '', description: l.description || '', tags: l.tags || [], taxonomy_id: l.taxonomy_id,
+      price: l.price ? (l.price.amount || 0) / (l.price.divisor || 100) : 0, currency: l.price && l.price.currency_code, quantity: l.quantity,
+      images: (l.images || []).length, videos: (l.videos || []).length, featured_rank: l.featured_rank, views: l.views || 0, favs: l.num_favorers || 0,
+      created: l.created_timestamp, updated: l.updated_timestamp || l.last_modified_timestamp, is_digital: !!l.is_digital || l.type === 'download', url: l.url
+    }));
+    total = d.count != null ? d.count : listings.length;
+    if(!(d.results || []).length || listings.length >= total) break;
+  }
+  // فروش هر لیستینگ (اگر اجازه‌ی transactions_r باشد)
+  const sales = {}; let salesOk = true;
+  try{
+    for(let off = 0; off < 1000; off += 100){
+      Busy.set(bt, 'دریافت آمار فروش', 32);
+      const d = await auditCall(() => etsyApiGetWithAuth(base + '/shops/' + shopId + '/transactions?limit=100&offset=' + off));
+      (d.results || []).forEach(t => { sales[t.listing_id] = (sales[t.listing_id] || 0) + (t.quantity || 1); });
+      if((d.results || []).length < 100) break;
+    }
+  }catch(e){ salesOk = false; }
+  if(!auditTaxCache){
+    Busy.set(bt, 'دریافت درخت دسته‌بندی Etsy', 35);
+    const tree = await auditCall(() => etsyApiGet(base + '/seller-taxonomy/nodes')); const map = {};
+    const walk = (nodes, path) => (nodes || []).forEach(n => { const p = [...path, n.name]; map[n.id] = {path: p.join(' › '), leaf: !(n.children && n.children.length)}; walk(n.children, p); });
+    walk(tree.results, []); auditTaxCache = map;
+  }
+  listings.forEach(l => { l.sales = sales[l.listing_id] || 0; l.taxPath = (auditTaxCache[l.taxonomy_id] || {}).path || ''; });
+  return {shopId, shopKey, at: Date.now(), shop: {shop_id: shop.shop_id, name: shop.shop_name, announcement: shop.announcement || '', sale_message: shop.sale_message || '', digital_sale_message: shop.digital_sale_message || ''}, listings, salesOk};
+}
+
+// ── بررسی‌ها: هر مشکل {check, sev, lid, msg, fix?} ؛ fix = {field, compute|value, auto} ──
+function auditChecks(snap){
+  const L = snap.listings, issues = [], now = new Date(), seasons = auditSeasons(now), n = L.length || 1;
+  const byId = Object.fromEntries(L.map(l => [l.listing_id, l]));
+  L.forEach(l => { l._type = auditType(l); l._isCut = /svg|cut file|cricut|silhouette|laser|dxf|stencil/i.test(l.title + ' ' + l.tags.join(' ')); l._season = seasons.find(s => s.re.test(l.title + ' ' + l.tags.join(' '))); });
+  // عبارت‌های عمومی پرتکرار (مثل «Birthday Wedding») در بیش از ۳۰٪ عنوان‌ها
+  const bg = {}; L.forEach(l => { const w = auditTokens(l.title); const seen = new Set(); for(let i = 0; i < w.length - 1; i++){ if(AUDIT_FILLER.has(w[i]) && AUDIT_FILLER.has(w[i+1])){ const k = w[i] + ' ' + w[i+1]; if(!seen.has(k)){ seen.add(k); bg[k] = (bg[k] || 0) + 1; } } } });
+  const generic = L.length >= 10 ? Object.keys(bg).filter(k => bg[k] / L.length > 0.3) : [];
+  const ctx = {generic, seasons};
+  const add = (o) => { o.id = o.check + ':' + (o.lid || 'shop') + ':' + (o.key || ''); issues.push(o); return o; };
+
+  // ۳. تکراری‌ها: شباهت عنوان بیش از ۸۰٪ → خودکار غیرفعال؛ هم‌کلیدواژه + هم‌نوع → فقط هشدار
+  const parent = {}; const find = x => parent[x] === x ? x : (parent[x] = find(parent[x])); L.forEach(l => parent[l.listing_id] = l.listing_id);
+  const tok = Object.fromEntries(L.map(l => [l.listing_id, auditTokens(l.title).filter(w => !AUDIT_FILLER.has(w))]));
+  const soft = [];
+  for(let i = 0; i < L.length; i++) for(let j = i + 1; j < L.length; j++){
+    const a = L[i], b = L[j], s = auditDice(tok[a.listing_id], tok[b.listing_id]);
+    if(s > 0.8) parent[find(a.listing_id)] = find(b.listing_id);
+    else if(a._type.k === b._type.k && auditMainKw(a) === auditMainKw(b) && s > 0.5) soft.push([a, b]);
+  }
+  const groups = {}; L.forEach(l => { const r = find(l.listing_id); (groups[r] = groups[r] || []).push(l); });
+  const rank = (a, b) => (b.sales - a.sales) || (b.favs - a.favs) || (b.views - a.views);
+  const losers = new Set();
+  Object.values(groups).filter(g => g.length > 1).forEach(g => {
+    g.sort(rank); const keep = g[0];
+    g.slice(1).forEach(l => { losers.add(l.listing_id); add({check: 'duplicate', sev: 'medium', lid: l.listing_id, msg: 'تقریباً همان «' + keep.title.slice(0, 50) + '» است (#' + keep.listing_id + ' با فروش/پسند بیشتر نگه داشته می‌شود)', fix: {field: 'state', value: 'inactive', kind: 'duplicates'}}); });
+  });
+  soft.filter(([a, b]) => !losers.has(a.listing_id) && !losers.has(b.listing_id)).slice(0, 30).forEach(([a, b]) => add({check: 'duplicate', key: 'soft' + b.listing_id, sev: 'low', lid: a.listing_id, msg: 'شاید تکراری با #' + b.listing_id + ' «' + b.title.slice(0, 40) + '» (همان کلیدواژه‌ی اصلی و نوع) — دستی بررسی کن'}));
+
+  // انتخاب دسته‌ی رایج هر نوع در خود فروشگاه (برای پیشنهاد دسته‌ی درست)
+  const typeTax = {}; L.forEach(l => { if(l._type.path.test(l.taxPath) && !AUDIT_UNRELATED_TOP.test(l.taxPath)){ const m = (typeTax[l._type.k] = typeTax[l._type.k] || {}); m[l.taxonomy_id] = (m[l.taxonomy_id] || 0) + 1; } });
+  const best = k => { const m = typeTax[k] || {}; const e = Object.entries(m).sort((a, b) => b[1] - a[1])[0]; return e ? Number(e[0]) : null; };
+  const prices = {}; L.forEach(l => { if(l.price > 0) (prices[l._type.k] = prices[l._type.k] || []).push(l.price); });
+  const median = a => { const s = [...a].sort((x, y) => x - y); const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m-1] + s[m]) / 2; };
+
+  L.forEach(l => {
+    if(losers.has(l.listing_id)) return; // لیستینگ تکراری غیرفعال می‌شود؛ بقیه‌ی اصلاح‌ها رویش لازم نیست
+    // ۱. دسته‌بندی
+    if(l._type.k !== 'other' && l.taxPath){
+      const unrelated = AUDIT_UNRELATED_TOP.test(l.taxPath), mismatch = !l._type.path.test(l.taxPath);
+      if(unrelated || mismatch){
+        const sug = best(l._type.k);
+        add({check: 'category', sev: unrelated ? 'critical' : 'high', lid: l.listing_id, msg: 'دسته‌ی «' + l.taxPath + '» با نوع محصول (' + l._type.noun + ') نمی‌خواند' + (sug && sug !== l.taxonomy_id ? ' — پیشنهاد: ' + ((auditTaxCache[sug] || {}).path || sug) : ''), fix: {field: 'taxonomy_id', value: sug && sug !== l.taxonomy_id ? sug : null, compute: sug && sug !== l.taxonomy_id ? null : 'taxonomy', kind: 'category'}});
+      }
+    }
+    // ۲. توضیحات خراب
+    const dp = auditDescProblems(l.description, l.is_digital);
+    if(dp.length){ const nd = auditCleanDesc(l.description, l.is_digital); if(nd && nd !== l.description.trim()) add({check: 'description', sev: 'high', lid: l.listing_id, msg: dp.join('، '), fix: {field: 'description', value: nd, kind: 'description'}}); }
+    // ۴. عنوان
+    const tp = auditTitleProblems(l, ctx);
+    if(tp.p.length){ const basic = auditFixTitleBasic(l.title, /\bsvg\b/i.test(l.title)); add({check: 'title', sev: 'medium', lid: l.listing_id, msg: tp.p.join('، '), fix: {field: 'title', value: tp.needsAI ? null : (basic !== l.title ? basic : null), compute: tp.needsAI ? 'ai' : null, basic, generic: tp.generic, kind: 'title'}}); }
+    // ۵. تگ‌ها
+    const gp = auditTagProblems(l);
+    if(gp.p.length) add({check: 'tags', sev: l.tags.length < 10 ? 'high' : 'medium', lid: l.listing_id, msg: gp.p.join('، ') + (gp.bad.length ? ': ' + gp.bad.slice(0, 5).join('، ') : ''), fix: {field: 'tags', compute: 'ai', bad: gp.bad, kind: 'tags'}});
+    // ۱۲. فصلی: در فصل فعال، محصول همان فصل بدون تگ فصل
+    const s = l._season;
+    if(s && s.active && !l.tags.some(t => t.toLowerCase().includes(s.word.split(' ')[0]))){
+      const tag = (s.word + ' ' + l._type.noun).slice(0, 20).trim();
+      add({check: 'seasonal', sev: 'medium', lid: l.listing_id, msg: 'محصول ' + s.fa + 'ی است ولی در فصلش تگ «' + s.word + '» ندارد', fix: {field: 'tags', compute: 'seasonTag', tag, kind: 'tags'}});
+    }
+    // ۷. قیمت غیرعادی (فقط هشدار)
+    const arr = prices[l._type.k] || []; if(arr.length >= 3 && l.price > 0){ const m = median(arr); if(l.price > m*5 || l.price < m*0.2) add({check: 'price', sev: 'medium', lid: l.listing_id, msg: 'قیمت ' + l.price + ' در برابر میانه‌ی ' + m.toFixed(2) + ' برای همین نوع محصول — دستی بررسی کن (قیمت خودکار تغییر نمی‌کند)'}); }
+    // ۱۰. تصویر و ویدیو
+    if(l.images < 10 || !l.videos) add({check: 'media', sev: 'low', lid: l.listing_id, msg: (l.images < 10 ? l.images + ' تصویر (۱۰ تا پیشنهاد می‌شود)' : '') + (l.images < 10 && !l.videos ? '، ' : '') + (!l.videos ? 'بدون ویدیو' : '')});
+  });
+
+  // ۶. ویژگی Holiday برای محصولات مناسبتی (در زمان اجرا با API بررسی می‌شود)
+  L.filter(l => l._season && !losers.has(l.listing_id)).slice(0, 40).forEach(l => add({check: 'attributes', sev: l._season.active ? 'high' : 'low', lid: l.listing_id, key: l._season.k, msg: 'ویژگی Holiday باید «' + l._season.holiday + '» باشد (بررسی می‌شود)', fix: {field: 'property', compute: 'holiday', holiday: l._season.holiday, kind: 'attributes'}, pending: true}));
+
+  // ۹. محصولات ویژه
+  const featured = L.filter(l => typeof l.featured_rank === 'number' && l.featured_rank >= 1).sort((a, b) => a.featured_rank - b.featured_rank);
+  const xmas = seasons[0], inXmas = now.getMonth() >= 9;
+  featured.forEach(l => {
+    if(losers.has(l.listing_id)) add({check: 'featured', sev: 'medium', lid: l.listing_id, msg: 'محصول ویژه تکراری است', fix: {field: 'featured_rank', value: -1, kind: 'featured'}});
+    else if(l._season && !l._season.active && !(l._season.k === 'christmas' && inXmas)) add({check: 'featured', sev: 'medium', lid: l.listing_id, msg: 'محصول ویژه خارج از فصل (' + l._season.fa + ') است', fix: {field: 'featured_rank', value: -1, kind: 'featured'}});
+  });
+  if(inXmas){
+    const xm = L.filter(l => l._season === xmas && !losers.has(l.listing_id) && !(l.featured_rank >= 1)).sort(rank);
+    const xmFeat = featured.filter(l => l._season === xmas).length, slots = Math.max(0, Math.min(4, 2 - xmFeat));
+    xm.slice(0, slots).forEach((l, i) => add({check: 'featured', sev: 'medium', lid: l.listing_id, msg: 'فصل کریسمس است — این محصول پرفروش کریسمسی ویژه شود', fix: {field: 'featured_rank', value: Math.min(4, featured.length + i + 1), kind: 'featured'}}));
+  }
+
+  // ۱۱. متن‌های فروشگاه
+  const all = L.map(l => (l.title + ' ' + l.tags.join(' ')).toLowerCase()).join(' \n ');
+  const allDigital = L.length && L.every(l => l.is_digital);
+  [['announcement', snap.shop.announcement], ['sale_message', snap.shop.sale_message]].forEach(([f, txt]) => {
+    if(!txt) { if(f === 'announcement') add({check: 'shopText', key: f, sev: 'low', msg: 'اطلاعیه‌ی فروشگاه خالی است', fix: {field: f, compute: 'shopText', kind: 'shopText'}}); return; }
+    const words = (txt.toLowerCase().match(/jewel+ry|necklaces?|earrings?|bracelets?|t-?shirts?|clothing|dress(es)?|mugs?|candles?|soaps?|pottery|ceramics?|knit(ted|ting)?|crochet|leather|furniture|cosmetics?|skincare|stickers?|hand[\s-]?made/g) || []);
+    const foreign = [...new Set(words)].filter(w => /hand/.test(w) ? allDigital : (all.split(w.replace(/s$/, '')).length - 1) < Math.max(1, L.length * 0.05));
+    const fake = AUDIT_PLACEHOLDER.test(txt) || /^\s{0,3}#{1,6}\s|\*\*/m.test(txt);
+    if(foreign.length || fake) add({check: 'shopText', key: f, sev: 'high', msg: (f === 'announcement' ? 'اطلاعیه' : 'پیام بعد از خرید') + ' درباره‌ی چیزهایی است که فروشگاه نمی‌فروشد: ' + (foreign.join('، ') || 'متن خراب'), fix: {field: f, compute: 'shopText', kind: 'shopText'}});
+  });
+  // ۸. تخفیف دائمی: API عمومی Etsy اطلاعات تخفیف‌ها را نمی‌دهد
+  add({check: 'discount', sev: 'low', msg: 'Etsy اطلاعات «Sales and Discounts» را از API نمی‌دهد — یک‌بار دستی در Marketing ← Sales and discounts ببین تخفیفی بیش از ۳۰ روز روی همه‌ی محصولات فعال نمانده باشد'});
+
+  issues.forEach(x => { if(x.lid && byId[x.lid]) x.ltitle = byId[x.lid].title; });
+  const pen = issues.reduce((s, x) => s + AUDIT_SEV[x.sev].w, 0);
+  const score = Math.max(0, Math.round(100 - Math.min(100, pen / n * 12)));
+  return {issues, score, generic};
+}
+
+// ── ساخت مقدار جدید برای اصلاح‌هایی که محاسبه لازم دارند (AI یا API) ──
+async function auditAiTitlesTags(items, snap, ctx){
+  // دسته‌های ۵ تایی، یک درخواست برای چند لیستینگ
+  const out = {};
+  for(let i = 0; i < items.length; i += 5){
+    const part = items.slice(i, i + 5);
+    const prompt = `You are an Etsy SEO editor. For each listing below, return improved fields. Return ONLY JSON: {"items":[{"id":123,"title":"...","tags":["..."]}]}.
+Include "title" only if asked (needTitle) and "tags" only if asked (needTags).
+${shopCtx(null)}
+TITLE RULES: natural English, max 140 characters, no emojis, no markdown, never "Digital Download"/"Instant Download", no file formats (svg, dxf, pdf, eps, ai, png) EXCEPT a single "SVG" in the first 40 characters when isCutFile is true; put the main keyword in the first 40 characters; no repeated words; ${ctx.generic.length ? 'do NOT use these phrases that are overused in this shop: ' + ctx.generic.join(', ') + ' — use one specific real use case instead; ' : ''}never claim handmade or a physical item for digital downloads.
+TAG RULES: exactly 13 tags in total when combined with the kept tags; each 2-3 words, max 20 characters, lowercase, only letters/numbers/spaces; long-tail buyer phrases; must not simply repeat the title words; no duplicates.
+${part.map(x => JSON.stringify({id: x.l.listing_id, needTitle: !!x.needTitle, needTags: x.needTags || 0, isCutFile: x.l._isCut, mainKeyword: auditMainKw(x.l), title: x.l.title, keepTags: x.keepTags || [], description: x.l.description.slice(0, 350)})).join('\n')}
+For needTags return that many NEW tags (not in keepTags).`;
+    try{
+      const r = await callClaude(prompt, 1800); const j = parseJSON(r);
+      (j.items || []).forEach(it => { out[it.id] = it; });
+    }catch(e){ log('⚠ بازرسی: ساخت عنوان/تگ با AI ناموفق بود: ' + e.message, 'warn'); }
+  }
+  return out;
+}
+async function auditAiTaxonomy(l){
+  const cands = Object.entries(auditTaxCache).filter(([id, v]) => v.leaf && l._type.path.test(v.path) && !AUDIT_UNRELATED_TOP.test(v.path)).slice(0, 80);
+  if(!cands.length) return null;
+  try{
+    const r = await callClaude(`Pick the single best Etsy category for this digital product. Return ONLY JSON {"id":number}.\nProduct: ${l.title}\nTags: ${l.tags.join(', ')}\nCategories:\n${cands.map(([id, v]) => id + ' = ' + v.path).join('\n')}`, 200);
+    const id = Number(parseJSON(r).id); return cands.some(([c]) => Number(c) === id) ? id : null;
+  }catch(e){ return null; }
+}
+async function auditAiShopText(field, snap, L){
+  const types = {}; L.forEach(l => { types[l._type.noun] = (types[l._type.noun] || 0) + 1; });
+  const top = Object.entries(types).sort((a, b) => b[1] - a[1]).slice(0, 5).map(e => e[0] + ' (' + e[1] + ')').join(', ');
+  const examples = L.slice().sort((a, b) => b.sales - a.sales || b.favs - a.favs).slice(0, 8).map(l => '- ' + l.title.slice(0, 90)).join('\n');
+  const digital = L.every(l => l.is_digital);
+  const prompt = `Write the Etsy shop ${field === 'announcement' ? 'announcement (shown at the top of the shop page, max 450 characters)' : 'message to buyers sent after purchase (max 500 characters)'} for the shop "${snap.shop.name}".
+It must describe ONLY what the shop really sells. Product types: ${top}. Best listings:\n${examples}
+Rules: natural friendly English, plain text, no markdown, no hashtags, at most 2 emojis; ${digital ? 'all products are DIGITAL DOWNLOADS — never say handmade, never mention shipping or physical items; ' : ''}${field === 'sale_message' ? 'explain how to download the files from Etsy Purchases and invite a message if something is unclear; ' : ''}do not invent discounts or facts.
+Return ONLY the text.`;
+  const r = String(await callClaude(prompt, 600) || '').trim().replace(/^["']|["']$/g, '');
+  const t = auditCleanDesc(r, digital); return t && !AUDIT_PLACEHOLDER.test(t) ? t.slice(0, field === 'announcement' ? 5000 : 5000) : null;
+}
+async function auditHolidayFix(l, holiday, shopId){
+  const base = 'https://openapi.etsy.com/v3/application';
+  if(!auditPropCache[l.taxonomy_id]) auditPropCache[l.taxonomy_id] = await auditCall(() => etsyApiGet(base + '/seller-taxonomy/nodes/' + l.taxonomy_id + '/properties')).catch(() => ({results: []}));
+  const prop = (auditPropCache[l.taxonomy_id].results || []).find(p => /^holiday$/i.test(p.name || p.display_name || ''));
+  if(!prop) return {skip: 'دسته‌ی این محصول ویژگی Holiday ندارد'};
+  const val = (prop.possible_values || []).find(v => String(v.name).toLowerCase() === holiday.toLowerCase()) || (prop.possible_values || []).find(v => String(v.name).toLowerCase().includes(holiday.toLowerCase().split("'")[0]));
+  if(!val) return {skip: 'مقدار «' + holiday + '» در فهرست Etsy نیست'};
+  const cur = await auditCall(() => etsyApiGetWithAuth(base + '/shops/' + shopId + '/listings/' + l.listing_id + '/properties')).catch(() => ({results: []}));
+  const have = (cur.results || []).find(p => p.property_id === prop.property_id);
+  if(have && (have.value_ids || []).includes(val.value_id)) return {ok: true};
+  return {property_id: prop.property_id, old: have ? {value_ids: have.value_ids, values: have.values} : null, value: {value_ids: [val.value_id], values: [val.name]}};
+}
+
+// ── اجرای بازرسی: mode = dry (فقط پیش‌نمایش) | apply (دستی) | auto (زمان‌بندی‌شده) ──
+async function auditRun(mode){
+  if(AUDIT.running){ toast('بازرسی در حال اجراست'); return; }
+  if(!S.shopId){ alert('اول یک فروشگاه انتخاب کن'); return; }
+  if(!S.etsyOAuthToken){ alert('این فروشگاه به Etsy وصل نیست — اول از تنظیمات «اتصال به Etsy» را انجام بده'); return; }
+  const shopKey = S.shopId, shopName = S.shopName, st = await auditSettings(shopKey);
+  if(mode === 'apply' && !confirm('بازرسی کامل «' + shopName + '» انجام و حداکثر ' + st.maxChanges + ' اصلاح مستقیماً روی Etsy اعمال شود؟\n\nهر تغییر در تاریخچه ذخیره می‌شود و با یک کلیک برمی‌گردد. قیمت‌ها هیچ‌وقت خودکار تغییر نمی‌کنند. تکراری‌ها فقط غیرفعال می‌شوند (حذف نمی‌شوند).')) return;
+  AUDIT.running = true; const bt = Busy.start('🩺 بازرسی فروشگاه «' + shopName + '»', {pct: 0});
+  const runId = 'r' + Date.now().toString(36), sameShop = () => S.shopId === shopKey;
+  try{
+    const snap = await auditFetch(shopKey, bt);
+    if(!sameShop()) throw new Error('فروشگاه وسط کار عوض شد — بازرسی متوقف شد');
+    await auditUpdateImpact(shopKey, snap);
+    Busy.set(bt, 'بررسی ' + snap.listings.length + ' لیستینگ', 40);
+    const res = auditChecks(snap), byId = Object.fromEntries(snap.listings.map(l => [l.listing_id, l]));
+    const ctx = {generic: res.generic};
+    // اصلاح‌پذیرها به ترتیب شدت، تا سقف تعداد تغییر
+    const order = {critical: 0, high: 1, medium: 2, low: 3};
+    const fixable = res.issues.filter(x => x.fix && st.fix[x.fix.kind] !== false).sort((a, b) => order[a.sev] - order[b.sev]);
+    const plan = []; // {issue, lid, field, old, new, reason}
+    const lidFields = {}; const take = (x, field, oldV, newV, extra) => { if(plan.length >= st.maxChanges) return false; const k = (x.lid || 'shop') + ':' + field; if(lidFields[k]){ lidFields[k].new = newV; lidFields[k].reason += ' + ' + AUDIT_CHECK_FA[x.check]; return true; } const c = Object.assign({id: runId + '-' + plan.length, lid: x.lid || null, field, old: oldV, new: newV, reason: AUDIT_CHECK_FA[x.check] + ': ' + x.msg, issueId: x.id, ltitle: x.ltitle || ''}, extra || {}); plan.push(c); lidFields[k] = c; x.planned = c.id; return true; };
+    // ۱) اصلاح‌های مستقیم (بدون AI)
+    for(const x of fixable){
+      const l = byId[x.lid], f = x.fix;
+      if(f.value != null && f.field !== 'tags') take(x, f.field, f.field === 'state' ? 'active' : f.field === 'featured_rank' ? (l && l.featured_rank >= 1 ? l.featured_rank : -1) : f.field === 'taxonomy_id' ? l.taxonomy_id : f.field === 'title' ? l.title : f.field === 'description' ? l.description : null, f.value);
+    }
+    // ۲) عنوان/تگ با AI (یک‌جا، دسته‌ای)
+    const aiNeed = {};
+    fixable.filter(x => !x.planned && (x.fix.compute === 'ai' || x.fix.compute === 'seasonTag')).forEach(x => { const a = aiNeed[x.lid] = aiNeed[x.lid] || {l: byId[x.lid], issues: []}; a.issues.push(x); if(x.fix.field === 'title') a.needTitle = true; if(x.fix.field === 'tags' && x.fix.compute === 'ai'){ a.bad = x.fix.bad; } if(x.fix.compute === 'seasonTag') a.season = x.fix.tag; });
+    const aiList = Object.values(aiNeed).slice(0, Math.max(0, st.maxChanges - plan.length));
+    aiList.forEach(a => { const bad = new Set((a.bad || []).map(t => t.toLowerCase())); a.keepTags = a.l.tags.filter(t => !bad.has(t.toLowerCase())); if(a.season && !a.keepTags.some(t => t.toLowerCase() === a.season)) a.keepTags = [a.season, ...a.keepTags].slice(0, 13); a.needTags = (a.bad || a.season) ? 13 - a.keepTags.length : 0; });
+    const toAi = aiList.filter(a => a.needTitle || a.needTags > 0);
+    if(toAi.length){ Busy.set(bt, 'ساخت عنوان و تگ با AI (' + toAi.length + ' لیستینگ)', 50); }
+    const ai = toAi.length ? await auditAiTitlesTags(toAi, snap, ctx) : {};
+    for(const a of aiList){
+      const r = ai[a.l.listing_id] || {};
+      for(const x of a.issues){
+        if(x.fix.field === 'title' && a.needTitle){
+          let t = r.title ? sanitizeEtsyTitle(String(r.title).replace(/\p{Extended_Pictographic}/gu, '')).slice(0, 140) : x.fix.basic;
+          if(t && (/\b(instant|digital)\s+download/i.test(t) || (t.match(AUDIT_FORMATS) || []).filter(m => !/svg/i.test(m)).length || ctx.generic.some(g => t.toLowerCase().includes(g)))) t = x.fix.basic;
+          if(t && t !== a.l.title) take(x, 'title', a.l.title, t);
+        }
+      }
+      if(a.needTags > 0 || a.season){
+        const titleSet = new Set(auditTokens(r.title || a.l.title)); const tags = [...a.keepTags];
+        (r.tags || []).map(t => String(t).toLowerCase().trim()).forEach(t => { if(tags.length < 13 && auditValidTag(t, titleSet) && !tags.some(x => x.toLowerCase() === t)) tags.push(t); });
+        const clean = etsyCleanTags(tags);
+        const x = a.issues.find(i => i.fix.field === 'tags');
+        if(x && clean.join(',') !== a.l.tags.join(',') && clean.length >= Math.min(13, a.l.tags.length)) take(x, 'tags', a.l.tags, clean);
+      }
+    }
+    // ۳) دسته‌ی بدون پیشنهاد در خود فروشگاه → AI از بین دسته‌های مرتبط
+    for(const x of fixable.filter(x => !x.planned && x.fix.compute === 'taxonomy')){ if(plan.length >= st.maxChanges) break; Busy.set(bt, 'پیدا کردن دسته‌ی درست', 60); const id = await auditAiTaxonomy(byId[x.lid]); if(id && id !== byId[x.lid].taxonomy_id){ x.msg += ' — پیشنهاد: ' + ((auditTaxCache[id] || {}).path || id); take(x, 'taxonomy_id', byId[x.lid].taxonomy_id, id); } }
+    // ۴) ویژگی Holiday (با API بررسی می‌شود)
+    for(const x of res.issues.filter(x => x.check === 'attributes')){
+      if(plan.length >= st.maxChanges || !st.fix.attributes) break;
+      Busy.set(bt, 'بررسی ویژگی Holiday', 65);
+      try{
+        const h = await auditHolidayFix(byId[x.lid], x.fix.holiday, snap.shopId);
+        if(h.ok || h.skip){ x.resolved = true; continue; }
+        x.pending = false; take(x, 'property', h.old, h.value, {property_id: h.property_id});
+      }catch(e){ x.pending = false; x.msg += ' (بررسی نشد: ' + e.message + ')'; }
+    }
+    res.issues = res.issues.filter(x => !(x.check === 'attributes' && x.resolved));
+    // ۵) متن‌های فروشگاه با AI
+    for(const x of fixable.filter(x => !x.planned && x.fix.compute === 'shopText')){
+      if(plan.length >= st.maxChanges) break; Busy.set(bt, 'نوشتن متن تازه‌ی فروشگاه', 70);
+      try{ const t = await auditAiShopText(x.fix.field, snap, snap.listings); if(t) take(x, x.fix.field, snap.shop[x.fix.field] || '', t); }catch(e){ x.msg += ' (متن تازه ساخته نشد: ' + e.message + ')'; }
+    }
+    // ── اعمال ──
+    const changes = [];
+    if(mode !== 'dry'){
+      for(const [k, c] of plan.entries()){
+        if(!sameShop()) throw new Error('فروشگاه وسط کار عوض شد — بقیه‌ی تغییرها اعمال نشد');
+        Busy.set(bt, 'اعمال ' + (k + 1) + ' از ' + plan.length + ': ' + (AUDIT_FIELD_FA[c.field] || c.field), 72 + k / Math.max(1, plan.length) * 26);
+        const l = byId[c.lid];
+        const entry = Object.assign({}, c, {runId, at: Date.now(), status: 'applied', base: l ? {views: l.views, favs: l.favs, at: Date.now()} : null});
+        try{ await auditApplyOne(snap.shopId, c, c.new); auditSyncLocal(c.lid, c.field, c.new); }
+        catch(e){ entry.status = 'failed'; entry.error = e.message; }
+        changes.push(entry);
+      }
+      const logArr = await AuditDB.get(auditKey(shopKey, 'log'), []);
+      await AuditDB.set(auditKey(shopKey, 'log'), [...changes, ...logArr].slice(0, 1500));
+      saveCurrentShop();
+    }
+    const counts = {critical: 0, high: 0, medium: 0, low: 0}; res.issues.forEach(x => counts[x.sev]++);
+    const run = {id: runId, at: Date.now(), mode, score: res.score, counts, listings: snap.listings.length, salesOk: snap.salesOk,
+      issues: res.issues.map(x => ({id: x.id, check: x.check, sev: x.sev, lid: x.lid, ltitle: x.ltitle, msg: x.msg, planned: x.planned || null, canFix: !!x.fix})),
+      plan: mode === 'dry' ? plan : [], base: mode === 'dry' ? Object.fromEntries(plan.filter(c => c.lid && byId[c.lid]).map(c => [c.lid, {v: byId[c.lid].views, f: byId[c.lid].favs}])) : null, applied: changes.filter(c => c.status === 'applied').length, failed: changes.filter(c => c.status === 'failed').length, capped: plan.length >= st.maxChanges};
+    const runs = await AuditDB.get(auditKey(shopKey, 'runs'), []);
+    await AuditDB.set(auditKey(shopKey, 'runs'), [run, ...runs].slice(0, 20));
+    if(mode !== 'dry') await AuditDB.set(auditKey(shopKey, 'settings'), Object.assign({}, await AuditDB.get(auditKey(shopKey, 'settings'), {}), {lastRun: Date.now()}));
+    log('🩺 بازرسی «' + shopName + '»: امتیاز سلامت ' + res.score + ' — ' + res.issues.length + ' مشکل' + (mode === 'dry' ? '، ' + plan.length + ' اصلاح پیشنهادی (اعمال نشد)' : '، ' + run.applied + ' اصلاح اعمال شد' + (run.failed ? '، ' + run.failed + ' ناموفق' : '')), run.failed ? 'warn' : 'ok');
+    AUDIT.tab = mode === 'dry' ? 'plan' : 'fixed';
+    if(document.getElementById('page-audit').classList.contains('active')) auditRender();
+    if(mode !== 'auto') toast(mode === 'dry' ? '🔍 پیش‌نمایش آماده شد — ' + plan.length + ' اصلاح پیشنهادی' : '✅ بازرسی تمام شد — ' + run.applied + ' اصلاح اعمال شد');
+    else toast('🩺 بازرسی زمان‌بندی‌شده‌ی «' + shopName + '» انجام شد — ' + run.applied + ' اصلاح');
+  }catch(e){ log('✗ بازرسی فروشگاه: ' + e.message, 'err'); if(mode !== 'auto') alert('بازرسی ناموفق بود: ' + e.message); }
+  finally{ AUDIT.running = false; Busy.end(bt); }
+}
+// اعمال یک تغییر روی Etsy (برای «برگرداندن» هم با مقدار قدیمی صدا زده می‌شود)
+async function auditApplyOne(shopId, c, value){
+  const base = 'https://openapi.etsy.com/v3/application/shops/' + shopId;
+  if(c.field === 'property'){
+    if(value && value.value_ids && value.value_ids.length) return auditWrite(base + '/listings/' + c.lid + '/properties/' + c.property_id, 'PUT', value);
+    return auditWrite(base + '/listings/' + c.lid + '/properties/' + c.property_id, 'DELETE', undefined);
+  }
+  if(c.field === 'announcement' || c.field === 'sale_message') return auditWrite(base, 'PUT', {[c.field]: value || ''});
+  const body = {[c.field]: c.field === 'tags' ? etsyCleanTags(value) : value};
+  return auditWrite(base + '/listings/' + c.lid, 'PATCH', body);
+}
+// همان تغییر روی نسخه‌ی برنامه (تا بخش سئو/بهینه‌سازی با Etsy همگام بماند)
+function auditSyncLocal(lid, field, value){
+  const p = S.products.find(x => String(x._listing_id) === String(lid)); if(!p) return;
+  const synced = p._etsy_hash && etsyProductHash(p) === p._etsy_hash;
+  if(field === 'title') p.TITLE = value; else if(field === 'description') p.DESCRIPTION = value; else if(field === 'tags') p.TAGS = (value || []).join(','); else return;
+  if(synced){ p._etsy_hash = etsyProductHash(p); p._etsy_remote = p._etsy_hash; }
+}
+async function auditUndo(changeId, silent){
+  const shopKey = S.shopId, logArr = await AuditDB.get(auditKey(shopKey, 'log'), []), c = logArr.find(x => x.id === changeId && x.runId);
+  if(!c || c.status !== 'applied') return false;
+  if(!silent && !confirm('این تغییر برگردد؟\n' + (AUDIT_FIELD_FA[c.field] || c.field) + (c.ltitle ? ' — ' + c.ltitle.slice(0, 60) : ''))) return false;
+  try{
+    const shopId = await resolveEtsyShopId();
+    await auditApplyOne(shopId, c, c.field === 'state' ? 'active' : c.old);
+    auditSyncLocal(c.lid, c.field, c.old);
+    c.status = 'undone'; c.undoneAt = Date.now();
+    await AuditDB.set(auditKey(shopKey, 'log'), logArr); saveCurrentShop();
+    if(!silent){ toast('↩ برگردانده شد'); auditRender(); }
+    return true;
+  }catch(e){ if(!silent) alert('برگرداندن ناموفق بود: ' + e.message); log('✗ برگرداندن تغییر: ' + e.message, 'err'); return false; }
+}
+async function auditUndoRun(runId){
+  const logArr = await AuditDB.get(auditKey(S.shopId, 'log'), []), list = logArr.filter(x => x.runId === runId && x.status === 'applied');
+  if(!list.length){ toast('تغییر فعالی در این اجرا نیست'); return; }
+  if(!confirm(list.length + ' تغییرِ این اجرا همه برگردند؟')) return;
+  const bt = Busy.start('↩ برگرداندن ' + list.length + ' تغییر', {pct: 0}); let ok = 0;
+  try{ for(const [k, c] of [...list].reverse().entries()){ Busy.set(bt, '↩ ' + (k + 1) + ' از ' + list.length, k / list.length * 100); if(await auditUndo(c.id, true)) ok++; } }
+  finally{ Busy.end(bt); }
+  toast('↩ ' + ok + ' از ' + list.length + ' تغییر برگشت'); auditRender();
+}
+// اعمال پیشنهادهای یک پیش‌نمایش (بدون ساخت دوباره با AI)
+async function auditApplyPlan(runId){
+  const shopKey = S.shopId, runs = await AuditDB.get(auditKey(shopKey, 'runs'), []), run = runs.find(r => r.id === runId);
+  if(!run || !run.plan || !run.plan.length){ toast('پیشنهادی برای اعمال نیست'); return; }
+  if(Date.now() - run.at > 24*3600e3 && !confirm('این پیش‌نمایش بیش از یک روز پیش ساخته شده و ممکن است کهنه باشد. باز هم اعمال شود؟')) return;
+  if(!confirm(run.plan.length + ' اصلاحِ این پیش‌نمایش روی Etsy اعمال شود؟')) return;
+  const bt = Busy.start('اعمال پیش‌نمایش', {pct: 0}), changes = [];
+  try{
+    const shopId = await resolveEtsyShopId();
+    for(const [k, c] of run.plan.entries()){
+      if(S.shopId !== shopKey) break;
+      Busy.set(bt, 'اعمال ' + (k + 1) + ' از ' + run.plan.length, k / run.plan.length * 100);
+      const l0 = (run.base || {})[c.lid]; const e = Object.assign({}, c, {id: c.id + 'a', runId, at: Date.now(), status: 'applied', base: l0 ? {views: l0.v, favs: l0.f, at: Date.now()} : null});
+      try{ await auditApplyOne(shopId, c, c.new); auditSyncLocal(c.lid, c.field, c.new); }catch(err){ e.status = 'failed'; e.error = err.message; }
+      changes.push(e);
+    }
+  } finally { Busy.end(bt); }
+  const logArr = await AuditDB.get(auditKey(shopKey, 'log'), []); await AuditDB.set(auditKey(shopKey, 'log'), [...changes, ...logArr].slice(0, 1500));
+  run.plan = []; run.mode = 'plan'; run.applied = changes.filter(c => c.status === 'applied').length; run.failed = changes.filter(c => c.status === 'failed').length; run.at = Date.now(); await AuditDB.set(auditKey(shopKey, 'runs'), runs); await AuditDB.set(auditKey(shopKey, 'settings'), Object.assign({}, await AuditDB.get(auditKey(shopKey, 'settings'), {}), {lastRun: Date.now()}));
+  saveCurrentShop(); AUDIT.tab = 'fixed'; toast('✅ ' + run.appliedFromPlan + ' اصلاح اعمال شد'); auditRender();
+}
+// ثبت بازدید/پسند ۷ و ۳۰ روز بعد از هر اصلاح (برای سنجش اثر)
+async function auditUpdateImpact(shopKey, snap){
+  const logArr = await AuditDB.get(auditKey(shopKey, 'log'), []), byId = Object.fromEntries(snap.listings.map(l => [String(l.listing_id), l])); let ch = false;
+  logArr.forEach(c => { if(c.status !== 'applied' || !c.base || !c.lid) return; const l = byId[String(c.lid)]; if(!l) return; const age = (Date.now() - c.at) / 864e5;
+    if(age >= 7 && !c.d7){ c.d7 = {views: l.views, favs: l.favs}; ch = true; } if(age >= 30 && !c.d30){ c.d30 = {views: l.views, favs: l.favs}; ch = true; } });
+  if(ch) await AuditDB.set(auditKey(shopKey, 'log'), logArr);
+}
+// زمان‌بندی: وقتی فروشگاه باز است و موعد بازرسی رسیده، خودکار اجرا می‌شود
+async function auditMaybeScheduled(){
+  try{
+    if(!S.shopId || !S.etsyOAuthToken || AUDIT.running) return;
+    const st = await auditSettings(S.shopId);
+    if(!st.scheduleDays || (st.lastRun && Date.now() - st.lastRun < st.scheduleDays * 864e5)) return;
+    if(!st.lastRun){ await AuditDB.set(auditKey(S.shopId, 'settings'), Object.assign({}, await AuditDB.get(auditKey(S.shopId, 'settings'), {}), {lastRun: Date.now()})); return; } // اولین بار: فقط شروع شمارش (اولین اجرا دستی باشد)
+    log('🩺 موعد بازرسی خودکار «' + S.shopName + '» رسیده — شروع شد', 'info');
+    await auditRun('auto');
+  }catch(e){}
+}
+
+// ════════ رابط کاربری ════════
+async function auditSaveSettings(){
+  const k = auditKey(S.shopId, 'settings'), cur = await AuditDB.get(k, {});
+  const fix = {}; document.querySelectorAll('#auditSettings [data-fix]').forEach(c => fix[c.dataset.fix] = c.checked);
+  const maxC = Math.max(1, Math.min(500, parseInt(document.getElementById('auditMax').value) || 50));
+  await AuditDB.set(k, Object.assign({}, cur, {maxChanges: maxC, scheduleDays: parseInt(document.getElementById('auditSched').value) || 0, fix}));
+  toast('✅ تنظیمات بازرسی این فروشگاه ذخیره شد');
+}
+function auditSetTab(t){ AUDIT.tab = t; auditRender(); }
+function auditDiff(o, n){
+  const f = v => Array.isArray(v) ? v.join(', ') : (v && typeof v === 'object') ? (v.values || []).join(', ') || JSON.stringify(v) : String(v == null ? '—' : v);
+  return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px"><div style="background:var(--red-light);border-radius:8px;padding:8px;font-size:12px;direction:ltr;text-align:left;white-space:pre-wrap;max-height:160px;overflow:auto"><b style="color:var(--red)">قبل</b><br>' + escHtml(f(o)).slice(0, 1500) + '</div><div style="background:var(--green-light);border-radius:8px;padding:8px;font-size:12px;direction:ltr;text-align:left;white-space:pre-wrap;max-height:160px;overflow:auto"><b style="color:var(--green)">بعد</b><br>' + escHtml(f(n)).slice(0, 1500) + '</div></div>';
+}
+function auditFieldVal(c, v){ return c.field === 'taxonomy_id' ? ((auditTaxCache && auditTaxCache[v] || {}).path || v) : c.field === 'state' ? (v === 'inactive' ? 'غیرفعال' : 'فعال') : c.field === 'featured_rank' ? (v >= 1 ? 'ویژه (جایگاه ' + v + ')' : 'غیرویژه') : v; }
+async function auditRender(){
+  const top = document.getElementById('auditTop'); if(!top) return;
+  if(!S.shopId){ top.innerHTML = '<div class="alert alert-warn">اول یک فروشگاه انتخاب کن.</div>'; return; }
+  const shopKey = S.shopId, st = await auditSettings(shopKey), runs = await AuditDB.get(auditKey(shopKey, 'runs'), []), logArr = await AuditDB.get(auditKey(shopKey, 'log'), []);
+  if(S.shopId !== shopKey) return;
+  const last = runs.find(r => r.mode !== 'dry') || runs[0];
+  const scoreC = !last ? 'var(--text3)' : last.score >= 80 ? 'var(--green)' : last.score >= 55 ? '#d97706' : 'var(--red)';
+  const sevChips = last ? Object.keys(AUDIT_SEV).map(s => '<span style="display:inline-block;padding:3px 10px;border-radius:12px;background:' + AUDIT_SEV[s].bg + ';color:' + AUDIT_SEV[s].c + ';font-weight:700;font-size:12px;margin:2px">' + AUDIT_SEV[s].fa + ': ' + (last.counts[s] || 0) + '</span>').join('') : '';
+  top.innerHTML = '<div class="card" style="margin-bottom:14px;display:flex;gap:18px;align-items:center;flex-wrap:wrap">' +
+    '<div style="width:92px;height:92px;border-radius:50%;border:8px solid ' + scoreC + ';display:flex;align-items:center;justify-content:center;flex-direction:column"><div style="font-size:26px;font-weight:900;color:' + scoreC + '">' + (last ? last.score : '—') + '</div><div style="font-size:10px;color:var(--text3)">سلامت</div></div>' +
+    '<div style="flex:1;min-width:220px"><div style="font-weight:800;font-size:15px">🏪 ' + escHtml(S.shopName || '') + '</div>' +
+    '<div style="font-size:12px;color:var(--text2);margin:4px 0">' + (last ? 'آخرین بازرسی: ' + new Date(last.at).toLocaleString('fa-IR') + ' · ' + last.listings + ' لیستینگ' + (last.mode === 'dry' ? ' · (پیش‌نمایش)' : ' · ' + (last.applied || 0) + (last.mode === 'plan' ? ' اصلاح از پیش‌نمایش' : ' اصلاح خودکار')) + (last.failed ? ' · <span style="color:var(--red)">' + last.failed + ' ناموفق</span>' : '') : 'هنوز بازرسی نشده — «پیش‌نمایش» را بزن تا بدون تغییر چیزی، مشکلات را ببینی.') + '</div>' + sevChips +
+    (last && last.capped ? '<div style="font-size:11px;color:#a16207;margin-top:4px">⚠ به سقف ' + st.maxChanges + ' تغییر رسید — بقیه در اجرای بعدی اصلاح می‌شوند.</div>' : '') +
+    (last && last.salesOk === false ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">آمار فروش خوانده نشد؛ برای انتخاب نسخه‌ی اصلیِ تکراری‌ها از پسند و بازدید استفاده شد.</div>' : '') + '</div>' +
+    '<div style="font-size:11px;color:var(--text3);line-height:1.9">' + (st.scheduleDays ? '⏰ بازرسی خودکار هر ' + st.scheduleDays + ' روز' + (st.lastRun ? '<br>بعدی: ' + new Date(st.lastRun + st.scheduleDays*864e5).toLocaleDateString('fa-IR') : '') : '⏰ بازرسی خودکار خاموش') + '</div></div>';
+  const fixNames = {category: 'دسته‌بندی', description: 'پاکسازی توضیحات', title: 'عنوان', tags: 'تگ‌ها و تگ فصلی', attributes: 'ویژگی Holiday', featured: 'محصولات ویژه', duplicates: 'غیرفعال کردن تکراری‌ها', shopText: 'اطلاعیه و پیام فروشگاه'};
+  document.getElementById('auditSettings').innerHTML = '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:13px;margin-bottom:10px">' +
+    '<label>حداکثر تغییر در هر اجرا <input class="input" id="auditMax" type="number" min="1" max="500" value="' + st.maxChanges + '" style="width:80px;display:inline-block;margin-inline-start:6px"></label>' +
+    '<label>بازرسی خودکار <select class="input" id="auditSched" style="width:auto;display:inline-block;margin-inline-start:6px">' + [[0, 'خاموش'], [1, 'روزانه'], [7, 'هفتگی'], [14, 'هر دو هفته'], [30, 'ماهانه']].map(([v, t]) => '<option value="' + v + '"' + (st.scheduleDays === v ? ' selected' : '') + '>' + t + '</option>').join('') + '</select></label></div>' +
+    '<div style="font-size:12px;color:var(--text2);margin-bottom:6px">اصلاح خودکار این موارد:</div><div style="display:flex;gap:14px;flex-wrap:wrap;font-size:13px">' + Object.entries(fixNames).map(([k, t]) => '<label style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" data-fix="' + k + '" ' + (st.fix[k] !== false ? 'checked' : '') + '> ' + t + '</label>').join('') + '</div>' +
+    '<div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" onclick="auditSaveSettings()">💾 ذخیره تنظیمات</button><span style="font-size:11px;color:var(--text3)">قیمت هیچ‌وقت خودکار عوض نمی‌شود. بازرسی خودکار وقتی اجرا می‌شود که برنامه با همین فروشگاه باز باشد. برای تغییر اطلاعیه‌ی فروشگاه، اتصال Etsy باید دسترسی shops_w داشته باشد (اگر خطا داد، یک‌بار از تنظیمات دوباره به Etsy وصل شو).</span></div>';
+  const lastApplied = runs.find(r => r.mode !== 'dry');
+  const fixed = logArr.filter(c => lastApplied && (c.runId === lastApplied.id));
+  const dry = runs[0] && runs[0].mode === 'dry' && runs[0].plan && runs[0].plan.length ? runs[0] : null;
+  const tabs = [['fixed', '✅ اصلاح‌شده' + (fixed.length ? ' (' + fixed.length + ')' : '')], ['manual', '🖐 نیاز به بررسی دستی'], ['issues', '📋 همه‌ی مشکلات'], ['plan', '🔍 پیش‌نمایش' + (dry ? ' (' + dry.plan.length + ')' : '')], ['history', '🗂 تاریخچه‌ی تغییرات'], ['impact', '📈 اثر اصلاحات']];
+  document.getElementById('auditTabs').innerHTML = tabs.map(([k, t]) => '<div class="sec-tab' + (AUDIT.tab === k ? ' active' : '') + '" onclick="auditSetTab(\'' + k + '\')">' + t + '</div>').join('');
+  const body = document.getElementById('auditBody');
+  const lname = (lid, t) => lid ? '<a href="https://www.etsy.com/listing/' + lid + '" target="_blank" rel="noopener" style="color:var(--text);font-weight:700;text-decoration:none">' + escHtml((t || '#' + lid).slice(0, 80)) + '</a>' : '<b>🏪 فروشگاه</b>';
+  const chRow = c => '<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap"><div style="font-size:13px">' + lname(c.lid, c.ltitle) + ' · <span style="color:var(--orange);font-weight:700">' + (AUDIT_FIELD_FA[c.field] || c.field) + '</span><div style="font-size:11px;color:var(--text3);margin-top:3px">' + escHtml(c.reason || '') + (c.at ? ' · ' + new Date(c.at).toLocaleString('fa-IR') : '') + '</div></div><div>' +
+    (c.status === 'applied' ? '<button class="btn btn-secondary btn-sm" onclick="auditUndo(\'' + c.id + '\')">↩ برگرداندن</button>' : c.status === 'undone' ? '<span class="badge" style="font-size:11px">↩ برگشت داده شد</span>' : c.status === 'failed' ? '<span style="color:var(--red);font-size:12px">✗ ' + escHtml(c.error || 'ناموفق') + '</span>' : '') + '</div></div>' + auditDiff(auditFieldVal(c, c.old), auditFieldVal(c, c.new)) + '</div>';
+  const issRow = x => '<div style="display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border)"><span style="flex-shrink:0;padding:2px 8px;border-radius:10px;background:' + AUDIT_SEV[x.sev].bg + ';color:' + AUDIT_SEV[x.sev].c + ';font-size:11px;font-weight:700">' + AUDIT_SEV[x.sev].fa + '</span><div style="font-size:12.5px;line-height:1.8"><span style="color:var(--text3)">' + (AUDIT_CHECK_FA[x.check] || x.check) + ' · </span>' + lname(x.lid, x.ltitle) + '<div style="color:var(--text2)">' + escHtml(x.msg) + '</div></div></div>';
+  if(AUDIT.tab === 'fixed') body.innerHTML = !lastApplied ? '<div style="color:var(--text3);padding:20px;text-align:center">هنوز اصلاحی اعمال نشده.</div>' : '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px"><div style="font-size:13px;color:var(--text2)">اجرای ' + new Date(lastApplied.at).toLocaleString('fa-IR') + '</div>' + (fixed.some(c => c.status === 'applied') ? '<button class="btn btn-red btn-sm" onclick="auditUndoRun(\'' + lastApplied.id + '\')">↩ برگرداندن کل این اجرا</button>' : '') + '</div>' + (fixed.map(chRow).join('') || '<div style="color:var(--text3)">در این اجرا اصلاحی لازم نبود.</div>');
+  else if(AUDIT.tab === 'manual'){ const m = last ? last.issues.filter(x => !x.planned) : []; const order = {critical: 0, high: 1, medium: 2, low: 3}; body.innerHTML = m.length ? '<div style="font-size:12px;color:var(--text3);margin-bottom:6px">این‌ها خودکار اصلاح نشدند (نیاز به تصمیم تو دارند، خاموش‌اند، یا به سقف تغییر رسید):</div>' + m.sort((a, b) => order[a.sev] - order[b.sev]).map(issRow).join('') : '<div style="color:var(--text3);padding:20px;text-align:center">موردی نیست.</div>'; }
+  else if(AUDIT.tab === 'issues'){ const order = {critical: 0, high: 1, medium: 2, low: 3}; body.innerHTML = last ? [...last.issues].sort((a, b) => order[a.sev] - order[b.sev]).map(issRow).join('') || '<div style="color:var(--text3)">مشکلی پیدا نشد 🎉</div>' : '<div style="color:var(--text3)">هنوز بازرسی نشده.</div>'; }
+  else if(AUDIT.tab === 'plan') body.innerHTML = dry ? '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px"><div style="font-size:13px;color:var(--text2)">پیش‌نمایش ' + new Date(dry.at).toLocaleString('fa-IR') + ' — هنوز چیزی روی Etsy تغییر نکرده</div><button class="btn btn-primary btn-sm" onclick="auditApplyPlan(\'' + dry.id + '\')">✅ اعمال همین ' + dry.plan.length + ' اصلاح</button></div>' + dry.plan.map(chRow).join('') : '<div style="color:var(--text3);padding:20px;text-align:center">پیش‌نمایشی نیست — «🔍 پیش‌نمایش» را بزن.</div>';
+  else if(AUDIT.tab === 'history') body.innerHTML = logArr.length ? logArr.slice(0, 300).map(chRow).join('') : '<div style="color:var(--text3);padding:20px;text-align:center">تاریخچه‌ای نیست.</div>';
+  else if(AUDIT.tab === 'impact'){
+    const done = logArr.filter(c => c.status === 'applied' && c.base && c.lid), by = {};
+    done.forEach(c => { by[c.lid] = by[c.lid] || c; });
+    const rows = Object.values(by), w7 = rows.filter(c => c.d7), w30 = rows.filter(c => c.d30);
+    const avg = (arr, k, f) => arr.length ? (arr.reduce((s, c) => s + (c[k][f] - c.base[f]), 0) / arr.length).toFixed(1) : '—';
+    body.innerHTML = '<div style="font-size:12px;color:var(--text2);line-height:1.9;margin-bottom:10px">بازدید و پسندِ هر لیستینگ در لحظه‌ی اصلاح ثبت می‌شود و در بازرسی‌های بعدی (۷ و ۳۰ روز بعد) دوباره اندازه‌گیری می‌شود. اعداد افزایشِ تجمعی از لحظه‌ی اصلاح است.</div>' +
+      '<div class="stats-grid" style="margin-bottom:12px"><div class="stat-card"><div class="stat-val">' + rows.length + '</div><div class="stat-label">لیستینگ اصلاح‌شده</div></div><div class="stat-card"><div class="stat-val">' + avg(w7, 'd7', 'views') + '</div><div class="stat-label">میانگین بازدید تازه در ۷ روز (' + w7.length + ' لیستینگ)</div></div><div class="stat-card"><div class="stat-val">' + avg(w30, 'd30', 'views') + '</div><div class="stat-label">میانگین بازدید تازه در ۳۰ روز (' + w30.length + ')</div></div><div class="stat-card"><div class="stat-val">' + avg(w30.length ? w30 : w7, w30.length ? 'd30' : 'd7', 'favs') + '</div><div class="stat-label">میانگین پسند تازه</div></div></div>' +
+      (rows.length ? rows.slice(0, 100).map(c => '<div style="font-size:12px;padding:6px 0;border-bottom:1px solid var(--border)">' + lname(c.lid, c.ltitle) + ' — اصلاح ' + new Date(c.at).toLocaleDateString('fa-IR') + ' · بازدید: ' + c.base.views + (c.d7 ? ' → ۷روز: ' + c.d7.views : '') + (c.d30 ? ' → ۳۰روز: ' + c.d30.views : '') + ' · پسند: ' + c.base.favs + (c.d7 ? ' → ' + c.d7.favs : '') + (c.d30 ? ' → ' + c.d30.favs : '') + '</div>').join('') : '<div style="color:var(--text3)">هنوز اصلاحی اعمال نشده.</div>');
+  }
+}
+setTimeout(auditMaybeScheduled, 20000);
+
+</script>
 <!-- ═══ Smart tooltips (v1.63.0): هر دکمه/آیتم با هاور توضیح عملکردش را نشان می‌دهد ═══ -->
 <style>
 #uiTip{position:fixed;z-index:100000;max-width:300px;padding:8px 12px;border-radius:9px;
@@ -13139,6 +13733,13 @@ save();
     'renderYouTubeStatus':'بررسی اتصال و نام کانال یوتیوب',
     'disconnectYouTube':'قطع اتصال کانال یوتیوب',
     'goToNotOptimized':'رفتن به فهرست محصول‌هایی که هنوز نیاز به بهینه‌سازی دارند',
+    'auditRun:dry':'همه‌ی بررسی‌ها انجام می‌شود و اصلاح‌های پیشنهادی نشان داده می‌شوند، بدون هیچ تغییری روی Etsy',
+    'auditRun:apply':'بازرسی کامل و اعمال خودکار اصلاح‌ها روی Etsy (تا سقف تعیین‌شده؛ هر تغییر قابل برگرداندن است)',
+    'auditUndo':'برگرداندن همین یک تغییر روی Etsy به مقدار قبلی',
+    'auditUndoRun':'برگرداندن همه‌ی تغییرهای این اجرا',
+    'auditApplyPlan':'اعمال همین اصلاح‌های پیش‌نمایش روی Etsy',
+    'auditSaveSettings':'ذخیره‌ی تنظیمات بازرسی فقط برای همین فروشگاه',
+    'auditSetTab':'رفتن به این بخش',
     'crPublishNow':'همین حالا این آیتم را در پلتفرم‌های انتخاب‌شده‌اش منتشر می‌کند (بدون صبر برای Cron و زمان‌بندی)',
     'crPublishSelectedNow':'آیتم‌های تیک‌خورده را یکی‌یکی همین حالا منتشر می‌کند',
     'crMakeVideo':'ساخت ویدیوی افقی از تصویرهای این آیتم و آپلودش روی سرور برای یوتیوب',
