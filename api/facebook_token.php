@@ -16,9 +16,11 @@ function fbGet($path, $token){
   return $d;
 }
 
+$in = (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') ? jsonInput() : null;
+socialShopFromRequest($in);
+
 if(($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST'){
-  $in = jsonInput();
-  if(!empty($in['disconnect'])){ setSetting('FB_PAGE_TOKEN', ''); setSetting('FB_PAGE_ID', ''); setSetting('FB_PAGE_NAME', ''); jsonResponse(['ok'=>true]); }
+  if(!empty($in['disconnect'])){ sSet('FB_PAGE_TOKEN', ''); sSet('FB_PAGE_ID', ''); sSet('FB_PAGE_NAME', ''); jsonResponse(['ok'=>true]); }
   $token = trim((string)($in['token'] ?? ''));
   $want = trim((string)($in['page_id'] ?? ''));
   if(strlen($token) < 30) jsonResponse(['error'=>'توکن خالی یا خیلی کوتاه است'], 400);
@@ -43,11 +45,11 @@ if(($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST'){
   // آزمایش: توکن صفحه باید بتواند صفحه را بخواند
   $chk = fbGet('/'.rawurlencode($pageId).'?fields=id,name', $pageToken);
   if(empty($chk['id'])) jsonResponse(['error'=>'توکن صفحه کار نکرد: '.($chk['error']['message'] ?? 'نامشخص')], 400);
-  setSetting('FB_PAGE_ID', $pageId); setSetting('FB_PAGE_TOKEN', $pageToken); setSetting('FB_PAGE_NAME', $pageName);
+  sSet('FB_PAGE_ID', $pageId); sSet('FB_PAGE_TOKEN', $pageToken); sSet('FB_PAGE_NAME', $pageName);
   jsonResponse(['ok'=>true, 'page_id'=>$pageId, 'page_name'=>$pageName]);
 }
 
-$out = ['configured'=>fbPageId() !== '' && fbPageToken() !== '', 'page_id'=>fbPageId(), 'page_name'=>(string)getSetting('FB_PAGE_NAME', ''), 'valid'=>null, 'message'=>''];
+$out = ['configured'=>fbPageId() !== '' && fbPageToken() !== '', 'page_id'=>fbPageId(), 'page_name'=>sGet('FB_PAGE_NAME', ''), 'valid'=>null, 'message'=>'', 'shop'=>socialShop(), 'main_shop'=>socialMainShop(), 'is_main'=>socialIsMain()];
 if($out['configured']){
   $chk = fbGet('/'.rawurlencode(fbPageId()).'?fields=id,name', fbPageToken());
   $out['valid'] = !empty($chk['id']);

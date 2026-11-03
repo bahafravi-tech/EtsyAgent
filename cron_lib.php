@@ -4,10 +4,67 @@
 require_once __DIR__.'/db.php';
 require_once __DIR__.'/lib_banned.php';
 
+// ════════ حساب‌های شبکه‌ی اجتماعی جدا برای هر فروشگاه ════════
+// تنظیمات هر فروشگاه با کلید «KEY@نام‌فروشگاه» ذخیره می‌شود. «فروشگاه اصلی» (اولین فروشگاهی که با این سرور منتشر کرده)
+// همان تنظیمات قدیمیِ بدون پسوند را دارد تا چیزی از اتصال‌های فعلی خراب نشود. فروشگاه دیگری که حساب خودش را وصل نکرده،
+// هرگز با حساب فروشگاه اصلی منتشر نمی‌کند.
+$GLOBALS['SOCIAL_SHOP'] = '';
+function socialUseShop($shop){ $GLOBALS['SOCIAL_SHOP'] = trim((string)$shop); }
+function socialShop(){ return (string)($GLOBALS['SOCIAL_SHOP'] ?? ''); }
+function socialMainShop(){
+  static $m = null; if($m !== null) return $m;
+  $m = trim((string)getSetting('SOCIAL_MAIN_SHOP', ''));
+  if($m !== '') return $m;
+  try{
+    $pdo = db();
+    $r = $pdo->query("SELECT i.shop, COUNT(*) c FROM content_items i JOIN content_platforms p ON p.content_id=i.id AND p.status='published' WHERE i.shop IS NOT NULL AND i.shop!='' GROUP BY i.shop ORDER BY c DESC LIMIT 1")->fetch();
+    if(!$r) $r = $pdo->query("SELECT shop, COUNT(*) c FROM content_items WHERE shop IS NOT NULL AND shop!='' GROUP BY shop ORDER BY c DESC LIMIT 1")->fetch();
+    if($r && $r['shop'] !== ''){ $m = (string)$r['shop']; setSetting('SOCIAL_MAIN_SHOP', $m); }
+  }catch(Throwable $e){}
+  return $m;
+}
+function socialIsMain($shop = null){
+  $shop = trim((string)($shop === null ? socialShop() : $shop));
+  if($shop === '') return true;
+  $m = socialMainShop();
+  return $m === '' || $m === $shop;
+}
+// خواندن/نوشتن یک تنظیم برای فروشگاهِ جاری
+function sGet($key, $default = ''){
+  $shop = socialShop();
+  if(socialIsMain($shop)) return (string)getSetting($key, $default);
+  return (string)getSetting($key.'@'.$shop, $default);
+}
+function sSet($key, $value){
+  $shop = socialShop();
+  if(socialIsMain($shop)) setSetting($key, $value); else setSetting($key.'@'.$shop, $value);
+}
+// مقدار config.php فقط برای فروشگاه اصلی معتبر است
+function sCfg($key){
+  $v = sGet($key, '');
+  if($v !== '') return $v;
+  return socialIsMain() ? (string)(cfg()[$key] ?? '') : '';
+}
+// نام فروشگاه از درخواست (?shop= یا بدنه‌ی JSON)
+function socialShopFromRequest($in = null){
+  $s = $_GET['shop'] ?? '';
+  if($s === '' && is_array($in)) $s = $in['shop'] ?? '';
+  socialUseShop($s);
+  return socialShop();
+}
+function socialNotSetMsg($what){
+  return socialIsMain() ? $what : $what.' — برای فروشگاه «'.socialShop().'» حساب جدا وصل نشده (در برنامه، وقتی همین فروشگاه فعال است: تنظیمات ← اتصال‌ها)';
+}
+
 // $onlyId: فقط همان آیتم، بدون توجه به زمان‌بندی (انتشار فوری از api/publish_now.php)
 function runCronOnce($onlyId = null){
   @set_time_limit(300); // کاروسل چندعکسی ممکنه هر عکس تا ۳۰ ثانیه طول بکشه، پس سقف رو بازتر می‌ذاریم
-  try{ refreshInstagramTokenIfNeeded(); }catch(Throwable $e){ /* تمدید ناموفق نباید انتشار را متوقف کند */ }
+  try{
+    $shops = [''];
+    foreach(db()->query("SELECT DISTINCT shop FROM content_items WHERE shop IS NOT NULL AND shop!=''")->fetchAll() as $r) if(!socialIsMain($r['shop'])) $shops[] = $r['shop'];
+    foreach($shops as $sh){ socialUseShop($sh); try{ refreshInstagramTokenIfNeeded(); }catch(Throwable $e){} }
+  }catch(Throwable $e){ /* تمدید ناموفق نباید انتشار را متوقف کند */ }
+  socialUseShop('');
   $pdo = db();
   if($onlyId){
     $st = $pdo->prepare("SELECT * FROM content_items WHERE id=? AND status='approved'"); $st->execute([(int)$onlyId]); $items = $st->fetchAll();
@@ -73,6 +130,7 @@ function imageUrl($item){
 }
 
 function publishToPlatform($item, $platform){
+  socialUseShop($item['shop'] ?? '');
   switch($platform){
     case 'telegram': return publishToTelegram($item);
     case 'instagram': return publishToInstagram($item);
@@ -84,8 +142,8 @@ function publishToPlatform($item, $platform){
 }
 
 function publishToTelegram($item){
-  $c = cfg();
-  if(empty($c['TELEGRAM_BOT_TOKEN']) || empty($c['TELEGRAM_CHAT_ID'])) return ['ok'=>false, 'message'=>'تنظیمات تلگرام کامل نیست'];
+  $c = ['TELEGRAM_BOT_TOKEN'=>sCfg('TELEGRAM_BOT_TOKEN'), 'TELEGRAM_CHAT_ID'=>sCfg('TELEGRAM_CHAT_ID')];
+  if(empty($c['TELEGRAM_BOT_TOKEN']) || empty($c['TELEGRAM_CHAT_ID'])) return ['ok'=>false, 'message'=>socialNotSetMsg('تنظیمات تلگرام کامل نیست')];
   $caption = mb_substr(fullCaption($item), 0, 1000);
   $img = imageUrl($item);
   $method = $img ? 'sendPhoto' : 'sendMessage';
@@ -100,28 +158,28 @@ function publishToTelegram($item){
 }
 
 // توکن/شناسه‌ی اینستاگرام: اول از تنظیمات ذخیره‌شده توسط برنامه (api/instagram_token.php)، وگرنه از config.php
-function igToken(){ $t = (string)getSetting('IG_ACCESS_TOKEN', ''); return $t !== '' ? $t : (string)(cfg()['IG_ACCESS_TOKEN'] ?? ''); }
-function igAccountId(){ $t = (string)getSetting('IG_BUSINESS_ACCOUNT_ID', ''); return $t !== '' ? $t : (string)(cfg()['IG_BUSINESS_ACCOUNT_ID'] ?? ''); }
+function igToken(){ return sCfg('IG_ACCESS_TOKEN'); }
+function igAccountId(){ return sCfg('IG_BUSINESS_ACCOUNT_ID'); }
 // توکن «ورود با اینستاگرام» (با IG شروع می‌شود) از graph.instagram.com کار می‌کند؛ توکن فیسبوک از graph.facebook.com
 function igGraphBase($token){ return (strpos((string)$token, 'IG') === 0) ? 'https://graph.instagram.com/v21.0' : 'https://graph.facebook.com/v19.0'; }
 // توکن اینستاگرام ۶۰ روز اعتبار دارد؛ هر ۲۰ روز خودکار تمدید می‌شود (فقط توکن‌های «ورود با اینستاگرام»)
 function refreshInstagramTokenIfNeeded(){
   $t = igToken();
   if(strpos($t, 'IG') !== 0) return;
-  $last = (int)getSetting('IG_TOKEN_REFRESHED_AT', '0');
-  if(!$last){ setSetting('IG_TOKEN_REFRESHED_AT', (string)time()); return; }
+  $last = (int)sGet('IG_TOKEN_REFRESHED_AT', '0');
+  if(!$last){ sSet('IG_TOKEN_REFRESHED_AT', (string)time()); return; }
   if(time() - $last < 20*86400) return;
   $res = relayFetch('https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token='.urlencode($t), 'GET');
   $d = json_decode($res['body'] ?? '', true);
   if($res['ok'] && !empty($d['access_token'])){
-    setSetting('IG_ACCESS_TOKEN', $d['access_token']);
-    setSetting('IG_TOKEN_REFRESHED_AT', (string)time());
+    sSet('IG_ACCESS_TOKEN', $d['access_token']);
+    sSet('IG_TOKEN_REFRESHED_AT', (string)time());
   }
 }
 
 function publishToInstagram($item){
   $c = cfg();
-  if(igAccountId() === '' || igToken() === '') return ['ok'=>false, 'message'=>'تنظیمات اینستاگرام کامل نیست'];
+  if(igAccountId() === '' || igToken() === '') return ['ok'=>false, 'message'=>socialNotSetMsg('تنظیمات اینستاگرام کامل نیست')];
 
   $images = ($item['images_json'] ?? null) ? json_decode($item['images_json'], true) : [];
   if(!is_array($images) || !$images){
@@ -194,7 +252,8 @@ function publishToPinterestPlatform($item){
     if(empty($item['hero_image_path'])) return ['ok'=>false, 'message'=>'عکس هنوز ساخته نشده'];
     return ['ok'=>true, 'external_id'=>'rss-feed'];
   }
-  if(empty($c['PINTEREST_ACCESS_TOKEN']) || empty($c['PINTEREST_BOARD_ID'])) return ['ok'=>false, 'message'=>'تنظیمات پینترست کامل نیست'];
+  $c['PINTEREST_ACCESS_TOKEN'] = sCfg('PINTEREST_ACCESS_TOKEN'); $c['PINTEREST_BOARD_ID'] = sCfg('PINTEREST_BOARD_ID');
+  if(empty($c['PINTEREST_ACCESS_TOKEN']) || empty($c['PINTEREST_BOARD_ID'])) return ['ok'=>false, 'message'=>socialNotSetMsg('تنظیمات پینترست کامل نیست')];
   $img = imageUrl($item);
   if(!$img) return ['ok'=>false, 'message'=>'عکس هنوز ساخته نشده'];
 
@@ -214,8 +273,8 @@ function publishToPinterestPlatform($item){
 
 // ════════════════════════ فیسبوک (صفحه‌ی بیزینسی) ════════════════════════
 // توکن صفحه (Page Access Token) و شناسه‌ی صفحه از api/facebook_token.php ذخیره می‌شوند
-function fbPageId(){ return (string)getSetting('FB_PAGE_ID', ''); }
-function fbPageToken(){ return (string)getSetting('FB_PAGE_TOKEN', ''); }
+function fbPageId(){ return sGet('FB_PAGE_ID', ''); }
+function fbPageToken(){ return sGet('FB_PAGE_TOKEN', ''); }
 const FB_GRAPH = 'https://graph.facebook.com/v21.0';
 
 function itemImagePaths($item, $max=10){
@@ -226,7 +285,7 @@ function itemImagePaths($item, $max=10){
 
 function publishToFacebook($item){
   $page = fbPageId(); $token = fbPageToken();
-  if($page === '' || $token === '') return ['ok'=>false, 'message'=>'تنظیمات فیسبوک کامل نیست (در برنامه: تنظیمات ← فیسبوک، توکن صفحه را ذخیره کن)'];
+  if($page === '' || $token === '') return ['ok'=>false, 'message'=>socialNotSetMsg('تنظیمات فیسبوک کامل نیست (در برنامه: تنظیمات ← فیسبوک، توکن صفحه را ذخیره کن)')];
   $images = itemImagePaths($item, 10);
   $siteUrl = rtrim(cfg()['SITE_URL'] ?? '', '/');
   $urls = array_map(fn($p) => $siteUrl.'/api/image.php?path='.urlencode($p), $images);
@@ -261,18 +320,24 @@ function publishToFacebook($item){
 // ════════════════════════ یوتیوب (ویدیوی ساخته‌شده از تصویرها) ════════════════════════
 // اتصال با OAuth گوگل (api/youtube_auth.php). ویدیو را خود برنامه در مرورگر از تصویرهای آیتم می‌سازد
 // و در content_items.video_path ذخیره می‌کند؛ اینجا فقط آپلود و انتشار انجام می‌شود.
+// اپ گوگل (Client ID/Secret) می‌تواند بین فروشگاه‌ها مشترک باشد؛ اتصال کانال (refresh token) برای هر فروشگاه جداست
+function ytClient(){
+  $cid = sGet('YT_CLIENT_ID', ''); $sec = sGet('YT_CLIENT_SECRET', '');
+  if($cid === '' || $sec === ''){ $cid = (string)getSetting('YT_CLIENT_ID', ''); $sec = (string)getSetting('YT_CLIENT_SECRET', ''); }
+  return [$cid, $sec];
+}
 function ytAccessToken(){
-  $cached = (string)getSetting('YT_ACCESS_TOKEN', '');
-  $exp = (int)getSetting('YT_ACCESS_EXPIRES', '0');
+  $cached = sGet('YT_ACCESS_TOKEN', '');
+  $exp = (int)sGet('YT_ACCESS_EXPIRES', '0');
   if($cached !== '' && $exp > time() + 120) return ['ok'=>true, 'token'=>$cached];
-  $cid = (string)getSetting('YT_CLIENT_ID', ''); $sec = (string)getSetting('YT_CLIENT_SECRET', ''); $rt = (string)getSetting('YT_REFRESH_TOKEN', '');
-  if($cid === '' || $sec === '' || $rt === '') return ['ok'=>false, 'message'=>'یوتیوب هنوز وصل نشده (در برنامه: تنظیمات ← یوتیوب ← اتصال)'];
+  [$cid, $sec] = ytClient(); $rt = sGet('YT_REFRESH_TOKEN', '');
+  if($cid === '' || $sec === '' || $rt === '') return ['ok'=>false, 'message'=>socialNotSetMsg('یوتیوب هنوز وصل نشده (در برنامه: تنظیمات ← یوتیوب ← اتصال)')];
   $res = relayFetch('https://oauth2.googleapis.com/token', 'POST', ['Content-Type'=>'application/x-www-form-urlencoded'],
     http_build_query(['client_id'=>$cid, 'client_secret'=>$sec, 'refresh_token'=>$rt, 'grant_type'=>'refresh_token']));
   $d = json_decode($res['body'] ?? '', true);
   if(!empty($d['access_token'])){
-    setSetting('YT_ACCESS_TOKEN', $d['access_token']);
-    setSetting('YT_ACCESS_EXPIRES', (string)(time() + (int)($d['expires_in'] ?? 3600)));
+    sSet('YT_ACCESS_TOKEN', $d['access_token']);
+    sSet('YT_ACCESS_EXPIRES', (string)(time() + (int)($d['expires_in'] ?? 3600)));
     return ['ok'=>true, 'token'=>$d['access_token']];
   }
   $msg = $d['error_description'] ?? ($d['error'] ?? ($res['body'] ?? 'پاسخی از گوگل نیامد'));
@@ -312,7 +377,7 @@ function publishToYouTube($item){
   $tags = array_values(array_filter(array_map(fn($t) => trim(str_replace(['<','>','#'], '', $t)), explode(',', bannedApplyTags($item['hashtags'] ?? '', $shop)))));
   $tags = array_slice($tags, 0, 15);
   $desc = str_replace(['<','>'], '', mb_substr(fullCaption($item), 0, 4900));
-  $privacy = (string)getSetting('YT_PRIVACY', 'public');
+  $privacy = sGet('YT_PRIVACY', 'public');
   if(!in_array($privacy, ['public','unlisted','private'], true)) $privacy = 'public';
   $meta = ['snippet'=>['title'=>$title, 'description'=>$desc, 'tags'=>$tags, 'categoryId'=>'26'],
            'status'=>['privacyStatus'=>$privacy, 'selfDeclaredMadeForKids'=>false, 'embeddable'=>true]];

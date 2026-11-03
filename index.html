@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.71.1 -->
+<!-- APP_VERSION: 1.72.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v228</div>
+        <div class="logo-badge">v229</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -891,11 +891,12 @@ margin:0;background:var(--paper);color:var(--ink);
     <div id="crAddFormBox" class="hidden" style="margin-top:12px">
       <div style="background:var(--surface3);border-radius:10px;padding:12px;margin-bottom:14px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <div class="input-label" style="margin:0">📦 از محصولات خودم (چندتایی) <span style="color:var(--text3);font-weight:400">(هرکدوم یه موضوع جدا می‌شه)</span></div>
+          <div class="input-label" style="margin:0">📦 از محصولات همین فروشگاه (<span id="crBulkShopName"></span>) <span style="color:var(--text3);font-weight:400">(هرکدوم یه موضوع جدا می‌شه)</span></div>
           <label style="font-size:11px;color:var(--orange);cursor:pointer;display:flex;align-items:center;gap:4px"><input type="checkbox" id="crSelectAllProducts" onchange="toggleAllCrProducts(this.checked)"> انتخاب همه (<span id="crProductTotalCount">0</span>)</label>
         </div>
         <div id="crProductChecklist" style="max-height:220px;overflow:auto;display:grid;gap:4px;margin-bottom:10px"></div>
-        <button class="btn btn-green btn-sm" onclick="submitCrBulkProducts()">➕ افزودن محصولات انتخاب‌شده به فهرست</button>
+        <button class="btn btn-green btn-sm" id="btnCrBulkAdd" onclick="submitCrBulkProducts()">➕ افزودن محصولات انتخاب‌شده به فهرست</button>
+        <button class="btn btn-secondary btn-sm hidden" id="btnCrBulkStop" onclick="crBulkStop=true;this.textContent='⏳ بعد از همین محصول متوقف می‌شود...'" title="افزودن را متوقف می‌کند؛ محصولاتی که تا این لحظه اضافه شده‌اند می‌مانند">⏹ توقف</button>
         <div id="crBulkProgress" style="font-size:11px;color:var(--text2);margin-top:6px"></div>
       </div>
       <div class="input-label">یا دستی بنویسم</div>
@@ -966,6 +967,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div class="cr-tab" data-status="failed" onclick="setContentReviewTab('failed',this)">❌ ناموفق <span id="crCount-failed">0</span></div>
     <div class="cr-tab" data-status="rejected" onclick="setContentReviewTab('rejected',this)">🗑 ردشده <span id="crCount-rejected">0</span></div>
     <select class="input" id="crShopFilter" onchange="onCrShopChange()" title="فروشگاهِ محتوا" style="width:auto;margin-inline-start:auto;font-size:12.5px"><option value="">این فروشگاه</option></select>
+    <button class="btn btn-secondary btn-sm" onclick="crMoveShopContent()" title="اگر محتوایی اشتباهی زیر نام فروشگاه دیگری ثبت شده، همه را به فروشگاه درست منتقل می‌کند">🔁 انتقال</button>
     <select class="input" id="crCategoryFilter" onchange="onCrCategoryChange()" style="width:auto;font-size:12.5px">
       <option value="">همه دسته‌ها</option>
     </select>
@@ -2632,7 +2634,7 @@ function resetShopScopedState(){
   S.dailyProducts=[]; S.currentOpt=null; S.pendingOpt=null; S.currentDaily=null;
   seoSelectMode=false; seoSelected=new Set(); seoShowWeak=false;
   optSelectMode=false; optSelected=new Set();
-  crSelectMode=false; crSelected=new Set(); crCurrentItems=[]; crCurrentStatus=''; crCurrentCategory=''; crShopSel=''; crShopAutoTried=false;
+  crSelectMode=false; crSelected=new Set(); crCurrentItems=[]; crCurrentStatus=''; crCurrentCategory=''; crShopSel=''; crShopAutoTried=false; crBulkStop=true; { const fb=document.getElementById('crAddFormBox'); if(fb) fb.classList.add('hidden'); const cl=document.getElementById('crProductChecklist'); if(cl) cl.innerHTML=''; const bp=document.getElementById('crBulkProgress'); if(bp) bp.textContent=''; }
   Object.keys(_shopUiInitial.html).forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML=_shopUiInitial.html[id]; });
   Object.keys(_shopUiInitial.text).forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=_shopUiInitial.text[id]; });
   SHOP_UI_INPUT_IDS.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
@@ -3973,6 +3975,10 @@ function exportPinterestCsv(){
 let crCurrentStatus = '';
 function crApiUrl(path){ return S.contentBackendUrl.replace(/\/$/,'')+'/api/'+path; }
 function crHeaders(){ return {'Content-Type':'application/json','X-Agent-Secret':S.contentBackendSecret||''}; }
+// آدرس API تنظیمات شبکه‌های اجتماعیِ همین فروشگاه (هر فروشگاه حساب‌های خودش را دارد)
+function socialApiUrl(file){ return crApiUrl(file) + '?shop=' + encodeURIComponent(S.shopName || ''); }
+function socialShopTag(d){ return d && d.shop ? ' <span style="color:var(--text3)">(فروشگاه «' + escHtml(d.shop) + '»' + (d.is_main === false ? '' : (d.main_shop ? ' — فروشگاه اصلی' : '')) + ')</span>' : ''; }
+function socialNotSetHtml(d, what){ return '<span style="color:var(--text2)">' + what + socialShopTag(d) + (d && d.is_main === false ? '<br>این فروشگاه حساب جدای خودش را لازم دارد؛ تا وصلش نکنی، محتوای این فروشگاه در این شبکه منتشر نمی‌شود (با حساب فروشگاه «' + escHtml(d.main_shop || '') + '» هم منتشر نمی‌شود).' : '') + '</span>'; }
 
 // ══════════ بازاریابی خودکار ══════════
 const mktWeekdayLabel = {1:'دوشنبه',2:'سه‌شنبه',3:'چهارشنبه',4:'پنجشنبه',5:'جمعه',6:'شنبه',7:'یکشنبه'};
@@ -4461,6 +4467,19 @@ async function renameShopOnBackend(oldName, newName){
   }catch(e){ log('⚠ انتقال محتوا به نام جدید فروشگاه ممکن نشد: ' + e.message + ' (فایل api/rename_shop.php باید روی سرور باشد)', 'warn'); return 0; }
 }
 function onCrShopChange(){ crShopSel = document.getElementById('crShopFilter').value; crShopAutoTried = true; const n = document.getElementById('crShopNotice'); if(n) n.remove(); loadContentReview(); }
+// انتقال دستی محتوا از یک نام فروشگاه به نام دیگر (برای اصلاح محتواهایی که اشتباهی زیر فروشگاه دیگری رفته‌اند)
+async function crMoveShopContent(){
+  const shops = [...document.querySelectorAll('#crShopFilter option')].map(o => o.value).filter(v => v && v !== '*');
+  const all = [S.shopName, ...shops.filter(x => x !== S.shopName)];
+  const from = prompt('محتوای کدام فروشگاه منتقل شود؟ نام دقیق را بنویس:\n' + all.join('\n'), crShopSel && crShopSel !== '*' ? crShopSel : '');
+  if(!from) return;
+  const to = prompt('به کدام فروشگاه منتقل شود؟ نام دقیق را بنویس:\n' + all.filter(x => x !== from).join('\n'), '');
+  if(!to || to === from) return;
+  if(!confirm('همه‌ی محتواهای «' + from + '» به «' + to + '» منتقل شود؟')) return;
+  const n = await renameShopOnBackend(from, to);
+  toast(n ? '✅ ' + n + ' محتوا منتقل شد' : 'چیزی منتقل نشد');
+  loadContentReview();
+}
 function populateCrShopFilter(shops){
   const sel = document.getElementById('crShopFilter'); if(!sel) return;
   sel.innerHTML = '<option value="">این فروشگاه (' + escHtml(S.shopName||'') + ')</option><option value="*">همه‌ی فروشگاه‌ها</option>' + (shops||[]).filter(x => x && x !== S.shopName).map(x => '<option value="' + escHtml(x) + '">' + escHtml(x) + '</option>').join('');
@@ -4586,21 +4605,9 @@ async function loadContentReview(){
     populateCrShopFilter(d.shops||[]);
     const totalAll = Object.values(d.counts||{}).reduce((a,b)=>a+Number(b||0),0);
     const otherShops = (d.shops||[]).filter(x => x && x !== S.shopName);
-    if(!totalAll && !(d.items||[]).length && crShopSel === '' && otherShops.length && !crShopAutoTried){
-      crShopAutoTried = true;
-      // اگر فروشگاهی با آن نام قبلی دیگر وجود ندارد، همه‌ی محتواهایش به نام فعلی منتقل شود (برای هر نام جدا تأیید می‌گیرد)
-      let movedAny = false;
-      for(const nm of otherShops){
-        if(confirm('برای «' + S.shopName + '» محتوایی ثبت نشده، ولی محتوایی با نام فروشگاه «' + nm + '» هست.\n\nاگر فروشگاهی با نام «' + nm + '» دیگر وجود ندارد (یعنی نام فروشگاه را عوض کرده‌ای)، همه‌ی آن محتواها به «' + S.shopName + '» منتقل شود؟\n\n(اگر «' + nm + '» فروشگاه دیگری است که هنوز داری، لغو را بزن.)')){
-          if(await renameShopOnBackend(nm, S.shopName)) movedAny = true;
-        }
-      }
-      if(movedAny) return loadContentReview();
-      crShopSel = '*';
-      listEl.insertAdjacentHTML('beforebegin', '<div id="crShopNotice" style="margin-bottom:10px;padding:10px 14px;border-radius:10px;background:var(--yellow-light);color:#92400e;font-size:12.5px;line-height:1.8">ℹ️ برای نام فروشگاه فعلی («' + escHtml(S.shopName||'') + '») محتوایی ثبت نشده بود، ولی محتوا با نام‌های دیگر هست (' + otherShops.map(escHtml).join('، ') + ') — احتمالاً نام فروشگاه را بعداً عوض کرده‌ای. حالا همه‌ی فروشگاه‌ها نشان داده می‌شوند. از انتخاب‌گر فروشگاه بالا می‌توانی فیلتر کنی.</div>');
-      return loadContentReview();
-    }
-    const oldNote = document.getElementById('crShopNotice'); if(oldNote && crShopSel === '') oldNote.remove();
+    // هر فروشگاه فقط محتوای خودش را می‌بیند؛ «همه‌ی فروشگاه‌ها» فقط وقتی خودت از انتخاب‌گر برداری
+    const oldNote = document.getElementById('crShopNotice'); if(oldNote) oldNote.remove();
+    if(!totalAll && crShopSel === '') listEl.insertAdjacentHTML('beforebegin', '<div id="crShopNotice" style="margin-bottom:10px;padding:10px 14px;border-radius:10px;background:var(--surface3);color:var(--text2);font-size:12.5px;line-height:1.8">ℹ️ هنوز محتوایی برای فروشگاه «' + escHtml(S.shopName||'') + '» ساخته نشده. از «➕ افزودن موضوع» محصولات همین فروشگاه را اضافه کن.' + (otherShops.length ? ' (محتوای فروشگاه‌های دیگر جداست و این‌جا نشان داده نمی‌شود.)' : '') + '</div>');
     updateCrTabCounts(d.counts||{});
     renderContentReviewList(d.items||[]);
   }catch(e){
@@ -4767,6 +4774,8 @@ function toggleCrAddForm(){
 
 function populateCrProductChecklist(){
   const el = document.getElementById('crProductChecklist');
+  const sn = document.getElementById('crBulkShopName'); if(sn) sn.textContent = S.shopName || '';
+  const master = document.getElementById('crSelectAllProducts'); if(master) master.checked = false;
   document.getElementById('crProductTotalCount').textContent = S.products.length;
   if(!S.products.length){ el.innerHTML='<div style="font-size:11px;color:var(--text3)">هنوز محصولی بارگذاری نشده</div>'; return; }
   el.innerHTML = S.products.map((p,i)=>{
@@ -4788,18 +4797,39 @@ function syncCrSelectAllProductsState(){
   if(master) master.checked = all.length>0 && all.length===checked.length;
 }
 
+var crBulkStop = false, crBulkRunning = false;
 async function submitCrBulkProducts(){
   if(!S.contentBackendUrl){ alert('اول آدرس بک‌اند رو توی تنظیمات وارد کن'); return; }
-  const indices = [...document.querySelectorAll('.cr-bulk-product-check:checked')].map(el=>parseInt(el.value));
+  if(crBulkRunning) return;
+  if(!S.shopName){ alert('اول یک فروشگاه انتخاب کن'); return; }
+  const indices = [...document.querySelectorAll('.cr-bulk-product-check:checked')].map(el=>parseInt(el.value)).filter(i => S.products[i]);
   if(!indices.length){ alert('حداقل یه محصول رو انتخاب کن'); return; }
   const progEl = document.getElementById('crBulkProgress');
-  let ok=0, fail=0;
-  for(let n=0;n<indices.length;n++){
-    const p = S.products[indices[n]];
-    progEl.textContent = `⏳ در حال افزودن ${n+1}/${indices.length}: ${(p.TITLE||'').slice(0,40)}...`;
+  const shopAtStart = S.shopName, productsAtStart = S.products;
+  // محصولی که قبلاً برای همین فروشگاه به محتوا اضافه شده، دوباره اضافه نشود
+  progEl.textContent = '⏳ بررسی محتواهای موجود این فروشگاه...';
+  let existing = new Set();
+  try{
+    const r = await fetch(crApiUrl('list_content.php?shop=' + encodeURIComponent(shopAtStart)), { headers: crHeaders() });
+    const d = await r.json(); (d.items || []).forEach(it => existing.add(String(it.title || '').trim().toLowerCase()));
+  }catch(e){}
+  const todo = indices.filter(i => !existing.has(String(S.products[i].TITLE || '').trim().toLowerCase()));
+  const dup = indices.length - todo.length;
+  if(!todo.length){ progEl.textContent = 'همه‌ی ' + indices.length + ' محصول انتخاب‌شده قبلاً در محتوای «' + shopAtStart + '» هستند.'; return; }
+  if(!confirm(todo.length + ' محصول از فروشگاه «' + shopAtStart + '» به محتوای معرفی همین فروشگاه اضافه شود؟' + (dup ? '\n(' + dup + ' محصول چون قبلاً اضافه شده‌اند، رد می‌شوند.)' : '') + '\n\nهر وقت خواستی با «⏹ توقف» متوقفش کن.')) { progEl.textContent = ''; return; }
+  const btnAdd = document.getElementById('btnCrBulkAdd'), btnStop = document.getElementById('btnCrBulkStop');
+  crBulkStop = false; crBulkRunning = true;
+  if(btnAdd) btnAdd.disabled = true; if(btnStop){ btnStop.classList.remove('hidden'); btnStop.textContent = '⏹ توقف'; }
+  let ok=0, fail=0, stopped=false;
+  try{
+  for(let n=0;n<todo.length;n++){
+    if(crBulkStop){ stopped = true; break; }
+    if(S.shopName !== shopAtStart || S.products !== productsAtStart){ stopped = true; log('⏹ فروشگاه عوض شد؛ افزودن محتوا متوقف شد', 'warn'); break; }
+    const p = productsAtStart[todo[n]];
+    progEl.textContent = `⏳ در حال افزودن ${n+1}/${todo.length}: ${(p.TITLE||'').slice(0,40)}...`;
     try{
       const res = await fetch(crApiUrl('add_content.php'), { method:'POST', headers:crHeaders(), body:JSON.stringify({
-        title: p.TITLE||'', source_content: p.DESCRIPTION||'', tag:'', shop:S.shopName||'', language:S.contentLanguage||'English'
+        title: p.TITLE||'', source_content: p.DESCRIPTION||'', tag:'', shop:shopAtStart, language:S.contentLanguage||'English'
       }) });
       const d = await res.json();
       if(!res.ok) throw new Error(d.error||'خطا');
@@ -4820,7 +4850,11 @@ async function submitCrBulkProducts(){
       ok++;
     }catch(e){ fail++; log(`✗ افزودن «${p.TITLE}» ناموفق بود: ${e.message}`,'err'); }
   }
-  progEl.textContent = `✅ ${ok} محصول اضافه شد${fail?` · ❌ ${fail} تا شکست خورد`:''}`;
+  }finally{
+    crBulkRunning = false; crBulkStop = false;
+    if(btnAdd) btnAdd.disabled = false; if(btnStop) btnStop.classList.add('hidden');
+  }
+  progEl.textContent = `${stopped ? '⏹ متوقف شد — ' : '✅ '}${ok} محصول به «${shopAtStart}» اضافه شد${dup?` · ${dup} تکراری رد شد`:''}${fail?` · ❌ ${fail} تا شکست خورد`:''}`;
   log(progEl.textContent,'ok');
   loadContentReview();
 }
@@ -8627,10 +8661,10 @@ async function renderInstagramToken(){
   if(!S.contentBackendUrl){ st.innerHTML = '<span style="color:var(--red)">اول آدرس و رمز بک‌اند سوشال مدیا را در همین صفحه وارد کن.</span>'; return; }
   st.textContent = '⏳ در حال بررسی...';
   try{
-    const r = await fetch(crApiUrl('instagram_token.php'), { headers: crHeaders() }); const d = await r.json(); if(!r.ok) throw new Error(d.error || ('خطای ' + r.status));
-    if(!d.configured){ st.innerHTML = '<span style="color:var(--red)">هنوز توکن اینستاگرام ثبت نشده است.</span>'; return; }
+    const r = await fetch(socialApiUrl('instagram_token.php'), { headers: crHeaders() }); const d = await r.json(); if(!r.ok) throw new Error(d.error || ('خطای ' + r.status));
+    if(!d.configured){ st.innerHTML = socialNotSetHtml(d, 'هنوز توکن اینستاگرام ثبت نشده است.'); return; }
     const kind = d.kind === 'instagram_login' ? 'ورود با اینستاگرام (تمدید خودکار)' : 'فیسبوک (تمدید دستی)';
-    if(d.valid) st.innerHTML = '<span style="color:var(--green)">✓ توکن معتبر است — حساب @' + escHtml(d.username || d.ig_id) + ' · نوع: ' + kind + (d.days_since_saved != null ? ' · ' + d.days_since_saved + ' روز از ثبت/تمدید گذشته' : '') + '</span>';
+    if(d.valid) st.innerHTML = '<span style="color:var(--green)">✓ توکن معتبر است — حساب @' + escHtml(d.username || d.ig_id) + ' · نوع: ' + kind + (d.days_since_saved != null ? ' · ' + d.days_since_saved + ' روز از ثبت/تمدید گذشته' : '') + socialShopTag(d) + '</span>';
     else st.innerHTML = '<span style="color:var(--red)">✗ توکن فعلی کار نمی‌کند: ' + escHtml(d.message || 'نامشخص') + '<br>توکن جدید را بچسبان و «آزمایش و ذخیره» را بزن.</span>';
   }catch(e){ st.innerHTML = '<span style="color:var(--red)">خطا: ' + escHtml(e.message) + ' — فایل‌های جدید سرور (api/instagram_token.php و ...) باید آپلود شده باشند.</span>'; }
 }
@@ -8640,7 +8674,7 @@ async function saveInstagramToken(){
   if(!token){ st.innerHTML = '<span style="color:var(--red)">توکن را بچسبان.</span>'; return; }
   st.textContent = '⏳ در حال آزمایش توکن با اینستاگرام...';
   try{
-    const r = await fetch(crApiUrl('instagram_token.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify({ token, ig_id: igId }) });
+    const r = await fetch(socialApiUrl('instagram_token.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify({ token, ig_id: igId }) });
     const d = await r.json(); if(!r.ok) throw new Error(d.error || ('خطای ' + r.status));
     document.getElementById('igTokenInput').value = '';
     log('📱 توکن اینستاگرام ذخیره شد' + (d.username ? ' (@' + d.username + ')' : ''), 'ok'); toast('✅ توکن اینستاگرام معتبر بود و ذخیره شد.');
@@ -8653,9 +8687,9 @@ async function renderFacebookStatus(){
   if(!S.contentBackendUrl){ st.innerHTML = '<span style="color:var(--red)">اول آدرس و رمز بک‌اند سوشال مدیا را وارد کن.</span>'; return; }
   st.textContent = '⏳ در حال بررسی...';
   try{
-    const r = await fetch(crApiUrl('facebook_token.php'), { headers: crHeaders() }); const d = await r.json(); if(!r.ok) throw new Error(d.error || ('خطای ' + r.status));
-    if(!d.configured){ st.innerHTML = '<span style="color:var(--text2)">هنوز صفحه‌ی فیسبوک وصل نشده.</span>'; return; }
-    st.innerHTML = d.valid ? '<span style="color:var(--green)">✓ وصل به صفحه‌ی «' + escHtml(d.page_name || d.page_id) + '»</span>' : '<span style="color:var(--red)">✗ توکن صفحه کار نمی‌کند: ' + escHtml(d.message || '') + ' — توکن تازه را ذخیره کن.</span>';
+    const r = await fetch(socialApiUrl('facebook_token.php'), { headers: crHeaders() }); const d = await r.json(); if(!r.ok) throw new Error(d.error || ('خطای ' + r.status));
+    if(!d.configured){ st.innerHTML = socialNotSetHtml(d, 'هنوز صفحه‌ی فیسبوک وصل نشده.'); return; }
+    st.innerHTML = d.valid ? '<span style="color:var(--green)">✓ وصل به صفحه‌ی «' + escHtml(d.page_name || d.page_id) + '»' + socialShopTag(d) + '</span>' : '<span style="color:var(--red)">✗ توکن صفحه کار نمی‌کند: ' + escHtml(d.message || '') + ' — توکن تازه را ذخیره کن.</span>';
   }catch(e){ st.innerHTML = '<span style="color:var(--red)">خطا: ' + escHtml(e.message) + ' — فایل api/facebook_token.php باید روی سرور باشد.</span>'; }
 }
 async function saveFacebookToken(){
@@ -8664,7 +8698,7 @@ async function saveFacebookToken(){
   if(!token){ st.innerHTML = '<span style="color:var(--red)">توکن را بچسبان.</span>'; return; }
   st.textContent = '⏳ در حال آزمایش با فیسبوک...';
   try{
-    const r = await fetch(crApiUrl('facebook_token.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify({ token, page_id: pid }) });
+    const r = await fetch(socialApiUrl('facebook_token.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify({ token, page_id: pid }) });
     const d = await r.json();
     if(!r.ok){ let m = d.error || ('خطای ' + r.status); if(d.pages) m += '<br>' + d.pages.map(x => escHtml(x.name) + ' : <span dir="ltr" style="user-select:all">' + escHtml(x.id) + '</span>').join('<br>'); st.innerHTML = '<span style="color:var(--red)">✗ ' + m + '</span>'; return; }
     document.getElementById('fbTokenInput').value = '';
@@ -8674,12 +8708,12 @@ async function saveFacebookToken(){
 }
 async function disconnectFacebook(){
   if(!confirm('اتصال صفحه‌ی فیسبوک قطع شود؟')) return;
-  try{ await fetch(crApiUrl('facebook_token.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify({ disconnect: true }) }); }catch(e){}
+  try{ await fetch(socialApiUrl('facebook_token.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify({ disconnect: true }) }); }catch(e){}
   renderFacebookStatus();
 }
 // ══ یوتیوب: اتصال با OAuth گوگل (روی سرور) ══
 async function ytApi(body){
-  const r = await fetch(crApiUrl('youtube_auth.php'), body ? { method:'POST', headers: crHeaders(), body: JSON.stringify(body) } : { headers: crHeaders() });
+  const r = await fetch(socialApiUrl('youtube_auth.php'), body ? { method:'POST', headers: crHeaders(), body: JSON.stringify(body) } : { headers: crHeaders() });
   const d = await r.json().catch(() => ({})); if(!r.ok) throw new Error(d.error || ('خطای ' + r.status + ' — فایل api/youtube_auth.php باید روی سرور باشد')); return d;
 }
 async function renderYouTubeStatus(){
@@ -8691,9 +8725,9 @@ async function renderYouTubeStatus(){
     document.getElementById('ytRedirect').value = d.redirect_uri || '';
     const ci = document.getElementById('ytClientId'); if(ci && !ci.value) ci.value = d.client_id || '';
     const pv = document.getElementById('ytPrivacy'); if(pv) pv.value = d.privacy || 'public';
-    if(!d.has_client) st.innerHTML = '<span style="color:var(--text2)">قدم اول: Client ID و Client Secret را ذخیره کن.</span>';
-    else if(!d.connected) st.innerHTML = '<span style="color:var(--text2)">مشخصات اپ گوگل ذخیره شده — حالا «اتصال به یوتیوب» را بزن.</span>';
-    else st.innerHTML = d.valid ? '<span style="color:var(--green)">✓ وصل به کانال «' + escHtml(d.channel || '') + '»</span>' : '<span style="color:var(--red)">✗ ' + escHtml(d.message || 'اتصال کار نمی‌کند') + '</span>';
+    if(!d.has_client) st.innerHTML = socialNotSetHtml(d, 'قدم اول: Client ID و Client Secret را ذخیره کن.');
+    else if(!d.connected) st.innerHTML = socialNotSetHtml(d, 'مشخصات اپ گوگل آماده است — حالا «اتصال به یوتیوب» را بزن و حساب کانالِ همین فروشگاه را انتخاب کن.');
+    else st.innerHTML = d.valid ? '<span style="color:var(--green)">✓ وصل به کانال «' + escHtml(d.channel || '') + '»' + socialShopTag(d) + '</span>' : '<span style="color:var(--red)">✗ ' + escHtml(d.message || 'اتصال کار نمی‌کند') + '</span>';
   }catch(e){ st.innerHTML = '<span style="color:var(--red)">خطا: ' + escHtml(e.message) + '</span>'; }
 }
 async function saveYouTubeClient(){
@@ -8712,12 +8746,12 @@ async function connectYouTube(){
 async function saveYouTubePrivacy(v){ try{ await ytApi({ privacy: v }); toast('✅ نوع انتشار ویدیو ذخیره شد'); }catch(e){ toast('✗ ' + e.message); } }
 async function disconnectYouTube(){ if(!confirm('اتصال یوتیوب قطع شود؟')) return; try{ await ytApi({ disconnect: true }); }catch(e){} renderYouTubeStatus(); }
 // ══ پلتفرم‌های پیش‌فرض هنگام تأیید ══
-function crDefaultPlatforms(){ try{ const v = JSON.parse(localStorage.getItem('cr_default_platforms') || 'null'); if(Array.isArray(v) && v.length) return v.filter(x => crAllPlatforms.includes(x)); }catch(e){} return ['telegram','instagram','pinterest']; }
+function crDefaultPlatforms(){ try{ const v = JSON.parse(localStorage.getItem('cr_default_platforms:' + (S.shopName || '')) || localStorage.getItem('cr_default_platforms') || 'null'); if(Array.isArray(v) && v.length) return v.filter(x => crAllPlatforms.includes(x)); }catch(e){} return ['telegram','instagram','pinterest']; }
 function renderCrDefaultPlatforms(){
   const box = document.getElementById('crDefaultPlatBox'); if(!box) return; const cur = crDefaultPlatforms();
   box.innerHTML = crAllPlatforms.map(p => '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="' + p + '" ' + (cur.includes(p) ? 'checked' : '') + ' onchange="saveCrDefaultPlatforms()" style="width:16px;height:16px"> ' + (crPlatformLabel[p] || p) + '</label>').join('');
 }
-function saveCrDefaultPlatforms(){ const v = [...document.querySelectorAll('#crDefaultPlatBox input:checked')].map(x => x.value); try{ localStorage.setItem('cr_default_platforms', JSON.stringify(v)); }catch(e){} toast('✅ ذخیره شد'); }
+function saveCrDefaultPlatforms(){ const v = [...document.querySelectorAll('#crDefaultPlatBox input:checked')].map(x => x.value); try{ localStorage.setItem('cr_default_platforms:' + (S.shopName || ''), JSON.stringify(v)); }catch(e){} toast('✅ برای فروشگاه «' + (S.shopName || '') + '» ذخیره شد'); }
 
 // ══ ویدیوی یوتیوب: اسلایدشوی افقی (۱۹۲۰×۱۰۸۰) از تصویرهای یک آیتم محتوای معرفی، ساخته‌شده در مرورگر ══
 const CRV_W = 1920, CRV_H = 1080, CRV_FONT = "'Segoe UI', Tahoma, Arial, sans-serif";

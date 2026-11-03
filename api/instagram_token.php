@@ -23,8 +23,11 @@ function igProbe($token, $igId){
   return ['ok'=>false, 'message'=>$msg];
 }
 
+$in = (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') ? jsonInput() : null;
+socialShopFromRequest($in);
+
 if(($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST'){
-  $in = jsonInput();
+  if(!empty($in['disconnect'])){ sSet('IG_ACCESS_TOKEN', ''); sSet('IG_BUSINESS_ACCOUNT_ID', ''); jsonResponse(['ok'=>true]); }
   $token = trim((string)($in['token'] ?? ''));
   $igId = trim((string)($in['ig_id'] ?? ''));
   if(strlen($token) < 30) jsonResponse(['error'=>'توکن خالی یا خیلی کوتاه است'], 400);
@@ -34,16 +37,16 @@ if(($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST'){
   $probe = igProbe($token, $igId);
   if(!$probe['ok']) jsonResponse(['error'=>'اینستاگرام این توکن را نپذیرفت: '.$probe['message']], 400);
   if($isIgLogin && $probe['user_id'] !== '') $igId = $probe['user_id'];
-  setSetting('IG_ACCESS_TOKEN', $token);
-  setSetting('IG_BUSINESS_ACCOUNT_ID', $igId);
-  setSetting('IG_TOKEN_REFRESHED_AT', (string)time());
+  sSet('IG_ACCESS_TOKEN', $token);
+  sSet('IG_BUSINESS_ACCOUNT_ID', $igId);
+  sSet('IG_TOKEN_REFRESHED_AT', (string)time());
   jsonResponse(['ok'=>true, 'kind'=>$isIgLogin ? 'instagram_login' : 'facebook', 'username'=>$probe['username'], 'ig_id'=>$igId]);
 }
 
 $token = igToken();
 $igId = igAccountId();
-$out = ['configured'=>($token !== '' && $igId !== ''), 'kind'=>$token === '' ? '' : (strpos($token, 'IG') === 0 ? 'instagram_login' : 'facebook'), 'ig_id'=>$igId, 'username'=>'', 'valid'=>null, 'message'=>''];
-$last = (int)getSetting('IG_TOKEN_REFRESHED_AT', '0');
+$out = ['configured'=>($token !== '' && $igId !== ''), 'kind'=>$token === '' ? '' : (strpos($token, 'IG') === 0 ? 'instagram_login' : 'facebook'), 'ig_id'=>$igId, 'username'=>'', 'valid'=>null, 'message'=>'', 'shop'=>socialShop(), 'main_shop'=>socialMainShop(), 'is_main'=>socialIsMain()];
+$last = (int)sGet('IG_TOKEN_REFRESHED_AT', '0');
 $out['days_since_saved'] = $last ? (int)floor((time() - $last) / 86400) : null;
 if($out['configured']){
   $probe = igProbe($token, $igId);
