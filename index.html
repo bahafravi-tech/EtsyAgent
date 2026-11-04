@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.73.1 -->
+<!-- APP_VERSION: 1.73.2 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v231</div>
+        <div class="logo-badge">v232</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1845,7 +1845,7 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
         <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
           <label class="fld" style="max-width:120px"><span>تعداد پیشنهاد</span><select id="ideaCount"><option value="1">۱</option><option value="2" selected>۲</option><option value="3">۳</option><option value="4">۴</option><option value="5">۵</option></select></label>
           <label class="fld" style="max-width:230px"><span>📐 تعداد اندازه برای هر محصول</span><select id="ideaSizeN"><option value="1" selected>۱ (تک‌اندازه)</option><option value="2">۲</option><option value="3">۳</option><option value="4">۴</option><option value="5">۵</option><option value="6">۶</option><option value="desc">📝 از توضیحات خودم (فقط «ایده‌ی خودم»)</option></select></label>
-          <label class="fld" style="max-width:260px" title="محصول پیشنهادی باید برای همین جنس ساخته شود؛ ایده‌هایی که جنس دیگری لازم دارند کنار گذاشته می‌شوند"><span>🧱 جنس/متریال محصول</span><select id="ideaMaterial" onchange="document.getElementById('ideaMaterialOther').classList.toggle('hidden', this.value!=='other')"><option value="">— انتخاب کن —</option><option value="paper">کاغذ و مقوا (بسته‌بندی، جعبه، کارت)</option><option value="stencil">شیت استنسیل (مایلار/پلاستیک)</option><option value="vinyl">وینیل و برچسب (HTV / چسبی)</option><option value="wood">چوب و MDF (لیزر)</option><option value="acrylic">اکریلیک (لیزر)</option><option value="fabric">پارچه و چرم</option><option value="print">فقط چاپی (پرینتیبل، بدون برش)</option><option value="other">سایر (خودم می‌نویسم)</option></select><input id="ideaMaterialOther" class="hidden" placeholder="مثلاً felt، shrink plastic..." style="margin-top:4px"></label>
+          <div class="fld" style="flex-basis:100%;min-width:260px" title="محصول پیشنهادی باید از یکی از جنس‌های تیک‌خورده باشد؛ ایده‌هایی که جنس دیگری لازم دارند کنار گذاشته می‌شوند"><span>🧱 جنس/متریال محصول (یک یا چند مورد) <a href="#" onclick="ideaMatAll(event)" style="font-weight:400;font-size:11.5px;margin-inline-start:6px">همه</a> · <a href="#" onclick="ideaMatAll(event,false)" style="font-weight:400;font-size:11.5px">هیچ</a></span><div id="ideaMatBox" style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:4px"><label style="font-size:12.5px;display:inline-flex;gap:4px;align-items:center;cursor:pointer"><input type="checkbox" id="ideaMat_paper" class="idea-mat" value="paper" onchange="ideaMatSync()"> کاغذ و مقوا (بسته‌بندی، جعبه، کارت)</label><label style="font-size:12.5px;display:inline-flex;gap:4px;align-items:center;cursor:pointer"><input type="checkbox" id="ideaMat_stencil" class="idea-mat" value="stencil" onchange="ideaMatSync()"> شیت استنسیل (مایلار/پلاستیک)</label><label style="font-size:12.5px;display:inline-flex;gap:4px;align-items:center;cursor:pointer"><input type="checkbox" id="ideaMat_vinyl" class="idea-mat" value="vinyl" onchange="ideaMatSync()"> وینیل و برچسب (HTV / چسبی)</label><label style="font-size:12.5px;display:inline-flex;gap:4px;align-items:center;cursor:pointer"><input type="checkbox" id="ideaMat_wood" class="idea-mat" value="wood" onchange="ideaMatSync()"> چوب و MDF (لیزر)</label><label style="font-size:12.5px;display:inline-flex;gap:4px;align-items:center;cursor:pointer"><input type="checkbox" id="ideaMat_acrylic" class="idea-mat" value="acrylic" onchange="ideaMatSync()"> اکریلیک (لیزر)</label><label style="font-size:12.5px;display:inline-flex;gap:4px;align-items:center;cursor:pointer"><input type="checkbox" id="ideaMat_fabric" class="idea-mat" value="fabric" onchange="ideaMatSync()"> پارچه و چرم</label><label style="font-size:12.5px;display:inline-flex;gap:4px;align-items:center;cursor:pointer"><input type="checkbox" id="ideaMat_print" class="idea-mat" value="print" onchange="ideaMatSync()"> فقط چاپی (پرینتیبل، بدون برش)</label><label style="font-size:12.5px;display:inline-flex;gap:4px;align-items:center;cursor:pointer"><input type="checkbox" id="ideaMat_other" class="idea-mat" value="other" onchange="ideaMatSync()"> سایر</label><input id="ideaMaterialOther" class="hidden" placeholder="جنس دیگر، مثلاً felt، shrink plastic..." style="max-width:240px"></div></div>
           <label class="fld" style="flex:1;min-width:200px"><span>موضوع/فصل دلخواه (اختیاری)</span><input id="ideaTopic" placeholder="مثلاً Valentine، Wedding favor، heart box..."></label>
           <label class="fld" style="max-width:230px"><span>مدل تحقیق</span><select id="ideaModel"><option value="opus">Claude Opus (سرور) — دقیق‌ترین ⭐</option><option value="sonnet">Claude Sonnet (سرور)</option><option value="app">همان مدل تنظیمات برنامه</option></select></label>
           <label class="fld" style="max-width:230px"><span>حداقل فروش فروشگاه نمونه</span><select id="ideaMinSales"><option value="0">بدون محدودیت</option><option value="1000">۱٬۰۰۰ فروش</option><option value="5000" selected>۵٬۰۰۰ فروش</option><option value="20000">۲۰٬۰۰۰ فروش</option></select></label>
@@ -2862,7 +2862,7 @@ function uiRestore(){
   uiLoadedShop = S.shopId || 'x';
   Object.keys(uiState.fields).forEach(id => { const el = document.getElementById(id), v = uiState.fields[id]; if(!el || !uiPersistable(el)) return; if(el.type === 'checkbox') el.checked = !!v; else if(el.value !== v) el.value = v; });
   UI_RES_IDS.forEach(id => { const el = document.getElementById(id); if(el && uiState.res[id] && !el.innerHTML.trim()) el.innerHTML = uiState.res[id]; });
-  { const ms = document.getElementById('ideaMaterial'), mo = document.getElementById('ideaMaterialOther'); if(ms && mo) mo.classList.toggle('hidden', ms.value !== 'other'); }
+  try{ ideaMatSync(); }catch(e){}
 }
 function uiInitPersistence(){
   const onEv = e => { const el = e.target; if(!uiPersistable(el)) return; uiState.fields[el.id] = el.type === 'checkbox' ? el.checked : el.value; uiWriteSoon(); };
@@ -3381,12 +3381,31 @@ const IDEA_MATERIALS = {
   fabric:  { fa: 'پارچه و چرم', en: 'fabric, felt and leather (sewing patterns, appliqué, leather craft templates)', bad: /\b(cardstock|cardboard|wood|wooden|acrylic|metal|mdf)\b/i },
   print:   { fa: 'فقط چاپی', en: 'print-only products (printable paper downloads that are printed, not machine-cut)', bad: /\b(svg|laser|cricut|silhouette|glowforge|wood|wooden|acrylic|vinyl)\b/i }
 };
+// کلمه‌هایی که جنس هر گروه را نشان می‌دهند؛ ایده‌ای که جنسِ تیک‌نخورده‌ای در نامش دارد کنار گذاشته می‌شود
+const IDEA_MAT_WORDS = { paper: /\b(paper|cardstock|cardboard|chipboard|kraft|card stock)\b/i, stencil: /\b(stencils?|mylar)\b/i, vinyl: /\b(vinyl|htv|decals?|stickers?|iron[- ]on)\b/i,
+  wood: /\b(wood|wooden|plywood|mdf|bamboo)\b/i, acrylic: /\b(acrylic|plexi(glass)?)\b/i, fabric: /\b(fabric|felt|leather|sewing|quilt|embroidery)\b/i };
+const IDEA_MAT_ALWAYS_BAD = /\b(metal|steel|aluminum|resin|epoxy|glass|ceramic|concrete|clay)\b/i;
+const IDEA_CUT_WORDS = /\b(svg|dxf|laser|cricut|silhouette|glowforge|cut file|cutting file)\b/i;
+function ideaMatSync(){ const o = document.getElementById('ideaMat_other'), t = document.getElementById('ideaMaterialOther'); if(o && t) t.classList.toggle('hidden', !o.checked); }
+function ideaMatAll(e, on = true){ if(e) e.preventDefault(); document.querySelectorAll('.idea-mat').forEach(c => { if(c.checked !== on){ c.checked = on; c.dispatchEvent(new Event('change', {bubbles: true})); } }); ideaMatSync(); }
 function ideaMaterial(){
-  const v = ((document.getElementById('ideaMaterial') || {}).value || '');
-  if(v === 'other'){ const t = ((document.getElementById('ideaMaterialOther') || {}).value || '').trim(); return t ? { key: 'other', fa: t, en: t, bad: null } : null; }
-  return IDEA_MATERIALS[v] ? Object.assign({ key: v }, IDEA_MATERIALS[v]) : null;
+  const keys = [...document.querySelectorAll('.idea-mat:checked')].map(c => c.value);
+  const other = keys.includes('other') ? ((document.getElementById('ideaMaterialOther') || {}).value || '').trim() : '';
+  const list = keys.filter(k => IDEA_MATERIALS[k]).map(k => Object.assign({ key: k }, IDEA_MATERIALS[k]));
+  if(other) list.push({ key: 'other', fa: other, en: other });
+  if(!list.length) return null;
+  const sel = new Set(list.map(m => m.key)); if(sel.has('print')) sel.add('paper:print');
+  const cutSel = ['paper', 'stencil', 'vinyl', 'wood', 'acrylic', 'fabric', 'other'].some(k => sel.has(k));
+  const all = Object.keys(IDEA_MATERIALS).every(k => keys.includes(k)) && keys.includes('other');
+  return { keys: list.map(m => m.key), fa: list.map(m => m.fa).join('، '), en: list.map(m => m.en).join(' OR '),
+    // دلیل رد شدن یک ایده (یا null)
+    reject: kw => { if(all) return null;
+      for(const k in IDEA_MAT_WORDS) if(!sel.has(k) && !(k === 'paper' && sel.has('paper:print')) && IDEA_MAT_WORDS[k].test(kw) && !list.some(m => sel.has(m.key) && IDEA_MAT_WORDS[m.key] && IDEA_MAT_WORDS[m.key].test(kw))) return k;
+      if(!sel.has('other') && IDEA_MAT_ALWAYS_BAD.test(kw)) return 'other';
+      if(!cutSel && IDEA_CUT_WORDS.test(kw)) return 'cut';
+      return null; } };
 }
-function ideaMaterialLine(m){ return m ? `MATERIAL (mandatory): every product must be made from ${m.en}. Reject any idea that needs a different material; do not mention other materials in titles, tags or descriptions.\n` : ''; }
+function ideaMaterialLine(m){ return m ? `MATERIAL (mandatory): every product must be made from ${m.keys.length > 1 ? 'one of these materials: ' : ''}${m.en}. Reject any idea that needs a material outside this list; do not mention other materials in titles, tags or descriptions.${m.keys.length > 1 ? ' Spread the ideas across the allowed materials when it makes sense.' : ''}\n` : ''; }
 function ideaOpts(){
   const g = id => document.getElementById(id);
   // «desc»: اندازه‌ها در توضیحاتِ «ایده‌ی خودم» نوشته شده؛ همان‌ها خوانده می‌شود (تعداد از روی متن می‌آید)
@@ -3463,9 +3482,9 @@ async function researchAndSuggestProducts(silent=false){
   if(!silent) goToProductSuggestTab();
   const mat = ideaMaterial();
   if(!mat && !silent){
-    const sel = document.getElementById('ideaMaterial');
-    if(sel){ sel.scrollIntoView({behavior:'smooth', block:'center'}); sel.focus(); sel.style.outline = '2px solid var(--orange)'; setTimeout(() => sel.style.outline = '', 3000); }
-    toast('اول «🧱 جنس/متریال محصول» را انتخاب کن (مثلاً کاغذ و مقوا برای بسته‌بندی) — برای هر فروشگاه یک‌بار ذخیره می‌شود');
+    const sel = document.getElementById('ideaMatBox');
+    if(sel){ sel.scrollIntoView({behavior:'smooth', block:'center'}); sel.style.outline = '2px solid var(--orange)'; sel.style.borderRadius = '8px'; setTimeout(() => sel.style.outline = '', 3000); }
+    toast('اول «🧱 جنس/متریال محصول» را تیک بزن (یک یا چند مورد، یا «همه») — برای هر فروشگاه یک‌بار ذخیره می‌شود');
     return;
   }
   const prog = document.getElementById('dailyProg'); prog.classList.remove('hidden');
@@ -3484,7 +3503,7 @@ ${shopCtx()}\n${ideaMaterialLine(mat)}${ideaInventoryPromptBlock(inv)}\n${extra 
   // کاندیدها با کد هم در برابر موجودی فروشگاه و پیشنهادهای قبلی چک می‌شوند (فقط به گفته‌ی AI اعتماد نمی‌شود)
   let candidates = [];
   const takeCands = list => { for(const raw of list){ const c = String(raw).trim(); if(!c || candidates.some(x => x.toLowerCase() === c.toLowerCase()) || skipped.some(x => x.kw.toLowerCase() === c.toLowerCase())) continue;
-    if(mat && mat.bad && mat.bad.test(c)){ skipped.push({ kw: c, why: 'material', title: mat.fa }); continue; }
+    if(mat && mat.reject(c)){ skipped.push({ kw: c, why: 'material', title: mat.fa }); continue; }
     const cov = ideaCovered(c, inv); if(cov){ skipped.push({ kw: c, why: cov.why, title: cov.title }); continue; } candidates.push(c); } };
   try{
     takeCands(parseJSON(await ideaAI(candidatePrompt(''), 1800, 'cheap')).candidates || []);
@@ -3494,7 +3513,7 @@ ${shopCtx()}\n${ideaMaterialLine(mat)}${ideaInventoryPromptBlock(inv)}\n${extra 
     }
   }catch(e){ if(!candidates.length){ log('✗ خطا در ساخت ایده‌های اولیه: ' + e.message, 'err'); done(); return; } }
   candidates = candidates.slice(0, nCand);
-  if(skipped.length) log('↷ ' + skipped.length + ' ایده کنار گذاشته شد: ' + skipped.map(x => '«' + x.kw + '» (' + (x.why === 'shop' ? 'در فروشگاه هست' : x.why === 'suggested' ? 'قبلاً پیشنهاد شده' : x.why === 'material' ? 'جنسش ' + x.title + ' نیست' : 'اخیراً بررسی شده') + ')').join('، '), 'info');
+  if(skipped.length) log('↷ ' + skipped.length + ' ایده کنار گذاشته شد: ' + skipped.map(x => '«' + x.kw + '» (' + (x.why === 'shop' ? 'در فروشگاه هست' : x.why === 'suggested' ? 'قبلاً پیشنهاد شده' : x.why === 'material' ? 'جنسش جزو انتخاب‌ها نیست' : 'اخیراً بررسی شده') + ')').join('، '), 'info');
   if(!candidates.length){ log('✗ ایده‌ی تازه‌ای پیدا نشد — همه‌ی ایده‌ها در فروشگاه موجود یا قبلاً پیشنهاد شده بودند. «موضوع» را عوض کن و دوباره بزن.', 'err'); done(); return; }
 
   const researched = []; shopInfoWarned = false;
