@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.73.0 -->
+<!-- APP_VERSION: 1.73.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v230</div>
+        <div class="logo-badge">v231</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -1845,6 +1845,7 @@ begucheegift.etsy.com — Stencil" style="direction:ltr;resize:vertical"></texta
         <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
           <label class="fld" style="max-width:120px"><span>تعداد پیشنهاد</span><select id="ideaCount"><option value="1">۱</option><option value="2" selected>۲</option><option value="3">۳</option><option value="4">۴</option><option value="5">۵</option></select></label>
           <label class="fld" style="max-width:230px"><span>📐 تعداد اندازه برای هر محصول</span><select id="ideaSizeN"><option value="1" selected>۱ (تک‌اندازه)</option><option value="2">۲</option><option value="3">۳</option><option value="4">۴</option><option value="5">۵</option><option value="6">۶</option><option value="desc">📝 از توضیحات خودم (فقط «ایده‌ی خودم»)</option></select></label>
+          <label class="fld" style="max-width:260px" title="محصول پیشنهادی باید برای همین جنس ساخته شود؛ ایده‌هایی که جنس دیگری لازم دارند کنار گذاشته می‌شوند"><span>🧱 جنس/متریال محصول</span><select id="ideaMaterial" onchange="document.getElementById('ideaMaterialOther').classList.toggle('hidden', this.value!=='other')"><option value="">— انتخاب کن —</option><option value="paper">کاغذ و مقوا (بسته‌بندی، جعبه، کارت)</option><option value="stencil">شیت استنسیل (مایلار/پلاستیک)</option><option value="vinyl">وینیل و برچسب (HTV / چسبی)</option><option value="wood">چوب و MDF (لیزر)</option><option value="acrylic">اکریلیک (لیزر)</option><option value="fabric">پارچه و چرم</option><option value="print">فقط چاپی (پرینتیبل، بدون برش)</option><option value="other">سایر (خودم می‌نویسم)</option></select><input id="ideaMaterialOther" class="hidden" placeholder="مثلاً felt، shrink plastic..." style="margin-top:4px"></label>
           <label class="fld" style="flex:1;min-width:200px"><span>موضوع/فصل دلخواه (اختیاری)</span><input id="ideaTopic" placeholder="مثلاً Valentine، Wedding favor، heart box..."></label>
           <label class="fld" style="max-width:230px"><span>مدل تحقیق</span><select id="ideaModel"><option value="opus">Claude Opus (سرور) — دقیق‌ترین ⭐</option><option value="sonnet">Claude Sonnet (سرور)</option><option value="app">همان مدل تنظیمات برنامه</option></select></label>
           <label class="fld" style="max-width:230px"><span>حداقل فروش فروشگاه نمونه</span><select id="ideaMinSales"><option value="0">بدون محدودیت</option><option value="1000">۱٬۰۰۰ فروش</option><option value="5000" selected>۵٬۰۰۰ فروش</option><option value="20000">۲۰٬۰۰۰ فروش</option></select></label>
@@ -2861,6 +2862,7 @@ function uiRestore(){
   uiLoadedShop = S.shopId || 'x';
   Object.keys(uiState.fields).forEach(id => { const el = document.getElementById(id), v = uiState.fields[id]; if(!el || !uiPersistable(el)) return; if(el.type === 'checkbox') el.checked = !!v; else if(el.value !== v) el.value = v; });
   UI_RES_IDS.forEach(id => { const el = document.getElementById(id); if(el && uiState.res[id] && !el.innerHTML.trim()) el.innerHTML = uiState.res[id]; });
+  { const ms = document.getElementById('ideaMaterial'), mo = document.getElementById('ideaMaterialOther'); if(ms && mo) mo.classList.toggle('hidden', ms.value !== 'other'); }
 }
 function uiInitPersistence(){
   const onEv = e => { const el = e.target; if(!uiPersistable(el)) return; uiState.fields[el.id] = el.type === 'checkbox' ? el.checked : el.value; uiWriteSoon(); };
@@ -3370,6 +3372,21 @@ async function enrichSamples(searchResult, summary, minSales, minViews){
     .forEach(x => { if(pick.length < 3 && !seen.has(x.l.shop_id)){ seen.add(x.l.shop_id); pick.push(x); } });
   summary.topListings = pick.map(x => out(x, x.info));
 }
+const IDEA_MATERIALS = {
+  paper:   { fa: 'کاغذ و مقوا', en: 'paper, cardstock and cardboard/chipboard/kraft board (packaging, boxes, gift boxes, cards, paper crafts)', bad: /\b(wood|wooden|plywood|mdf|acrylic|metal|steel|leather|fabric|felt|resin|glass|vinyl|htv|epoxy|ceramic)\b/i },
+  stencil: { fa: 'شیت استنسیل', en: 'reusable stencil sheets (mylar/plastic) for painting, used on walls, wood, fabric or cakes', bad: /\b(box|boxes|packaging|leather|resin|acrylic sign|wooden sign)\b/i },
+  vinyl:   { fa: 'وینیل و برچسب', en: 'adhesive vinyl, heat-transfer vinyl (HTV) and sticker/decal sheets', bad: /\b(box|boxes|wood|wooden|plywood|mdf|acrylic|leather|cardboard)\b/i },
+  wood:    { fa: 'چوب و MDF', en: 'wood, plywood and MDF for laser cutting/engraving', bad: /\b(cardstock|cardboard|paper|vinyl|htv|fabric|leather)\b/i },
+  acrylic: { fa: 'اکریلیک', en: 'acrylic sheets for laser cutting/engraving', bad: /\b(cardstock|cardboard|paper|vinyl|htv|fabric|leather|wood|wooden)\b/i },
+  fabric:  { fa: 'پارچه و چرم', en: 'fabric, felt and leather (sewing patterns, appliqué, leather craft templates)', bad: /\b(cardstock|cardboard|wood|wooden|acrylic|metal|mdf)\b/i },
+  print:   { fa: 'فقط چاپی', en: 'print-only products (printable paper downloads that are printed, not machine-cut)', bad: /\b(svg|laser|cricut|silhouette|glowforge|wood|wooden|acrylic|vinyl)\b/i }
+};
+function ideaMaterial(){
+  const v = ((document.getElementById('ideaMaterial') || {}).value || '');
+  if(v === 'other'){ const t = ((document.getElementById('ideaMaterialOther') || {}).value || '').trim(); return t ? { key: 'other', fa: t, en: t, bad: null } : null; }
+  return IDEA_MATERIALS[v] ? Object.assign({ key: v }, IDEA_MATERIALS[v]) : null;
+}
+function ideaMaterialLine(m){ return m ? `MATERIAL (mandatory): every product must be made from ${m.en}. Reject any idea that needs a different material; do not mention other materials in titles, tags or descriptions.\n` : ''; }
 function ideaOpts(){
   const g = id => document.getElementById(id);
   // «desc»: اندازه‌ها در توضیحاتِ «ایده‌ی خودم» نوشته شده؛ همان‌ها خوانده می‌شود (تعداد از روی متن می‌آید)
@@ -3444,6 +3461,13 @@ async function researchAndSuggestProducts(silent=false){
     return;
   }
   if(!silent) goToProductSuggestTab();
+  const mat = ideaMaterial();
+  if(!mat && !silent){
+    const sel = document.getElementById('ideaMaterial');
+    if(sel){ sel.scrollIntoView({behavior:'smooth', block:'center'}); sel.focus(); sel.style.outline = '2px solid var(--orange)'; setTimeout(() => sel.style.outline = '', 3000); }
+    toast('اول «🧱 جنس/متریال محصول» را انتخاب کن (مثلاً کاغذ و مقوا برای بسته‌بندی) — برای هر فروشگاه یک‌بار ذخیره می‌شود');
+    return;
+  }
   const prog = document.getElementById('dailyProg'); prog.classList.remove('hidden');
   const fill = document.getElementById('dpFill'), txt = document.getElementById('dpText'), done = () => prog.classList.add('hidden');
   const o = ideaOpts(), niche = getNiche(), today = new Date().toISOString().slice(0,10);
@@ -3453,13 +3477,14 @@ async function researchAndSuggestProducts(silent=false){
   fill.style.width = '8%'; txt.textContent = 'بررسی موجودی فروشگاه (' + inv.own.length + ' محصول) و ساخت ایده‌های تازه...';
   const nCand = Math.min(12, Math.max(8, o.count*4));
   const candidatePrompt = (extra) => `You are an Etsy market researcher. Shop niche: ${niche}. Today is ${today}.
-${shopCtx()}\n${ideaInventoryPromptBlock(inv)}\n${extra || ''}\n` +
+${shopCtx()}\n${ideaMaterialLine(mat)}${ideaInventoryPromptBlock(inv)}\n${extra || ''}\n` +
     (o.topic ? `The seller wants ideas around: ${o.topic}\n` : '') +
     (o.digital ? (shopIsCutNiche() ? 'ONLY digital-download products (SVG/DXF/PDF cut files, templates, printables). No physical items.\n' : 'ONLY digital-download products that fit this shop\'s niche (printable art, templates, downloadable files). No physical items. Focus on the niche itself; at most ONE of the ideas may be a cut-file version (laser/Cricut/Silhouette) of the same kind of artwork, and never suggest packaging or boxes.\n') : '') +
     `Suggest ${nCand + 8} distinct product ideas. For each give ONLY the exact short English search phrase (2-4 words) a buyer types into Etsy search. Mix evergreen proven demand with seasonal demand that peaks within the next 2 months. Prefer concrete, specific products over broad categories.\nReturn ONLY JSON: {"candidates":["phrase 1","phrase 2"]}`;
   // کاندیدها با کد هم در برابر موجودی فروشگاه و پیشنهادهای قبلی چک می‌شوند (فقط به گفته‌ی AI اعتماد نمی‌شود)
   let candidates = [];
-  const takeCands = list => { for(const raw of list){ const c = String(raw).trim(); if(!c || candidates.some(x => x.toLowerCase() === c.toLowerCase())) continue;
+  const takeCands = list => { for(const raw of list){ const c = String(raw).trim(); if(!c || candidates.some(x => x.toLowerCase() === c.toLowerCase()) || skipped.some(x => x.kw.toLowerCase() === c.toLowerCase())) continue;
+    if(mat && mat.bad && mat.bad.test(c)){ skipped.push({ kw: c, why: 'material', title: mat.fa }); continue; }
     const cov = ideaCovered(c, inv); if(cov){ skipped.push({ kw: c, why: cov.why, title: cov.title }); continue; } candidates.push(c); } };
   try{
     takeCands(parseJSON(await ideaAI(candidatePrompt(''), 1800, 'cheap')).candidates || []);
@@ -3469,7 +3494,7 @@ ${shopCtx()}\n${ideaInventoryPromptBlock(inv)}\n${extra || ''}\n` +
     }
   }catch(e){ if(!candidates.length){ log('✗ خطا در ساخت ایده‌های اولیه: ' + e.message, 'err'); done(); return; } }
   candidates = candidates.slice(0, nCand);
-  if(skipped.length) log('↷ ' + skipped.length + ' ایده کنار گذاشته شد: ' + skipped.map(x => '«' + x.kw + '» (' + (x.why === 'shop' ? 'در فروشگاه هست' : x.why === 'suggested' ? 'قبلاً پیشنهاد شده' : 'اخیراً بررسی شده') + ')').join('، '), 'info');
+  if(skipped.length) log('↷ ' + skipped.length + ' ایده کنار گذاشته شد: ' + skipped.map(x => '«' + x.kw + '» (' + (x.why === 'shop' ? 'در فروشگاه هست' : x.why === 'suggested' ? 'قبلاً پیشنهاد شده' : x.why === 'material' ? 'جنسش ' + x.title + ' نیست' : 'اخیراً بررسی شده') + ')').join('، '), 'info');
   if(!candidates.length){ log('✗ ایده‌ی تازه‌ای پیدا نشد — همه‌ی ایده‌ها در فروشگاه موجود یا قبلاً پیشنهاد شده بودند. «موضوع» را عوض کن و دوباره بزن.', 'err'); done(); return; }
 
   const researched = []; shopInfoWarned = false;
@@ -3497,7 +3522,7 @@ ${shopCtx()}\n${ideaInventoryPromptBlock(inv)}\n${extra || ''}\n` +
   const shortlist = scored.slice(0, Math.max(o.count*2, 4));
   // نسخه‌ی دستی: اول ایده‌ها را با ۳ لینک نمونه نشان بده تا کاربر انتخاب کند؛ نسخه‌ی خودکار روزانه (silent) مثل قبل مستقیم می‌سازد
   if(!silent){
-    S.ideaPicks = { at: Date.now(), count: o.count, nResearched: researched.length, nOwn: inv.own.length, skipped: skipped.slice(0, 40),
+    S.ideaPicks = { at: Date.now(), count: o.count, nResearched: researched.length, nOwn: inv.own.length, material: mat ? mat.fa : '', skipped: skipped.slice(0, 40),
       items: shortlist.map((r, i) => ({ keyword: r.keyword, score: Math.round((r.score || 0) * 100) / 100, research: r.research, sel: i < o.count })) };
     try{ ebApplyToPicks(); }catch(e){}
     saveCurrentShop();
@@ -3512,7 +3537,7 @@ ${shopCtx()}\n${ideaInventoryPromptBlock(inv)}\n${extra || ''}\n` +
 async function ideaFinalize(shortlist, o, niche, existing, nPick, fill, txt, nResearched, done){
   const block = shortlist.map(r => `- "${r.keyword}": ${r.research.listingCount} active listings; price median $${r.research.medianPrice} (p25 $${r.research.p25} – p75 $${r.research.p75}); median views/day ${r.research.viewsPerDay}; median favorites/day ${r.research.favPerDay}; top listing favorites ${r.research.topFavorers}; digital share ${r.research.digitalShare}%; OPPORTUNITY SCORE ${r.research.opportunity}; common tags: ${r.research.sampleTags.join(', ') || '—'}; sample competitor listings (for format and style only, never copy): ${(r.research.topListings || []).map(t => '"' + t.title + '"' + (t.carts != null ? ' [in ' + t.carts + ' shoppers\' carts right now]' : '') + (t.ev ? ' [EverBee: ' + evText(t.ev) + ']' : '')).join(' | ') || '—'}${r.ev ? '; EverBee keyword data: ' + evKwText(r.ev) : ''}`).join('\n');
   txt.textContent = 'انتخاب نهایی و نوشتن محتوا با Claude...';
-  const finalPrompt = `You are an expert Etsy SEO copywriter and market analyst. Shop niche: ${niche}.\nREAL data from a live Etsy search (not guesses), already ranked by opportunity:\n${block}\n\n` +
+  const finalPrompt = `You are an expert Etsy SEO copywriter and market analyst. Shop niche: ${niche}.\n${ideaMaterialLine(ideaMaterial())}REAL data from a live Etsy search (not guesses), already ranked by opportunity:\n${block}\n\n` +
     `Choose exactly ${nPick} product(s) from this list with the best balance of real demand (views/favorites per day) and manageable competition. Prefer higher OPPORTUNITY SCORE unless there is a clear reason not to, and avoid near-duplicates of each other. Where a sample listing shows how many shoppers have it in their cart, treat that as strong buying-intent evidence. EverBee numbers (estimated monthly sales/revenue, searches) are third-party estimates: use them to favor proven demand, but never quote them in the listing text.\n` +
     `RULES: the "keyword" field must be copied EXACTLY from the list. Price must be a USD number between that keyword's p25 and p75 (typical for the niche). ` +
     (o.digital ? (shopIsCutNiche() ? 'The product is a DIGITAL download (cut files / templates): write for that. ' : 'The product is a DIGITAL download that fits this shop\'s niche: write for that; mention cutting machines only if this specific product is a cut-file version, and then only as a minor point.') : '') +
@@ -3574,7 +3599,7 @@ function renderIdeaPicks(){
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px">' + (ls.length ? ls.map((l, j) => sample(l, i, j)).join('') : '<div style="font-size:12px;color:var(--text2)">نمونه‌ی لینک‌دار از Etsy برنگشت.</div>') + '</div></div>';
   };
   box.innerHTML = '<div class="card-title" style="margin-bottom:4px">🧭 مرحله‌ی ۱ از ۲ — از بین این پیشنهادها انتخاب کن</div>'
-    + (P.nOwn != null ? '<div style="font-size:12px;margin-bottom:8px;padding:8px 10px;border-radius:8px;background:var(--green-light,#e6f6ec);color:#166534;line-height:1.8">✓ با ' + P.nOwn + ' محصول فعلی فروشگاه و همه‌ی پیشنهادهای قبلی مقایسه شد؛ هیچ‌کدام از این‌ها در فروشگاهت نیست و در جستجوی این کلیدواژه‌ها لیستینگی از خودت دیده نشد.' + ((P.skipped || []).length ? '<details style="margin-top:4px"><summary style="cursor:pointer">' + P.skipped.length + ' ایده کنار گذاشته شد</summary>' + P.skipped.map(x => '<div><span dir="ltr">' + escHtml(x.kw) + '</span> — ' + ({ shop: 'در فروشگاه هست', suggested: 'قبلاً پیشنهاد شده', recent: 'در ' + IDEA_SEEN_DAYS + ' روز اخیر بررسی شده', ranking: 'لیستینگ خودت در نتایجش هست' }[x.why] || '') + (x.title && x.why !== 'recent' ? ': <span dir="ltr" style="color:var(--text3)">' + escHtml(String(x.title).slice(0, 60)) + '</span>' : '') + '</div>').join('') + '</details>' : '') + '</div>' : '')
+    + (P.nOwn != null ? '<div style="font-size:12px;margin-bottom:8px;padding:8px 10px;border-radius:8px;background:var(--green-light,#e6f6ec);color:#166534;line-height:1.8">✓ ' + (P.material ? 'متریال: ' + escHtml(P.material) + ' · ' : '') + 'با ' + P.nOwn + ' محصول فعلی فروشگاه و همه‌ی پیشنهادهای قبلی مقایسه شد؛ هیچ‌کدام از این‌ها در فروشگاهت نیست و در جستجوی این کلیدواژه‌ها لیستینگی از خودت دیده نشد.' + ((P.skipped || []).length ? '<details style="margin-top:4px"><summary style="cursor:pointer">' + P.skipped.length + ' ایده کنار گذاشته شد</summary>' + P.skipped.map(x => '<div><span dir="ltr">' + escHtml(x.kw) + '</span> — ' + ({ shop: 'در فروشگاه هست', material: 'جنسش با متریال انتخاب‌شده نمی‌خواند', suggested: 'قبلاً پیشنهاد شده', recent: 'در ' + IDEA_SEEN_DAYS + ' روز اخیر بررسی شده', ranking: 'لیستینگ خودت در نتایجش هست' }[x.why] || '') + (x.title && x.why !== 'recent' && x.why !== 'material' ? ': <span dir="ltr" style="color:var(--text3)">' + escHtml(String(x.title).slice(0, 60)) + '</span>' : '') + '</div>').join('') + '</details>' : '') + '</div>' : '')
     + '<div style="font-size:12px;color:var(--text2);margin-bottom:12px">برای هر پیشنهاد، ۳ نمونه‌ی واقعی از Etsy هست. لینک‌ها را باز کن و آنهایی را که به نظرت بهتر است تیک بزن؛ فقط برای همان‌ها عنوان، تگ و توضیحات کامل ساخته می‌شود. بعد از ساخت، «✅ تأیید» نهایی را روی هر کارت می‌زنی.</div>'
     + items.map(card).join('')
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px"><button class="btn btn-primary" id="ideaBuildBtn" onclick="buildSelectedIdeas()">✨ ساخت جزئیات کامل برای انتخاب‌شده‌ها (<span id="ideaSelN">' + nSel + '</span>)</button>'
