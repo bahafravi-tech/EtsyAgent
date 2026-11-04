@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.73.2 -->
+<!-- APP_VERSION: 1.74.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v232</div>
+        <div class="logo-badge">v233</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -967,7 +967,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div class="cr-tab" data-status="failed" onclick="setContentReviewTab('failed',this)">❌ ناموفق <span id="crCount-failed">0</span></div>
     <div class="cr-tab" data-status="rejected" onclick="setContentReviewTab('rejected',this)">🗑 ردشده <span id="crCount-rejected">0</span></div>
     <select class="input" id="crShopFilter" onchange="onCrShopChange()" title="فروشگاهِ محتوا" style="width:auto;margin-inline-start:auto;font-size:12.5px"><option value="">این فروشگاه</option></select>
-    <button class="btn btn-secondary btn-sm" onclick="crMoveShopContent()" title="اگر محتوایی اشتباهی زیر نام فروشگاه دیگری ثبت شده، همه را به فروشگاه درست منتقل می‌کند">🔁 انتقال</button>
+    <button class="btn btn-secondary btn-sm" onclick="crMoveShopContent()" title="برای جابه‌جایی چند آیتم: «☑ انتخاب» را بزن، آیتم‌ها را تیک بزن و از نوار نارنجی «انتقال به» را استفاده کن. این دکمه هم همین را راهنمایی می‌کند.">🔁 انتقال</button>
     <select class="input" id="crCategoryFilter" onchange="onCrCategoryChange()" style="width:auto;font-size:12.5px">
       <option value="">همه دسته‌ها</option>
     </select>
@@ -978,6 +978,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <button class="btn btn-secondary btn-sm" onclick="crSelectAllVisible()">انتخاب همه‌ی این صفحه</button>
     <button class="btn btn-secondary btn-sm" onclick="crDeselectAll()">لغو انتخاب‌ها</button>
     <button class="btn btn-primary btn-sm" style="margin-inline-start:auto" onclick="crPublishSelectedNow(this)">🚀 انتشار فوری انتخاب‌شده‌ها</button>
+    <span style="display:inline-flex;gap:6px;align-items:center;font-size:12.5px">🔁 انتقال به <select class="input" id="crMoveTarget" style="width:auto;font-size:12.5px;padding:4px 8px"></select> <button class="btn btn-secondary btn-sm" onclick="crMoveSelected(this)" title="فقط آیتم‌های تیک‌خورده به فروشگاه انتخاب‌شده منتقل می‌شوند؛ بقیه سر جایشان می‌مانند">انتقال انتخاب‌شده‌ها</button></span>
     <button class="btn btn-red btn-sm" onclick="deleteCrSelected()">🗑 حذف انتخاب‌شده‌ها</button>
   </div>
   <div id="crList"></div>
@@ -4559,14 +4560,51 @@ async function renameShopOnBackend(oldName, newName){
 }
 function onCrShopChange(){ crShopSel = document.getElementById('crShopFilter').value; crShopAutoTried = true; const n = document.getElementById('crShopNotice'); if(n) n.remove(); loadContentReview(); }
 // انتقال دستی محتوا از یک نام فروشگاه به نام دیگر (برای اصلاح محتواهایی که اشتباهی زیر فروشگاه دیگری رفته‌اند)
+// نام فروشگاه‌های مقصد: فروشگاه‌های تعریف‌شده در برنامه + نام‌هایی که روی سرور محتوا دارند
+function crShopNames(){
+  const a = []; try{ ShopManager.list().forEach(x => { if(x && x.name) a.push(x.name); }); }catch(e){}
+  document.querySelectorAll('#crShopFilter option').forEach(o => { if(o.value && o.value !== '*') a.push(o.value); });
+  if(S.shopName) a.unshift(S.shopName);
+  return [...new Set(a.map(x => String(x).trim()).filter(Boolean))];
+}
+function populateCrMoveTarget(){
+  const sel = document.getElementById('crMoveTarget'); if(!sel) return; const cur = sel.value;
+  const names = crShopNames(); const from = crShopSel && crShopSel !== '*' ? crShopSel : S.shopName;
+  const ordered = [...names.filter(n => n !== from), ...names.filter(n => n === from)];
+  sel.innerHTML = '<option value="">— فروشگاه مقصد —</option>' + ordered.map(n => '<option value="' + escHtml(n) + '">' + escHtml(n) + (n === from ? ' (همین فروشگاه)' : '') + '</option>').join('');
+  if(cur && names.includes(cur)) sel.value = cur;
+}
+async function crMoveSelected(btn){
+  const ids = [...crSelected]; if(!ids.length){ alert('اول آیتم‌هایی را که می‌خواهی منتقل شوند تیک بزن'); return; }
+  const to = (document.getElementById('crMoveTarget') || {}).value || '';
+  if(!to){ alert('فروشگاه مقصد را از فهرست «انتقال به» انتخاب کن'); return; }
+  const items = crCurrentItems.filter(it => crSelected.has(it.id));
+  const already = items.filter(it => (it.shop || '') === to).length;
+  if(already === ids.length){ alert('همه‌ی آیتم‌های انتخاب‌شده همین الان در «' + to + '» هستند'); return; }
+  const pub = items.filter(it => (it.platforms || []).some(p => p.status === 'published')).length;
+  if(!confirm(ids.length + ' آیتم انتخاب‌شده به فروشگاه «' + to + '» منتقل شود؟' + (pub ? '\n\n' + pub + ' مورد قبلاً در بعضی شبکه‌ها منتشر شده؛ آن انتشارها سر جایشان می‌مانند. پلتفرم‌های در انتظار، از این به بعد با حساب‌های «' + to + '» منتشر می‌شوند.' : ''))) return;
+  if(btn) btn.disabled = true;
+  try{
+    const r = await fetch(crApiUrl('move_content.php'), { method:'POST', headers: crHeaders(), body: JSON.stringify({ ids, shop: to }) });
+    const d = await r.json().catch(() => ({})); if(!r.ok) throw new Error(d.error || ('خطای ' + r.status + (r.status === 404 ? ' — فایل api/move_content.php هنوز روی سرور نیست' : '')));
+    log('🔁 ' + (d.moved != null ? d.moved : ids.length) + ' محتوا به «' + to + '» منتقل شد', 'ok'); toast('✅ ' + ids.length + ' آیتم به «' + to + '» منتقل شد');
+    crSelected.clear(); updateCrSelectedCount(); await loadContentReview();
+  }catch(e){ alert('انتقال ناموفق بود: ' + e.message); }
+  finally{ if(btn) btn.disabled = false; }
+}
 async function crMoveShopContent(){
+  if(crSelectMode && crSelected.size){ const sel = document.getElementById('crMoveTarget'); if(sel){ sel.focus(); sel.style.outline = '2px solid var(--orange)'; setTimeout(() => sel.style.outline = '', 2500); } toast('فروشگاه مقصد را از «انتقال به» در نوار نارنجی انتخاب کن و «انتقال انتخاب‌شده‌ها» را بزن'); return; }
+  if(!confirm('برای انتقال چند آیتم مشخص:\n«☑ انتخاب» را بزن، آیتم‌ها را تیک بزن، و از نوار نارنجی «انتقال به» استفاده کن.\n\nبرو به حالت انتخاب؟ (لغو = انتقال یک‌جای همه‌ی محتوای یک فروشگاه)')){ return crMoveWholeShop(); }
+  if(!crSelectMode) toggleCrSelectMode();
+}
+async function crMoveWholeShop(){
   const shops = [...document.querySelectorAll('#crShopFilter option')].map(o => o.value).filter(v => v && v !== '*');
   const all = [S.shopName, ...shops.filter(x => x !== S.shopName)];
   const from = prompt('محتوای کدام فروشگاه منتقل شود؟ نام دقیق را بنویس:\n' + all.join('\n'), crShopSel && crShopSel !== '*' ? crShopSel : '');
   if(!from) return;
   const to = prompt('به کدام فروشگاه منتقل شود؟ نام دقیق را بنویس:\n' + all.filter(x => x !== from).join('\n'), '');
   if(!to || to === from) return;
-  if(!confirm('همه‌ی محتواهای «' + from + '» به «' + to + '» منتقل شود؟')) return;
+  if(!confirm('⚠ همه‌ی محتواهای «' + from + '» (بدون استثنا) به «' + to + '» منتقل شود؟\n\nاگر فقط چند آیتم را می‌خواهی، لغو کن و از «☑ انتخاب» استفاده کن.')) return;
   const n = await renameShopOnBackend(from, to);
   toast(n ? '✅ ' + n + ' محتوا منتقل شد' : 'چیزی منتقل نشد');
   loadContentReview();
@@ -4575,6 +4613,7 @@ function populateCrShopFilter(shops){
   const sel = document.getElementById('crShopFilter'); if(!sel) return;
   sel.innerHTML = '<option value="">این فروشگاه (' + escHtml(S.shopName||'') + ')</option><option value="*">همه‌ی فروشگاه‌ها</option>' + (shops||[]).filter(x => x && x !== S.shopName).map(x => '<option value="' + escHtml(x) + '">' + escHtml(x) + '</option>').join('');
   sel.value = crShopSel;
+  try{ populateCrMoveTarget(); }catch(e){}
 }
 function onCrCategoryChange(){
   crCurrentCategory = document.getElementById('crCategoryFilter').value;
@@ -5154,6 +5193,7 @@ function toggleCrSelectMode(){
   crSelected.clear();
   document.getElementById('crSelectModeBar').style.display=crSelectMode?'flex':'none';
   document.getElementById('btnCrSelectMode').textContent=crSelectMode?'✕ لغو انتخاب':'☑ انتخاب';
+  if(crSelectMode) populateCrMoveTarget();
   updateCrSelectedCount();
   renderContentReviewList(crCurrentItems);
 }
