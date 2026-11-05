@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.74.0 -->
+<!-- APP_VERSION: 1.75.0 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v233</div>
+        <div class="logo-badge">v234</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -9528,7 +9528,8 @@ const FILE_SLOTS = [
   {k:"ai",   t:"AI",          h:"Adobe Illustrator — نسخه ویرایش‌پذیر"},
   {k:"studio",t:"Studio3",    h:"Silhouette Studio (.studio3) — برای دستگاه‌های Silhouette"},
   {k:"guide",t:"Instructions",h:"راهنمای مونتاژ"},
-  {k:"canva",t:"Canva-Link",h:"لینک تمپلیت Canva برای مشتری (PDF)"}
+  {k:"canva",t:"Canva-Link",h:"لینک تمپلیت Canva برای مشتری (PDF)"},
+  {k:"zip",  t:"ZIP",         h:"بسته‌ی آماده‌ی هر اندازه (همان‌طور که هست به Etsy آپلود می‌شود)"}
 ];
 const IMG_SLOTS = [
   {k:"hero",     t:"تصویر اصلی",        f:"01-Hero"},
@@ -10014,7 +10015,7 @@ async function dropSlot(kind, slot){
 
 /* ===================== امتیاز و چک‌لیست ===================== */
 function score(p){
-  const f = FILE_SLOTS.filter(s => s.k !== "canva" && p.files[s.k]).length;
+  const f = p.files.zip ? 6 : Math.min(6, FILE_SLOTS.filter(s => s.k !== "canva" && s.k !== "zip" && p.files[s.k]).length);
   const i = IMG_SLOTS.filter(s => p.images[s.k]).length;
   const t = tagList(p), a = altList(p);
   const seo = [
@@ -12240,10 +12241,100 @@ const ZIP_MIME = {svg:"image/svg+xml", dxf:"application/dxf", pdf:"application/p
 async function zipImport(file){
   if(!file) return; return Busy.wrap("باز کردن و جاگذاری فایل‌های ZIP", () => zipImportCore(file));
 }
+/* ---------- بسته‌ی انتقال «جعبه‌ساز» (manifest.json با schema beguchee.package/1): همه‌چیز دقیقاً از روی manifest، بدون حدس و بدون AI ---------- */
+async function zipReadPackageManifest(buf){
+  const ents = await zipList(buf), m = ents.find(e => /(^|\/)manifest\.json$/i.test(e.name.replace(/\\/g, "/")) && e.name.replace(/\\/g, "/").split("/").length <= 2);
+  if(!m) return null;
+  try{ const j = JSON.parse(new TextDecoder("utf-8").decode(await zipData(buf, m))); return (j && /^beguchee\.package\//.test(String(j.schema || "")) && j.listing) ? {man: j, ents, root: m.name.replace(/\\/g, "/").replace(/manifest\.json$/i, "")} : null; }catch(e){ return null; }
+}
+async function zipImportPackage(buf, pk, file){
+  const M = pk.man, L = M.listing || {}, P = M.product || {}, ents = pk.ents;
+  const byPath = new Map(ents.map(e => [e.name.replace(/\\/g, "/").replace(pk.root, ""), e]));
+  const pkgKey = String(M.createdAt || "") + "|" + String(P.name || "");
+  // بسته‌ی دوتکه (Part1/Part2) به همان محصول قبلی اضافه می‌شود
+  let p = state.products.find(x => x.pkgKey === pkgKey), merged = !!p;
+  if(!p){
+    p = cur();
+    const blank = p.name === "محصول تازه" && !p.title && !Object.keys(p.files).length && !Object.keys(p.images).length;
+    if(!blank){ p = blankProduct(); p.code = "BG-" + String(state.products.length + 1).padStart(3, "0"); state.products.push(p); }
+    state.active = p.id;
+  }else state.active = p.id;
+  p.pkgKey = pkgKey;
+  const cnt = {files: 0, imgs: 0, vids: 0, scene: 0}, warn = [];
+  if(!merged){
+    const nm = [P.name, P.typeName].filter(Boolean).join(" ").trim(); if(nm) p.name = nm.slice(0, 80);
+    const sz = (M.sizes || []).filter(z => z && z.mm && z.mm.l > 0 && z.mm.w > 0), lab = {S: "Small", M: "Medium", L: "Large", XL: "X-Large", XS: "X-Small"};
+    if(sz.length){
+      const big = sz.reduce((a, z) => z.mm.l * z.mm.w > a.mm.l * a.mm.w ? z : a, sz[0]);
+      p.w = Math.round(big.mm.l); p.h = Math.round(big.mm.w); p.d = Math.round(big.mm.h || 0) || "";
+      p.sizes = sz.length > 1 ? sz.map(z => ({label: lab[z.code] || String(z.code || "Size"), length: Math.round(z.mm.l), width: Math.round(z.mm.w), height: Math.round(z.mm.h || 0)})) : null;
+      if(!p.sizes) delete p.sizes;
+    }
+    if(L.category) p.category = String(L.category).replace(/\s*\((closest|best)[^)]*\)\s*$/i, "").trim();
+    const desc = String(L.description || "");
+    const mat = (desc.match(/made for ([^.,\n]+?)(?:,|\.|\n| not )/i) || [])[1];
+    if(mat) p.material = mat.trim().replace(/^./, c => c.toUpperCase());
+    else if(M.kind === "box") p.material = "Cardstock / paper";
+    const mach = [];
+    if(/cricut/i.test(desc + L.title)) mach.push("Cricut"); if(/silhouette/i.test(desc + L.title)) mach.push("Silhouette"); if(/scan ?n ?cut/i.test(desc)) mach.push("Brother ScanNCut"); if(/laser|glowforge/i.test(desc + L.title)) mach.push("Laser"); if(/hand cutting|by hand/i.test(desc)) mach.push("Hand cutting");
+    if(mach.length) p.machines = mach.join(" / ");
+    if(L.title) p.title = String(L.title).slice(0, 140);
+    if(desc) p.description = desc;
+    const tags = (Array.isArray(L.tags) ? L.tags : String(L.tags || "").split(/[,\n]/)).map(t => String(t).replace(/_/g, " ").trim()).filter(Boolean);
+    const badTags = tags.filter(t => t.length > 20);
+    p.tags = tags.filter(t => t.length <= 20).filter((t, i, a) => a.findIndex(x => x.toLowerCase() === t.toLowerCase()) === i).slice(0, 13).join(", ");
+    if(badTags.length) warn.push(fa(badTags.length) + " تگ بلندتر از ۲۰ کاراکتر حذف شد");
+    if(mat || M.kind === "box") p.materials = /paper|cardstock|card/i.test(mat || "paper") ? "cardstock, paper" : String(mat).toLowerCase();
+    if(Array.isArray(L.alt) && L.alt.length){ const raw = altRaw(p); L.alt.slice(0, IMG_SLOTS.length).forEach((a, i) => { raw[i] = String(a).slice(0, 250); }); p.alt = raw.join("\n"); }
+    p.pkg = {app: M.app || "", version: M.appVersion || "", attributes: L.attributes || "", about: L.about || "", files: L.files || "", video: L.video || ""};
+    const firstLine = desc.split("\n")[0] || "";
+    if(P.title && firstLine.toLowerCase().startsWith(String(P.title).toLowerCase()) && !String(L.title || "").toLowerCase().includes(String(P.title).toLowerCase()))
+      warn.push("خط اول توضیحات («" + firstLine.slice(0, 60) + "») با عنوان محصول نمی‌خواند — احتمالاً در جعبه‌ساز عنوان روی طرح عوض نشده؛ قبل از ارسال اصلاحش کن");
+  }
+  // فایل‌ها بر اساس نقشِ هر فایل در manifest
+  const mk = (e, base) => zipData(buf, e).then(d => new File([d], base, {type: ZIP_MIME[(base.split(".").pop() || "").toLowerCase()] || (/\.zip$/i.test(base) ? "application/zip" : "application/octet-stream")}));
+  const raw = altRaw(p);
+  for(const f of (M.files || [])){
+    const e = byPath.get(String(f.path || "")); if(!e) continue; // در تکه‌ی دیگر بسته است
+    const base = String(f.path).split("/").pop();
+    if(f.role === "etsy_digital_file"){
+      const list = fsAll(p, "zip"), i = list.findIndex(v => v.name === base); if(i >= 0){ await blobDel(list[i].key); list.splice(i, 1); }
+      const file = await mk(e, base), key = p.id + ":files:zip:" + uid(); await blobPut(key, file); list.push({name: base, size: file.size, type: file.type, key});
+      const order = ["small", "medium", "large"]; list.sort((a, b) => { const ia = order.findIndex(o => a.name.toLowerCase().includes(o)), ib = order.findIndex(o => b.name.toLowerCase().includes(o)); return (ia < 0 ? 9 : ia) - (ib < 0 ? 9 : ib) || a.name.localeCompare(b.name); });
+      fsSet(p, "zip", list); cnt.files++;
+    }else if(f.role === "listing_image"){
+      const n = Number(f.order) || (Number((base.match(/(\d{1,2})\.\w+$/) || [])[1]) || 0); const sl = IMG_SLOTS[n - 1]; if(!sl) continue;
+      if(p.images[sl.k]) await blobDel(p.images[sl.k].key);
+      const file = await mk(e, base), key = p.id + ":images:" + sl.k; await blobPut(key, file); p.images[sl.k] = {name: base, size: file.size, type: file.type, key}; cnt.imgs++;
+      if(f.alt) raw[n - 1] = String(f.alt).slice(0, 250);
+    }else if(f.role === "video"){
+      const slot = /listing|spin|360|turn/i.test(base + " " + (f.use || "")) && !vids(p).vid3d ? "vid3d" : (!vids(p).vidbuild ? "vidbuild" : null); if(!slot) continue;
+      const file = await mk(e, base), key = p.id + ":videos:" + slot; if(vids(p)[slot]) await blobDel(vids(p)[slot].key); await blobPut(key, file); vids(p)[slot] = {name: base, size: file.size, type: file.type, key}; cnt.vids++;
+    }else if(f.role === "scene_render") cnt.scene++;
+    else if(f.role === "scene_prompts" && /\.txt$/i.test(base) && !merged){
+      try{ p.sceneIdeas = new TextDecoder("utf-8").decode(await zipData(buf, e)).slice(0, 4000); }catch(err){}
+    }
+  }
+  p.alt = raw.join("\n");
+  const zips = fsAll(p, "zip").length;
+  if(zips > 5) warn.push("Etsy حداکثر ۵ فایل دیجیتال می‌پذیرد ولی " + fa(zips) + " فایل ZIP هست");
+  const notes = ["از بسته‌ی «" + (file ? file.name : "ZIP") + "» (" + (M.app || "package") + (M.appVersion ? " " + M.appVersion : "") + ")" + (merged ? " — تکه‌ی دوم هم اضافه شد" : ""),
+    p.sizes ? "اندازه‌ها: " + p.sizes.map(r => r.label + " " + r.length + "×" + r.width + "×" + r.height + " mm").join("، ") : "",
+    p.pkg && p.pkg.attributes ? "ویژگی‌های Etsy: " + p.pkg.attributes : "", p.pkg && p.pkg.about ? "درباره‌ی لیستینگ: " + p.pkg.about : "",
+    cnt.scene ? fa(cnt.scene) + " رندر صحنه (برای ساخت عکس در Canva) داخل بسته بود و وارد تصویرهای لیستینگ نشد" : "",
+    p.sceneIdeas ? "ایده‌های صحنه‌ی Canva ذخیره شد" : "", ...warn].filter(Boolean);
+  p.notes = merged ? (String(p.notes || "") + "\n" + notes.join("\n")).trim() : notes.join("\n");
+  save(); renderAll();
+  const tab = document.querySelector("#page-studio .tab[data-p='st-p-product']"); if(tab) tab.click();
+  const missing = (M.files || []).filter(f => !byPath.has(String(f.path || "")) && ["etsy_digital_file", "listing_image", "video"].includes(f.role)).length;
+  toast("✅ بسته‌ی «" + p.name + "» وارد شد: " + fa(cnt.files) + " فایل ZIP، " + fa(cnt.imgs) + " تصویر با ALT، " + fa(cnt.vids) + " ویدیو؛ عنوان، توضیحات، ۱۳ تگ و اندازه‌ها دقیقاً از بسته" + (missing ? " — " + fa(missing) + " فایل در تکه‌ی دیگرِ بسته است؛ آن را هم وارد کن" : "") + (warn.length ? " ⚠ " + warn.join(" · ") : "") + ".");
+  log("📦 بسته‌ی جعبه‌ساز وارد استودیو شد: " + p.name + " (" + cnt.files + " ZIP، " + cnt.imgs + " تصویر)", "ok");
+}
 async function zipImportCore(file){
   if(file.size > 500*1024*1024) return toast("این ZIP بزرگ‌تر از ۵۰۰ مگابایت است.");
   toast("⏳ در حال باز کردن ZIP...");
   try{
+    { const buf0 = await file.arrayBuffer(), pk = await zipReadPackageManifest(buf0); if(pk) return await zipImportPackage(buf0, pk, file); }
     const all = [];
     const walk = async (buf, prefix, depth) => {
       for(const e of await zipList(buf)){
