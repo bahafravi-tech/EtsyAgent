@@ -1,4 +1,4 @@
-<!-- APP_VERSION: 1.75.0 -->
+<!-- APP_VERSION: 1.75.1 -->
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
@@ -697,7 +697,7 @@ margin:0;background:var(--paper);color:var(--ink);
     <div style="display:flex;flex-direction:column;gap:1px">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="logo-name">Etsy <span>Agent</span> Pro</div>
-        <div class="logo-badge">v234</div>
+        <div class="logo-badge">v235</div>
       </div>
       <div style="font-size:10px;color:var(--text3);padding-right:2px" id="buildBadge">build 2026.10 · بازاریابی: رفع خطای ۵۰۰ موقع تحلیل طولانی + نمایش متن واقعی خطای سرور</div>
     </div>
@@ -10117,8 +10117,8 @@ function listingText(p){
 async function buildProductZip(p){
   const base = p.code + "-" + slug(p.name);
   const entries = [];
-  for(const s of FILE_SLOTS){
-    const list = fsAll(p, s.k);
+  for(const s of FILE_SLOTS.filter(s => !p.files.zip || s.k === "zip" || s.k === "canva")){
+    const list = s.k === "zip" ? fsAll(p, s.k).concat([{}]).slice(0, -1) : fsAll(p, s.k);
     for(const v of list){ const b = await blobGet(v.key); if(!b) continue;
       entries.push({path: list.length > 1 ? v.name : base + "." + ext(v.name), data: await bytes(b)}); }
   }
@@ -12260,7 +12260,7 @@ async function zipImportPackage(buf, pk, file){
     state.active = p.id;
   }else state.active = p.id;
   p.pkgKey = pkgKey;
-  const cnt = {files: 0, imgs: 0, vids: 0, scene: 0}, warn = [];
+  const cnt = {files: 0, inner: 0, imgs: 0, vids: 0, scene: 0}, warn = [];
   if(!merged){
     const nm = [P.name, P.typeName].filter(Boolean).join(" ").trim(); if(nm) p.name = nm.slice(0, 80);
     const sz = (M.sizes || []).filter(z => z && z.mm && z.mm.l > 0 && z.mm.w > 0), lab = {S: "Small", M: "Medium", L: "Large", XL: "X-Large", XS: "X-Small"};
@@ -12302,6 +12302,19 @@ async function zipImportPackage(buf, pk, file){
       const file = await mk(e, base), key = p.id + ":files:zip:" + uid(); await blobPut(key, file); list.push({name: base, size: file.size, type: file.type, key});
       const order = ["small", "medium", "large"]; list.sort((a, b) => { const ia = order.findIndex(o => a.name.toLowerCase().includes(o)), ib = order.findIndex(o => b.name.toLowerCase().includes(o)); return (ia < 0 ? 9 : ia) - (ib < 0 ? 9 : ib) || a.name.localeCompare(b.name); });
       fsSet(p, "zip", list); cnt.files++;
+      // محتوای هر ZIP هم در جایگاه خودش (SVG / DXF / PDF / راهنما ...) قرار می‌گیرد تا مثل قبل مرتب دیده شود
+      try{
+        const zb = await zipData(buf, e), zbuf = zb.buffer.slice(zb.byteOffset, zb.byteOffset + zb.byteLength);
+        for(const ie of await zipList(zbuf)){
+          const ib = ie.name.replace(/\\/g, "/").split("/").pop(), ix = (ib.split(".").pop() || "").toLowerCase();
+          if(!ib || ib.startsWith(".")) continue;
+          const slot = ix === "svg" ? "svg" : ix === "dxf" ? "dxf" : ix === "pdf" ? (/guide|how[_ -]?to|instruction|assembly|manual|راهنما/i.test(ib) ? "guide" : "pdf") : (ix === "ai" || ix === "eps") ? "ai" : /^studio3?$/.test(ix) ? "studio" : null;
+          if(!slot) continue;
+          const sl = fsAll(p, slot); if(sl.some(v => v.name === ib)) continue; // راهنمای یکسان در هر سه اندازه فقط یک‌بار
+          const ifile = new File([await zipData(zbuf, ie)], ib, {type: ZIP_MIME[ix] || "application/octet-stream"}), ikey = p.id + ":files:" + slot + ":" + uid();
+          await blobPut(ikey, ifile); sl.push({name: ib, size: ifile.size, type: ifile.type, key: ikey}); fsSet(p, slot, sl); cnt.inner++;
+        }
+      }catch(err){ warn.push("محتوای «" + base + "» باز نشد: " + (err && err.message ? err.message : err)); }
     }else if(f.role === "listing_image"){
       const n = Number(f.order) || (Number((base.match(/(\d{1,2})\.\w+$/) || [])[1]) || 0); const sl = IMG_SLOTS[n - 1]; if(!sl) continue;
       if(p.images[sl.k]) await blobDel(p.images[sl.k].key);
@@ -12327,7 +12340,7 @@ async function zipImportPackage(buf, pk, file){
   save(); renderAll();
   const tab = document.querySelector("#page-studio .tab[data-p='st-p-product']"); if(tab) tab.click();
   const missing = (M.files || []).filter(f => !byPath.has(String(f.path || "")) && ["etsy_digital_file", "listing_image", "video"].includes(f.role)).length;
-  toast("✅ بسته‌ی «" + p.name + "» وارد شد: " + fa(cnt.files) + " فایل ZIP، " + fa(cnt.imgs) + " تصویر با ALT، " + fa(cnt.vids) + " ویدیو؛ عنوان، توضیحات، ۱۳ تگ و اندازه‌ها دقیقاً از بسته" + (missing ? " — " + fa(missing) + " فایل در تکه‌ی دیگرِ بسته است؛ آن را هم وارد کن" : "") + (warn.length ? " ⚠ " + warn.join(" · ") : "") + ".");
+  toast("✅ بسته‌ی «" + p.name + "» وارد شد: " + fa(cnt.files) + " فایل ZIP (و " + fa(cnt.inner) + " فایل داخلشان در جایگاه‌های SVG، DXF، PDF و راهنما)، " + fa(cnt.imgs) + " تصویر با ALT، " + fa(cnt.vids) + " ویدیو؛ عنوان، توضیحات، ۱۳ تگ و اندازه‌ها دقیقاً از بسته" + (missing ? " — " + fa(missing) + " فایل در تکه‌ی دیگرِ بسته است؛ آن را هم وارد کن" : "") + (warn.length ? " ⚠ " + warn.join(" · ") : "") + ".");
   log("📦 بسته‌ی جعبه‌ساز وارد استودیو شد: " + p.name + " (" + cnt.files + " ZIP، " + cnt.imgs + " تصویر)", "ok");
 }
 async function zipImportCore(file){
@@ -12447,7 +12460,7 @@ canvaBind();
 async function fsEtsyPayload(p){
   const items = []; // {t,name,blob}
   const zipOf = async (list, zname) => { const used = {}, entries = []; for(const v of list){ const b = await blobGet(v.key); if(!b) continue; let nm = v.name; if(used[nm]) nm = nm.replace(/(\.[^.]+)$/, "-" + (++used[v.name]) + "$1"); else used[nm] = 1; entries.push({path: nm, data: await bytes(b)}); } return new File([makeZip(entries)], zname, {type:"application/zip"}); };
-  const slots = FILE_SLOTS.map(s => ({s, list: fsAll(p, s.k)})).filter(x => x.list.length);
+  const slots = FILE_SLOTS.filter(s => !p.files.zip || s.k === "zip" || s.k === "canva").map(s => ({s, list: fsAll(p, s.k)})).filter(x => x.list.length);
   const total = slots.reduce((a,x) => a + x.list.length, 0), base = slug(p.name);
   if(total <= 5){ for(const x of slots) for(const v of x.list){ const b = await blobGet(v.key); if(b) items.push({t: x.s.t, name: v.name, blob: b}); } return items; }
   for(const x of slots){
